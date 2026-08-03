@@ -1,5 +1,5 @@
 from django.db import models
-from django.contrib.auth.models import User
+from django.contrib.auth.models import User 
 
 class Projeto(models.Model):
     nome = models.CharField(max_length=100)
