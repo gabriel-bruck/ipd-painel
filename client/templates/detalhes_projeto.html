@@ -83,28 +83,43 @@
             </div>
         </section>
 
-        <!-- SEÇÃO METODOLOGIA IPD -->
+        <!-- SEÇÃO PRIMEIRO PLANO: O QUE É O IPD (COM LOGO E ILUSTRAÇÃO 3D DAS PLATAFORMAS) -->
         <section id="explicacao-ipd" class="max-w-6xl mx-auto px-6 space-y-8">
             <div class="p-8 md:p-12 rounded-3xl bg-quaest-tealLight/60 border border-quaest-tealBorder space-y-10 shadow-sm relative overflow-hidden">
+                
+                <!-- LAYOUT DUAS COLUNAS: TEXTO EXPLICATIVO + ILUSTRAÇÃO DAS PLATAFORMAS -->
                 <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+                    
+                    <!-- COLUNA ESQUERDA: LOGO IPD + EXPLICAÇÃO CONCEITUAL -->
                     <div class="lg:col-span-7 space-y-6">
-                        <div class="flex items-center gap-3">
-                            <svg class="h-11 w-auto text-slate-900" viewBox="0 0 210 80" fill="currentColor">
-                                <circle cx="15" cy="18" r="4.5" />
-                                <circle cx="15" cy="62" r="5.5" />
-                                <path d="M 15 62 L 26 46" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" />
-                                <circle cx="26" cy="46" r="4" />
-                                <path d="M 26 46 L 33 32" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" />
-                                <circle cx="33" cy="32" r="4" />
-                                <path d="M 33 32 L 40 20" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" />
-                                <circle cx="40" cy="20" r="4" />
-                                <text x="48" y="55" font-family="sans-serif" font-weight="900" font-size="42" letter-spacing="-2">ipd</text>
-                                <line x1="112" y1="18" x2="112" y2="60" stroke="#94A3B8" stroke-width="1.5"/>
-                                <text x="122" y="30" font-family="sans-serif" font-weight="500" font-size="11" fill="#475569">Índice de</text>
-                                <text x="122" y="44" font-family="sans-serif" font-weight="800" font-size="12" fill="#0F172A">Popularidade</text>
-                                <text x="122" y="58" font-family="sans-serif" font-weight="800" font-size="12" fill="#0F172A">Digital</text>
-                            </svg>
-                        </div>
+                        
+                        <!-- LOGO VETORIAL IPD (SEM FUNDO BRANCO / TRANSPARENTE) -->
+<!-- LOGO VETORIAL IPD AJUSTADA (SEM SOBREPOSIÇÃO) -->
+<div class="flex items-center gap-3">
+    <svg class="h-11 w-auto text-slate-900" viewBox="0 0 210 80" fill="currentColor">
+        <!-- Ícone da molécula/rede -->
+        <circle cx="15" cy="18" r="4.5" />
+        <circle cx="15" cy="62" r="5.5" />
+        <path d="M 15 62 L 26 46" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" />
+        <circle cx="26" cy="46" r="4" />
+        <path d="M 26 46 L 33 32" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" />
+        <circle cx="33" cy="32" r="4" />
+        <path d="M 33 32 L 40 20" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" />
+        <circle cx="40" cy="20" r="4" />
+
+        <!-- Sigla 'ipd' em destaque -->
+        <text x="48" y="55" font-family="sans-serif" font-weight="900" font-size="42" letter-spacing="-2">ipd</text>
+
+        <!-- Linha divisória vertical -->
+        <line x1="112" y1="18" x2="112" y2="60" stroke="#94A3B8" stroke-width="1.5"/>
+
+        <!-- Textos 'Índice de Popularidade Digital' (afastados para leitura limpa) -->
+        <text x="122" y="30" font-family="sans-serif" font-weight="500" font-size="11" fill="#475569">Índice de</text>
+        <text x="122" y="44" font-family="sans-serif" font-weight="800" font-size="12" fill="#0F172A">Popularidade</text>
+        <text x="122" y="58" font-family="sans-serif" font-weight="800" font-size="12" fill="#0F172A">Digital</text>
+    </svg>
+</div>
+
                         <div class="space-y-3">
                             <span class="text-xs font-black text-quaest-teal uppercase tracking-widest">Metodologia Oficial</span>
                             <h2 class="text-2xl md:text-3xl font-black text-slate-900">O que é o Índice de Popularidade Digital?</h2>
@@ -112,6 +127,8 @@
                                 O IPD é construído a partir de <strong>175 variáveis coletadas em 7 plataformas</strong> ativas no Brasil. As variáveis são agrupadas em dimensões analíticas com notas variando de <strong>1.00 a 4.00</strong>.
                             </p>
                         </div>
+
+                        <!-- CARDS DE DESTAQUE FLUIDOS -->
                         <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
                             <div class="p-3 bg-white rounded-xl border border-quaest-tealBorder">
                                 <span class="block text-xl font-black text-quaest-teal">175</span>
@@ -126,16 +143,94 @@
                                 <span class="text-[10px] text-slate-500 font-bold uppercase">Escala por KPI</span>
                             </div>
                         </div>
+
+                        <div class="p-3 bg-white/80 rounded-xl border border-quaest-tealBorder text-xs text-slate-700 flex items-center gap-2.5">
+                            <i class="fa-solid fa-circle-info text-quaest-teal text-sm"></i>
+                            <span>O IPD é um <strong>índice relacional</strong> e só pode ser comparado dentro do mesmo universo de análise.</span>
+                        </div>
+
                     </div>
+
+                    <!-- COLUNA DIREITA: IMAGEM DAS PLATAFORMAS (SMARTPHONE + REDES SOCIAIS) -->
                     <div class="lg:col-span-5 flex items-center justify-center p-2">
                         <div class="relative max-w-sm w-full">
+                            <!-- TAG DE IMAGEM COM COMPATIBILIDADE DJANGO STATIC E FALLBACK DIRECTO -->
                             <img src="{% static 'images/plataformas-ipd.png' %}" 
                                  onerror="this.onerror=null; this.src='/static/images/plataformas-ipd.png';"
-                                 alt="Plataformas Monitoradas pelo IPD" 
+                                 alt="Plataformas Monitoradas pelo IPD: Facebook, Instagram, X, TikTok, Wikipedia, Google, YouTube" 
                                  class="w-full h-auto object-contain drop-shadow-xl hover:scale-105 transition duration-300">
                         </div>
                     </div>
+
                 </div>
+
+                <!-- CARDS CONCEITUAIS DAS 6 DIMENSÕES DO IPD -->
+                <div class="space-y-4 pt-6 border-t border-quaest-tealBorder">
+                    <h3 class="text-xs font-extrabold uppercase text-slate-500 tracking-wider">As 6 Dimensões Analíticas do IPD:</h3>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
+                        <div class="p-4 rounded-2xl bg-white border border-quaest-tealBorder space-y-1.5 shadow-sm">
+                            <div class="flex items-center gap-2">
+                                <span class="w-6 h-6 rounded-lg bg-quaest-tealLight text-quaest-teal font-black flex items-center justify-center text-xs">1</span>
+                                <strong class="text-slate-900 font-extrabold text-sm">Presença Digital</strong>
+                            </div>
+                            <p class="text-slate-600 leading-relaxed">
+                                Possui perfil ativo e público (dados abertos) no Facebook, Instagram, YouTube, TikTok ou X (Twitter).
+                            </p>
+                        </div>
+
+                        <div class="p-4 rounded-2xl bg-white border border-quaest-tealBorder space-y-1.5 shadow-sm">
+                            <div class="flex items-center gap-2">
+                                <span class="w-6 h-6 rounded-lg bg-quaest-tealLight text-quaest-teal font-black flex items-center justify-center text-xs">2</span>
+                                <strong class="text-slate-900 font-extrabold text-sm">Fama</strong>
+                            </div>
+                            <p class="text-slate-600 leading-relaxed">
+                                Visibilidade de conteúdo, seguidores e alcance no digital.
+                            </p>
+                        </div>
+
+                        <div class="p-4 rounded-2xl bg-white border border-quaest-tealBorder space-y-1.5 shadow-sm">
+                            <div class="flex items-center gap-2">
+                                <span class="w-6 h-6 rounded-lg bg-quaest-tealLight text-quaest-teal font-black flex items-center justify-center text-xs">3</span>
+                                <strong class="text-slate-900 font-extrabold text-sm">Engajamento</strong>
+                            </div>
+                            <p class="text-slate-600 leading-relaxed">
+                                Interações, comentários e curtidas geradas.
+                            </p>
+                        </div>
+
+                        <div class="p-4 rounded-2xl bg-white border border-quaest-tealBorder space-y-1.5 shadow-sm">
+                            <div class="flex items-center gap-2">
+                                <span class="w-6 h-6 rounded-lg bg-quaest-tealLight text-quaest-teal font-black flex items-center justify-center text-xs">4</span>
+                                <strong class="text-slate-900 font-extrabold text-sm">Mobilização</strong>
+                            </div>
+                            <p class="text-slate-600 leading-relaxed">
+                                Compartilhamentos, reposts e menções espontâneas.
+                            </p>
+                        </div>
+
+                        <div class="p-4 rounded-2xl bg-white border border-quaest-tealBorder space-y-1.5 shadow-sm">
+                            <div class="flex items-center gap-2">
+                                <span class="w-6 h-6 rounded-lg bg-quaest-tealLight text-quaest-teal font-black flex items-center justify-center text-xs">5</span>
+                                <strong class="text-slate-900 font-extrabold text-sm">Valência</strong>
+                            </div>
+                            <p class="text-slate-600 leading-relaxed">
+                                Razão entre reações positivas versus reações negativas.
+                            </p>
+                        </div>
+
+                        <div class="p-4 rounded-2xl bg-white border border-quaest-tealBorder space-y-1.5 shadow-sm">
+                            <div class="flex items-center gap-2">
+                                <span class="w-6 h-6 rounded-lg bg-quaest-tealLight text-quaest-teal font-black flex items-center justify-center text-xs">6</span>
+                                <strong class="text-slate-900 font-extrabold text-sm">Interesse</strong>
+                            </div>
+                            <p class="text-slate-600 leading-relaxed">
+                                Acessos, volume e aumento recente nas buscas ativas do público.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
             </div>
         </section>
 
