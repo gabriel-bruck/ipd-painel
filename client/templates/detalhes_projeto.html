@@ -31,6 +31,15 @@
             }
         }
     </script>
+    <style>
+        @keyframes pulse-cursor {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+        .animate-cursor {
+            animation: pulse-cursor 0.8s infinite;
+        }
+    </style>
 </head>
 <body class="bg-slate-50 text-quaest-textDark font-sans antialiased selection:bg-quaest-teal selection:text-white">
 
@@ -70,42 +79,33 @@
             </div>
         </section>
 
-        <!-- SEÇÃO PRIMEIRO PLANO: O QUE É O IPD (COM LOGO E ILUSTRAÇÃO 3D DAS PLATAFORMAS) -->
+        <!-- SEÇÃO PRIMEIRO PLANO: O QUE É O IPD -->
         <section id="explicacao-ipd" class="max-w-6xl mx-auto px-6 space-y-8">
             <div class="p-8 md:p-12 rounded-3xl bg-quaest-tealLight/60 border border-quaest-tealBorder space-y-10 shadow-sm relative overflow-hidden">
                 
-                <!-- LAYOUT DUAS COLUNAS: TEXTO EXPLICATIVO + ILUSTRAÇÃO DAS PLATAFORMAS -->
                 <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
                     
-                    <!-- COLUNA ESQUERDA: LOGO IPD + EXPLICAÇÃO CONCEITUAL -->
                     <div class="lg:col-span-7 space-y-6">
-                        
-                        <!-- LOGO VETORIAL IPD (SEM FUNDO BRANCO / TRANSPARENTE) -->
-<!-- LOGO VETORIAL IPD AJUSTADA (SEM SOBREPOSIÇÃO) -->
-<div class="flex items-center gap-3">
-    <svg class="h-11 w-auto text-slate-900" viewBox="0 0 210 80" fill="currentColor">
-        <!-- Ícone da molécula/rede -->
-        <circle cx="15" cy="18" r="4.5" />
-        <circle cx="15" cy="62" r="5.5" />
-        <path d="M 15 62 L 26 46" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" />
-        <circle cx="26" cy="46" r="4" />
-        <path d="M 26 46 L 33 32" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" />
-        <circle cx="33" cy="32" r="4" />
-        <path d="M 33 32 L 40 20" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" />
-        <circle cx="40" cy="20" r="4" />
+                        <div class="flex items-center gap-3">
+                            <svg class="h-11 w-auto text-slate-900" viewBox="0 0 210 80" fill="currentColor">
+                                <circle cx="15" cy="18" r="4.5" />
+                                <circle cx="15" cy="62" r="5.5" />
+                                <path d="M 15 62 L 26 46" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" />
+                                <circle cx="26" cy="46" r="4" />
+                                <path d="M 26 46 L 33 32" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" />
+                                <circle cx="33" cy="32" r="4" />
+                                <path d="M 33 32 L 40 20" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" />
+                                <circle cx="40" cy="20" r="4" />
 
-        <!-- Sigla 'ipd' em destaque -->
-        <text x="48" y="55" font-family="sans-serif" font-weight="900" font-size="42" letter-spacing="-2">ipd</text>
+                                <text x="48" y="55" font-family="sans-serif" font-weight="900" font-size="42" letter-spacing="-2">ipd</text>
 
-        <!-- Linha divisória vertical -->
-        <line x1="112" y1="18" x2="112" y2="60" stroke="#94A3B8" stroke-width="1.5"/>
+                                <line x1="112" y1="18" x2="112" y2="60" stroke="#94A3B8" stroke-width="1.5"/>
 
-        <!-- Textos 'Índice de Popularidade Digital' (afastados para leitura limpa) -->
-        <text x="122" y="30" font-family="sans-serif" font-weight="500" font-size="11" fill="#475569">Índice de</text>
-        <text x="122" y="44" font-family="sans-serif" font-weight="800" font-size="12" fill="#0F172A">Popularidade</text>
-        <text x="122" y="58" font-family="sans-serif" font-weight="800" font-size="12" fill="#0F172A">Digital</text>
-    </svg>
-</div>
+                                <text x="122" y="30" font-family="sans-serif" font-weight="500" font-size="11" fill="#475569">Índice de</text>
+                                <text x="122" y="44" font-family="sans-serif" font-weight="800" font-size="12" fill="#0F172A">Popularidade</text>
+                                <text x="122" y="58" font-family="sans-serif" font-weight="800" font-size="12" fill="#0F172A">Digital</text>
+                            </svg>
+                        </div>
 
                         <div class="space-y-3">
                             <span class="text-xs font-black text-quaest-teal uppercase tracking-widest">Metodologia Oficial</span>
@@ -115,7 +115,6 @@
                             </p>
                         </div>
 
-                        <!-- CARDS DE DESTAQUE FLUIDOS -->
                         <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
                             <div class="p-3 bg-white rounded-xl border border-quaest-tealBorder">
                                 <span class="block text-xl font-black text-quaest-teal">175</span>
@@ -138,10 +137,8 @@
 
                     </div>
 
-                    <!-- COLUNA DIREITA: IMAGEM DAS PLATAFORMAS (SMARTPHONE + REDES SOCIAIS) -->
                     <div class="lg:col-span-5 flex items-center justify-center p-2">
                         <div class="relative max-w-sm w-full">
-                            <!-- TAG DE IMAGEM COM COMPATIBILIDADE DJANGO STATIC E FALLBACK DIRECTO -->
                             <img src="{% static 'images/plataformas-ipd.png' %}" 
                                  onerror="this.onerror=null; this.src='/static/images/plataformas-ipd.png';"
                                  alt="Plataformas Monitoradas pelo IPD: Facebook, Instagram, X, TikTok, Wikipedia, Google, YouTube" 
@@ -151,7 +148,6 @@
 
                 </div>
 
-                <!-- CARDS CONCEITUAIS DAS 6 DIMENSÕES DO IPD -->
                 <div class="space-y-4 pt-6 border-t border-quaest-tealBorder">
                     <h3 class="text-xs font-extrabold uppercase text-slate-500 tracking-wider">As 6 Dimensões Analíticas do IPD:</h3>
 
@@ -221,6 +217,51 @@
             </div>
         </section>
 
+        <!-- SEÇÃO RESUMO EXECUTIVO VIA STREAMING DE IA -->
+        <section id="resumo-executivo-ia" class="max-w-6xl mx-auto px-6">
+            <div class="bg-white border border-slate-200 rounded-3xl p-6 md:p-10 shadow-sm space-y-6 relative overflow-hidden">
+                
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-6">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-2xl bg-quaest-tealLight border border-quaest-tealBorder flex items-center justify-center text-quaest-teal text-lg font-black shrink-0">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i>
+                        </div>
+                        <div>
+                            <span class="text-[10px] font-black text-quaest-teal uppercase tracking-widest block">Análise Inteligente</span>
+                            <h2 class="text-2xl font-black text-slate-900">Resumo Executivo</h2>
+                        </div>
+                    </div>
+
+                    <!-- CONTROLES: SELETOR DE MÊS + STATUS STREAMING + BOTÃO RECARREGAR -->
+                    <div class="flex flex-wrap items-center gap-3">
+                        <div class="flex items-center gap-2">
+                            <label for="select-mes-resumo-ia" class="text-xs font-bold text-slate-500">Mês de Referência:</label>
+                            <select id="select-mes-resumo-ia" onchange="carregarResumoExecutivoStream(this.value)" class="bg-slate-100 text-slate-800 text-xs font-bold px-3 py-1.5 rounded-xl border border-slate-200 outline-none focus:border-quaest-teal transition">
+                                <option value="">Carregando meses...</option>
+                            </select>
+                        </div>
+
+                        <div id="status-ia-streaming" class="flex items-center gap-2 text-xs font-bold text-quaest-teal bg-quaest-tealLight px-3 py-1.5 rounded-full border border-quaest-teal/20">
+                            <i class="fa-solid fa-spinner animate-spin"></i>
+                            <span>Sintetizando...</span>
+                        </div>
+
+                        <button onclick="carregarResumoExecutivoStream()" title="Atualizar Resumo" class="p-2 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-500 hover:text-slate-800 border border-slate-200 transition">
+                            <i class="fa-solid fa-rotate-right text-xs"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- CONTAINER DE BULLET POINTS GERADOS VIA STREAM -->
+                <div id="container-bullets-ia" class="space-y-3 min-h-[120px]">
+                    <div class="text-slate-400 text-xs italic flex items-center gap-2 pt-2">
+                        <i class="fa-solid fa-circle-notch animate-spin text-quaest-teal"></i> Conectando ao modelo analítico...
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
         <!-- CONTAINER DINÂMICO DOS MÓDULOS DE IPD -->
         <div id="container-relatorios-ipd" class="space-y-24 max-w-6xl mx-auto px-6">
             <div class="text-center py-12 text-slate-400 text-sm">
@@ -251,6 +292,8 @@
 
         let listaIPDsGlobais = [];
         let stateIPDs = {};
+        let mesesDisponiveisGlobais = [];
+        let mapCausalCharts = {};
 
         function formatarDataAnoCurto(dataStr, apenasMes = false) {
             if (!dataStr) return '';
@@ -267,7 +310,312 @@
             return dataStr;
         }
 
-        // DISPARO ASSÍNCRONO DA REQUISIÇÃO
+        // PREENCHE O SELECT DE MESES DO RESUMO EXECUTIVO E SELECIONA O ÚLTIMO MÊS
+        function inicializarSeletorMesesResumo(meses) {
+            const select = document.getElementById('select-mes-resumo-ia');
+            if (!select || meses.length === 0) return;
+
+            select.innerHTML = '';
+            
+            const mesesOrdenados = [...meses].sort();
+            mesesDisponiveisGlobais = mesesOrdenados;
+
+            mesesOrdenados.forEach(m => {
+                const opt = document.createElement('option');
+                opt.value = m;
+                opt.innerText = formatarDataAnoCurto(m, true);
+                select.appendChild(opt);
+            });
+
+            const ultimoMes = mesesOrdenados[mesesOrdenados.length - 1];
+            select.value = ultimoMes;
+
+            carregarResumoExecutivoStream(ultimoMes);
+        }
+
+        // DISPARO ASSÍNCRONO DO STREAMING DE IA
+        async function carregarResumoExecutivoStream(mesParam = null) {
+            const container = document.getElementById('container-bullets-ia');
+            const statusBox = document.getElementById('status-ia-streaming');
+            const selectMes = document.getElementById('select-mes-resumo-ia');
+
+            const mesFinal = mesParam || (selectMes ? selectMes.value : '');
+
+            container.innerHTML = `<div class="text-slate-400 text-xs italic flex items-center gap-2 pt-2"><i class="fa-solid fa-circle-notch animate-spin text-quaest-teal"></i> Sintetizando dados de ${formatarDataAnoCurto(mesFinal, true) || 'referência'}...</div>`;
+            statusBox.classList.remove('hidden');
+            statusBox.className = "flex items-center gap-2 text-xs font-bold text-quaest-teal bg-quaest-tealLight px-3 py-1.5 rounded-full border border-quaest-teal/20";
+            statusBox.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i> <span>Sintetizando...</span>`;
+
+            let textoAcumulado = "";
+
+            try {
+                const baseUrl = `/projetos/${PROJETO_ID}/resumo-executivo-stream/`;
+                const url = mesFinal ? `${baseUrl}?mes=${encodeURIComponent(mesFinal)}` : baseUrl;
+                
+                const response = await fetch(url);
+
+                if (!response.ok || !response.body) {
+                    throw new Error("Falha na conexão com o serviço de IA.");
+                }
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder("utf-8");
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    const chunk = decoder.decode(value, { stream: true });
+                    textoAcumulado += chunk;
+
+                    renderizarBulletsResumo(textoAcumulado, true);
+                }
+
+                renderizarBulletsResumo(textoAcumulado, false);
+                statusBox.className = "flex items-center gap-2 text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-200";
+                statusBox.innerHTML = `<i class="fa-solid fa-check"></i> <span>Síntese Concluída</span>`;
+
+            } catch (error) {
+                console.error("Erro no streaming de IA:", error);
+                container.innerHTML = `
+                    <div class="p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs flex items-center gap-2">
+                        <i class="fa-solid fa-triangle-exclamation text-amber-600"></i>
+                        <span>Não foi possível carregar o resumo executivo automatizado. Tente novamente em instantes.</span>
+                    </div>
+                `;
+                statusBox.classList.add('hidden');
+            }
+        }
+
+        // CONVERTE TEXTO RECEBIDO EM BULLET POINTS
+        function renderizarBulletsResumo(textoRaw, isStreaming = false) {
+            const container = document.getElementById('container-bullets-ia');
+            
+            const linhas = textoRaw
+                .split('\n')
+                .map(l => l.trim())
+                .filter(l => l.length > 0);
+
+            if (linhas.length === 0) return;
+
+            let html = `<ul class="space-y-3">`;
+
+            linhas.forEach((linha) => {
+                let textoLimpo = linha.replace(/^[-*•\d+\.]+\s*/, '');
+                textoLimpo = textoLimpo.replace(/\*\*(.*?)\*\*/g, '<strong class="font-extrabold text-slate-900">$1</strong>');
+
+                html += `
+                    <li class="flex items-start gap-3 bg-slate-50/80 p-3.5 rounded-2xl border border-slate-200/80 hover:bg-slate-50 transition shadow-sm text-xs md:text-sm text-slate-700 leading-relaxed">
+                        <span class="w-2 h-2 rounded-full bg-quaest-teal mt-2 shrink-0"></span>
+                        <div class="flex-1">${textoLimpo}</div>
+                    </li>
+                `;
+            });
+
+            if (isStreaming) {
+                html += `
+                    <li class="flex items-center gap-2 text-xs text-quaest-teal font-bold px-1 pt-1">
+                        <span class="inline-block w-2 h-3 bg-quaest-teal animate-cursor rounded-sm"></span>
+                        <span class="italic text-slate-400 font-normal">Gerando pontos...</span>
+                    </li>
+                `;
+            }
+
+            html += `</ul>`;
+            container.innerHTML = html;
+        }
+
+        // DISPARO E PROCESSAMENTO DA ANÁLISE CAUSAL POR MÓDULO DE IPD
+        async function executarCalculoCausal(ipdId) {
+            const perfil = document.getElementById(`causal-perfil-${ipdId}`).value;
+            const dataInicio = document.getElementById(`causal-inicio-${ipdId}`).value;
+            const dataFim = document.getElementById(`causal-fim-${ipdId}`).value;
+
+            const boxLoading = document.getElementById(`causal-loading-${ipdId}`);
+            const boxErro = document.getElementById(`causal-erro-${ipdId}`);
+            const boxResultados = document.getElementById(`causal-resultados-${ipdId}`);
+
+            boxLoading.classList.remove('hidden');
+            boxErro.classList.add('hidden');
+            boxResultados.classList.add('hidden');
+
+            const url = `/projetos/${PROJETO_ID}/causal-impact/?perfil=${encodeURIComponent(perfil)}&data_inicio_evento=${dataInicio}&data_fim_evento=${dataFim}`;
+
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+
+                boxLoading.classList.add('hidden');
+
+                if (!response.ok || !data.sucesso) {
+                    document.getElementById(`causal-erro-etapa-${ipdId}`).innerHTML = `<i class="fa-solid fa-triangle-exclamation text-amber-600"></i> ${data.etapa_erro || 'Erro de Validação'}`;
+                    document.getElementById(`causal-erro-msg-${ipdId}`).innerText = data.error || 'Ocorreu um erro ao calcular a análise causal.';
+                    boxErro.classList.remove('hidden');
+                    return;
+                }
+
+                // Preenche os KPIs
+                document.getElementById(`causal-pvalue-${ipdId}`).innerText = data.p_value;
+                document.getElementById(`causal-janela-${ipdId}`).innerText = `${data.periodo_pos[0]} a ${data.periodo_pos[1]}`;
+
+                // Extração e exibição do Tamanho do Impacto Relativo (%) a partir do relatório textual
+                const matchPct = data.relatorio_textual ? data.relatorio_textual.match(/([+-]?\d+(?:\.\d+)?%)/) : null;
+                const impactPctStr = matchPct ? matchPct[1] : '--';
+                const pctVal = parseFloat(impactPctStr.replace('%', ''));
+
+                const elTamanho = document.getElementById(`causal-tamanho-${ipdId}`);
+                if (!isNaN(pctVal)) {
+                    if (pctVal > 0) {
+                        elTamanho.innerHTML = `<span class="text-emerald-600"><i class="fa-solid fa-arrow-trend-up mr-1"></i>+${pctVal.toFixed(2)}%</span>`;
+                    } else if (pctVal < 0) {
+                        elTamanho.innerHTML = `<span class="text-rose-600"><i class="fa-solid fa-arrow-trend-down mr-1"></i>${pctVal.toFixed(2)}%</span>`;
+                    } else {
+                        elTamanho.innerText = '0.00%';
+                    }
+                } else {
+                    elTamanho.innerText = impactPctStr;
+                }
+
+                const badgeSig = document.getElementById(`causal-significativo-${ipdId}`);
+                if (data.estatisticamente_significativo) {
+                    badgeSig.innerHTML = `<span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800"><i class="fa-solid fa-check-circle mr-1"></i> Impacto Relevante</span>`;
+                } else {
+                    badgeSig.innerHTML = `<span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800"><i class="fa-solid fa-info-circle mr-1"></i> Sem Significância</span>`;
+                }
+
+                // Datas do Pós-Evento
+                const posInicio = data.periodo_pos[0];
+                const posFim = data.periodo_pos[1];
+
+                // Plot do Gráfico Contrafactual com Limpeza de Outliers
+                const labels = data.serie_temporal.map(item => formatarDataAnoCurto(item.data));
+                const observados = data.serie_temporal.map(item => item.ipd_observado);
+                const previstos = data.serie_temporal.map(item => item.ipd_sintetico_previsto);
+                
+                // Exibe a área do intervalo de confiança APENAS no período Pós-Evento
+                const limiteInferior = data.serie_temporal.map(item => {
+                    if (item.data >= posInicio && item.data <= posFim) {
+                        return item.limite_inferior;
+                    }
+                    return null;
+                });
+
+                const limiteSuperior = data.serie_temporal.map(item => {
+                    if (item.data >= posInicio && item.data <= posFim) {
+                        return item.limite_superior;
+                    }
+                    return null;
+                });
+
+                if (mapCausalCharts[ipdId]) {
+                    mapCausalCharts[ipdId].destroy();
+                }
+
+                // Plugin para linha vertical marcando a data do evento
+                const verticalLinePlugin = {
+                    id: 'eventVerticalLine',
+                    afterDraw: (chart) => {
+                        const eventIndex = data.serie_temporal.findIndex(item => item.data === posInicio);
+                        if (eventIndex !== -1) {
+                            const meta = chart.getDatasetMeta(0);
+                            if (meta.data[eventIndex]) {
+                                const x = meta.data[eventIndex].x;
+                                const topY = chart.scales.y.top;
+                                const bottomY = chart.scales.y.bottom;
+                                const ctx = chart.ctx;
+
+                                ctx.save();
+                                ctx.beginPath();
+                                ctx.moveTo(x, topY);
+                                ctx.lineTo(x, bottomY);
+                                ctx.lineWidth = 1.5;
+                                ctx.setLineDash([4, 4]);
+                                ctx.strokeStyle = '#F43F5E';
+                                ctx.stroke();
+
+                                ctx.fillStyle = '#F43F5E';
+                                ctx.font = 'bold 10px sans-serif';
+                                ctx.fillText(' Início Evento', x + 4, topY + 12);
+                                ctx.restore();
+                            }
+                        }
+                    }
+                };
+
+                const ctx = document.getElementById(`chartCausalImpactCanvas-${ipdId}`).getContext('2d');
+                mapCausalCharts[ipdId] = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            {
+                                label: `IPD Real (${data.perfil_alvo})`,
+                                data: observados,
+                                borderColor: '#1FA4B6',
+                                backgroundColor: '#1FA4B6',
+                                borderWidth: 2.5,
+                                pointRadius: 2,
+                                tension: 0.1
+                            },
+                            {
+                                label: 'Projeção Contrafactual',
+                                data: previstos,
+                                borderColor: '#F43F5E',
+                                borderDash: [4, 4],
+                                borderWidth: 2,
+                                pointRadius: 0,
+                                tension: 0.1
+                            },
+                            {
+                                label: 'IC 95% Superior',
+                                data: limiteSuperior,
+                                borderColor: 'transparent',
+                                backgroundColor: 'rgba(244, 63, 94, 0.12)',
+                                pointRadius: 0,
+                                fill: '+1'
+                            },
+                            {
+                                label: 'IC 95% Inferior',
+                                data: limiteInferior,
+                                borderColor: 'transparent',
+                                backgroundColor: 'transparent',
+                                pointRadius: 0,
+                                fill: false
+                            }
+                        ]
+                    },
+                    plugins: [verticalLinePlugin],
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: { mode: 'index', intersect: false },
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                                labels: {
+                                    filter: item => !item.text.includes('IC 95%'),
+                                    font: { weight: 'bold', size: 11 }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: { grid: { color: '#E2E8F0' }, ticks: { font: { weight: 'bold', size: 10 } } },
+                            y: { grid: { color: '#E2E8F0' }, ticks: { font: { weight: 'bold', size: 10 } } }
+                        }
+                    }
+                });
+
+                boxResultados.classList.remove('hidden');
+
+            } catch (err) {
+                boxLoading.classList.add('hidden');
+                document.getElementById(`causal-erro-etapa-${ipdId}`).innerHTML = `<i class="fa-solid fa-triangle-exclamation text-amber-600"></i> Falha de Conexão`;
+                document.getElementById(`causal-erro-msg-${ipdId}`).innerText = "Erro na comunicação com o servidor Django: " + err.message;
+                boxErro.classList.remove('hidden');
+            }
+        }
+
+        // DISPARO ASSÍNCRONO DA REQUISIÇÃO DE PROFILES DO PROJETO
         async function carregarRelatoriosAPI() {
             try {
                 const response = await fetch(`/projetos/${PROJETO_ID}/profiles/`);
@@ -282,6 +630,21 @@
                 }
 
                 renderizarRelatoriosExecutivos();
+
+                const conjuntoMeses = new Set();
+                listaIPDsGlobais.forEach(ipd => {
+                    const mensais = ipd.medias_mensais || [];
+                    mensais.forEach(m => {
+                        if (m.mes) conjuntoMeses.add(m.mes);
+                    });
+                });
+
+                if (conjuntoMeses.size > 0) {
+                    inicializarSeletorMesesResumo(Array.from(conjuntoMeses));
+                } else {
+                    carregarResumoExecutivoStream();
+                }
+
             } catch (error) {
                 console.error("Erro na API de profiles:", error);
             }
@@ -301,6 +664,11 @@
                 const nomeIpd = ipdObj.ipd_nome || ipdObj.nome || ipdObj.titulo || `IPD #${ipdId}`;
                 const mediaGeral = ipdObj.ipd_media || '0.00';
                 const profiles = ipdObj.profiles_usados || [];
+
+                let optionsPerfilHtml = '<option value="">Selecione o perfil...</option>';
+                profiles.forEach(pName => {
+                    optionsPerfilHtml += `<option value="${pName}">${pName}</option>`;
+                });
 
                 const ipdSection = document.createElement('article');
                 ipdSection.className = "bg-white border border-slate-200 rounded-3xl p-6 md:p-10 shadow-sm space-y-12";
@@ -332,7 +700,7 @@
                         </div>
                     </div>
 
-                    <!-- GRÁFICO HISTÓRICO -->
+                    <!-- 1. GRÁFICO HISTÓRICO DO IPD -->
                     <div class="space-y-6">
                         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                             <div>
@@ -366,9 +734,104 @@
                         </div>
                     </div>
 
+                    <!-- 2. MÓDULO DE ANÁLISE DE IMPACTO CAUSAL -->
+                    <div class="space-y-6 pt-4 border-t border-slate-100">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-9 h-9 rounded-xl bg-quaest-tealLight border border-quaest-tealBorder flex items-center justify-center text-quaest-teal text-base font-black shrink-0">
+                                    <i class="fa-solid fa-chart-line"></i>
+                                </div>
+                                <div>
+                                    <span class="text-[10px] font-black text-quaest-teal uppercase tracking-widest block">Modelagem Estatística</span>
+                                    <h3 class="text-xl font-black text-slate-900">Análise de Impacto Causal (BSTS)</h3>
+                                </div>
+                            </div>
+                            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 text-slate-600 text-xs font-bold w-fit">
+                                <i class="fa-solid fa-microchip text-quaest-teal"></i> Controle Sintético
+                            </span>
+                        </div>
+
+                        <!-- Filtros Causal Impact -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 bg-slate-50/80 p-5 rounded-2xl border border-slate-200">
+                            <div>
+                                <label for="causal-perfil-${ipdId}" class="block text-xs font-bold text-slate-600 uppercase mb-1">Perfil Alvo</label>
+                                <select id="causal-perfil-${ipdId}" required class="w-full bg-white text-slate-800 text-xs font-bold px-3 py-2 rounded-xl border border-slate-200 outline-none focus:border-quaest-teal">
+                                    ${optionsPerfilHtml}
+                                </select>
+                            </div>
+
+                            <div>
+                                <label for="causal-inicio-${ipdId}" class="block text-xs font-bold text-slate-600 uppercase mb-1">Início do Evento</label>
+                                <input type="date" id="causal-inicio-${ipdId}" required class="w-full bg-white text-slate-800 text-xs font-bold px-3 py-2 rounded-xl border border-slate-200 outline-none focus:border-quaest-teal">
+                            </div>
+
+                            <div>
+                                <label for="causal-fim-${ipdId}" class="block text-xs font-bold text-slate-600 uppercase mb-1">Fim do Evento</label>
+                                <input type="date" id="causal-fim-${ipdId}" required class="w-full bg-white text-slate-800 text-xs font-bold px-3 py-2 rounded-xl border border-slate-200 outline-none focus:border-quaest-teal">
+                            </div>
+
+                            <div class="flex items-end">
+                                <button type="button" onclick="executarCalculoCausal(${ipdId})" class="w-full bg-quaest-teal hover:bg-quaest-tealDark text-white text-xs font-black py-2.5 px-4 rounded-xl shadow-sm transition duration-150 flex items-center justify-center gap-2">
+                                    <i class="fa-solid fa-calculator"></i>
+                                    <span>Calcular Impacto</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Estado Loading -->
+                        <div id="causal-loading-${ipdId}" class="hidden p-6 text-center text-slate-500 text-xs italic space-y-2">
+                            <i class="fa-solid fa-spinner animate-spin text-quaest-teal text-xl"></i>
+                            <p>Treinando modelo contrafactual via Espaço de Estados...</p>
+                        </div>
+
+                        <!-- Estado Erro -->
+                        <div id="causal-erro-${ipdId}" class="hidden p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-800 text-xs space-y-1">
+                            <div class="flex items-center gap-2 font-black text-amber-900" id="causal-erro-etapa-${ipdId}">
+                                <i class="fa-solid fa-triangle-exclamation text-amber-600"></i> Erro no cálculo
+                            </div>
+                            <p id="causal-erro-msg-${ipdId}" class="text-amber-700">Detalhes da falha aqui.</p>
+                        </div>
+
+                        <!-- Painel de Resultados com KPI de Tamanho do Impacto -->
+                        <div id="causal-resultados-${ipdId}" class="hidden space-y-6">
+                            
+                            <!-- KPIs Estatísticos (4 Colunas) -->
+                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                                <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200/80">
+                                    <span class="text-[10px] text-slate-400 font-extrabold uppercase block">Tamanho do Impacto</span>
+                                    <span id="causal-tamanho-${ipdId}" class="text-2xl font-black text-slate-900 mt-1 block">--</span>
+                                </div>
+                                <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200/80">
+                                    <span class="text-[10px] text-slate-400 font-extrabold uppercase block">P-Valor Calculado</span>
+                                    <span id="causal-pvalue-${ipdId}" class="text-2xl font-black text-slate-900 mt-1 block">--</span>
+                                </div>
+                                <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200/80">
+                                    <span class="text-[10px] text-slate-400 font-extrabold uppercase block">Significância (α = 0.05)</span>
+                                    <div id="causal-significativo-${ipdId}" class="mt-1">--</div>
+                                </div>
+                                <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200/80">
+                                    <span class="text-[10px] text-slate-400 font-extrabold uppercase block">Janela Avaliada</span>
+                                    <span id="causal-janela-${ipdId}" class="text-xs font-extrabold text-slate-800 mt-1.5 block">--</span>
+                                </div>
+                            </div>
+
+                            <!-- Gráfico Contrafactual -->
+                            <div class="p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
+                                <div class="flex items-center justify-between">
+                                    <h4 class="text-xs font-black text-slate-900 uppercase tracking-wider">Trajetória Real Observada vs. Projeção Contrafactual</h4>
+                                    <span class="text-[10px] text-slate-400 font-bold">Sombra Rosa: Intervalo de Confiança (95%)</span>
+                                </div>
+                                <div class="h-72 w-full">
+                                    <canvas id="chartCausalImpactCanvas-${ipdId}"></canvas>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+
                     <hr class="border-slate-100" />
 
-                    <!-- RADAR MENSAL E CARROSSEL -->
+                    <!-- 3. RADAR MENSAL E CARROSSEL -->
                     <div class="space-y-6">
                         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                             <div>
@@ -434,7 +897,7 @@
 
                     <hr class="border-slate-100" />
 
-                    <!-- MÓDULO DE POSTAGENS -->
+                    <!-- 4. MÓDULO DE POSTAGENS -->
                     <div class="space-y-6">
                         <div class="flex items-center justify-between border-b border-slate-100 pb-4">
                             <div>
@@ -862,7 +1325,9 @@
             document.getElementById(`box-diagnostico-ponto-${ipdId}`).classList.add('hidden');
         }
 
-        document.addEventListener('DOMContentLoaded', carregarRelatoriosAPI);
+        document.addEventListener('DOMContentLoaded', () => {
+            carregarRelatoriosAPI();
+        });
     </script>
 </body>
 </html>
