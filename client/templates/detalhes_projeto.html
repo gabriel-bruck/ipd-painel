@@ -13,11 +13,11 @@
     <!-- Chart.js CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-    <!-- Scripts Oficiais para carregar Embeds de Mídias Sociais -->
+    <!-- SDKs de Embeds das Redes Sociais -->
     <script async src="https://www.instagram.com/embed.js"></script>
     <script async src="https://www.tiktok.com/embed.js"></script>
-    <!-- Scripts de Embeds Oficiais -->
     <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
+    <script async defer crossorigin="anonymous" src="https://connect.facebook.net/pt_BR/sdk.js#xfbml=1&version=v18.0"></script>
 
     <script>
         tailwind.config = {
@@ -42,9 +42,7 @@
             0%, 100% { opacity: 1; }
             50% { opacity: 0; }
         }
-        .animate-cursor {
-            animation: pulse-cursor 0.8s infinite;
-        }
+        .animate-cursor { animation: pulse-cursor 0.8s infinite; }
     </style>
 </head>
 <body class="bg-slate-50 text-quaest-textDark font-sans antialiased selection:bg-quaest-teal selection:text-white">
@@ -70,7 +68,7 @@
 
     <main class="pt-20 pb-24 space-y-16">
         
-        <!-- SEÇÃO HERO: APRESENTAÇÃO APENAS DO PROJETO -->
+        <!-- SEÇÃO HERO -->
         <section id="contexto-projeto" class="max-w-6xl mx-auto px-6 pt-8 pb-4">
             <div class="p-8 md:p-10 rounded-3xl bg-white border border-slate-200 shadow-sm space-y-4">
                 <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-quaest-tealLight text-quaest-teal border border-quaest-teal/20 text-xs font-black uppercase tracking-widest">
@@ -85,12 +83,10 @@
             </div>
         </section>
 
-        <!-- SEÇÃO PRIMEIRO PLANO: O QUE É O IPD -->
+        <!-- SEÇÃO METODOLOGIA IPD -->
         <section id="explicacao-ipd" class="max-w-6xl mx-auto px-6 space-y-8">
             <div class="p-8 md:p-12 rounded-3xl bg-quaest-tealLight/60 border border-quaest-tealBorder space-y-10 shadow-sm relative overflow-hidden">
-                
                 <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-                    
                     <div class="lg:col-span-7 space-y-6">
                         <div class="flex items-center gap-3">
                             <svg class="h-11 w-auto text-slate-900" viewBox="0 0 210 80" fill="currentColor">
@@ -102,17 +98,13 @@
                                 <circle cx="33" cy="32" r="4" />
                                 <path d="M 33 32 L 40 20" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" />
                                 <circle cx="40" cy="20" r="4" />
-
                                 <text x="48" y="55" font-family="sans-serif" font-weight="900" font-size="42" letter-spacing="-2">ipd</text>
-
                                 <line x1="112" y1="18" x2="112" y2="60" stroke="#94A3B8" stroke-width="1.5"/>
-
                                 <text x="122" y="30" font-family="sans-serif" font-weight="500" font-size="11" fill="#475569">Índice de</text>
                                 <text x="122" y="44" font-family="sans-serif" font-weight="800" font-size="12" fill="#0F172A">Popularidade</text>
                                 <text x="122" y="58" font-family="sans-serif" font-weight="800" font-size="12" fill="#0F172A">Digital</text>
                             </svg>
                         </div>
-
                         <div class="space-y-3">
                             <span class="text-xs font-black text-quaest-teal uppercase tracking-widest">Metodologia Oficial</span>
                             <h2 class="text-2xl md:text-3xl font-black text-slate-900">O que é o Índice de Popularidade Digital?</h2>
@@ -120,7 +112,6 @@
                                 O IPD é construído a partir de <strong>175 variáveis coletadas em 7 plataformas</strong> ativas no Brasil. As variáveis são agrupadas em dimensões analíticas com notas variando de <strong>1.00 a 4.00</strong>.
                             </p>
                         </div>
-
                         <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
                             <div class="p-3 bg-white rounded-xl border border-quaest-tealBorder">
                                 <span class="block text-xl font-black text-quaest-teal">175</span>
@@ -135,98 +126,22 @@
                                 <span class="text-[10px] text-slate-500 font-bold uppercase">Escala por KPI</span>
                             </div>
                         </div>
-
-                        <div class="p-3 bg-white/80 rounded-xl border border-quaest-tealBorder text-xs text-slate-700 flex items-center gap-2.5">
-                            <i class="fa-solid fa-circle-info text-quaest-teal text-sm"></i>
-                            <span>O IPD é um <strong>índice relacional</strong> e só pode ser comparado dentro do mesmo universo de análise.</span>
-                        </div>
-
                     </div>
-
                     <div class="lg:col-span-5 flex items-center justify-center p-2">
                         <div class="relative max-w-sm w-full">
                             <img src="{% static 'images/plataformas-ipd.png' %}" 
                                  onerror="this.onerror=null; this.src='/static/images/plataformas-ipd.png';"
-                                 alt="Plataformas Monitoradas pelo IPD: Facebook, Instagram, X, TikTok, Wikipedia, Google, YouTube" 
+                                 alt="Plataformas Monitoradas pelo IPD" 
                                  class="w-full h-auto object-contain drop-shadow-xl hover:scale-105 transition duration-300">
                         </div>
                     </div>
-
                 </div>
-
-                <div class="space-y-4 pt-6 border-t border-quaest-tealBorder">
-                    <h3 class="text-xs font-extrabold uppercase text-slate-500 tracking-wider">As 6 Dimensões Analíticas do IPD:</h3>
-
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
-                        <div class="p-4 rounded-2xl bg-white border border-quaest-tealBorder space-y-1.5 shadow-sm">
-                            <div class="flex items-center gap-2">
-                                <span class="w-6 h-6 rounded-lg bg-quaest-tealLight text-quaest-teal font-black flex items-center justify-center text-xs">1</span>
-                                <strong class="text-slate-900 font-extrabold text-sm">Presença Digital</strong>
-                            </div>
-                            <p class="text-slate-600 leading-relaxed">
-                                Possui perfil ativo e público (dados abertos) no Facebook, Instagram, YouTube, TikTok ou X (Twitter).
-                            </p>
-                        </div>
-
-                        <div class="p-4 rounded-2xl bg-white border border-quaest-tealBorder space-y-1.5 shadow-sm">
-                            <div class="flex items-center gap-2">
-                                <span class="w-6 h-6 rounded-lg bg-quaest-tealLight text-quaest-teal font-black flex items-center justify-center text-xs">2</span>
-                                <strong class="text-slate-900 font-extrabold text-sm">Fama</strong>
-                            </div>
-                            <p class="text-slate-600 leading-relaxed">
-                                Visibilidade de conteúdo, seguidores e alcance no digital.
-                            </p>
-                        </div>
-
-                        <div class="p-4 rounded-2xl bg-white border border-quaest-tealBorder space-y-1.5 shadow-sm">
-                            <div class="flex items-center gap-2">
-                                <span class="w-6 h-6 rounded-lg bg-quaest-tealLight text-quaest-teal font-black flex items-center justify-center text-xs">3</span>
-                                <strong class="text-slate-900 font-extrabold text-sm">Engajamento</strong>
-                            </div>
-                            <p class="text-slate-600 leading-relaxed">
-                                Interações, comentários e curtidas geradas.
-                            </p>
-                        </div>
-
-                        <div class="p-4 rounded-2xl bg-white border border-quaest-tealBorder space-y-1.5 shadow-sm">
-                            <div class="flex items-center gap-2">
-                                <span class="w-6 h-6 rounded-lg bg-quaest-tealLight text-quaest-teal font-black flex items-center justify-center text-xs">4</span>
-                                <strong class="text-slate-900 font-extrabold text-sm">Mobilização</strong>
-                            </div>
-                            <p class="text-slate-600 leading-relaxed">
-                                Compartilhamentos, reposts e menções espontâneas.
-                            </p>
-                        </div>
-
-                        <div class="p-4 rounded-2xl bg-white border border-quaest-tealBorder space-y-1.5 shadow-sm">
-                            <div class="flex items-center gap-2">
-                                <span class="w-6 h-6 rounded-lg bg-quaest-tealLight text-quaest-teal font-black flex items-center justify-center text-xs">5</span>
-                                <strong class="text-slate-900 font-extrabold text-sm">Valência</strong>
-                            </div>
-                            <p class="text-slate-600 leading-relaxed">
-                                Razão entre reações positivas versus reações negativas.
-                            </p>
-                        </div>
-
-                        <div class="p-4 rounded-2xl bg-white border border-quaest-tealBorder space-y-1.5 shadow-sm">
-                            <div class="flex items-center gap-2">
-                                <span class="w-6 h-6 rounded-lg bg-quaest-tealLight text-quaest-teal font-black flex items-center justify-center text-xs">6</span>
-                                <strong class="text-slate-900 font-extrabold text-sm">Interesse</strong>
-                            </div>
-                            <p class="text-slate-600 leading-relaxed">
-                                Acessos, volume e aumento recente nas buscas ativas do público.
-                            </p>
-                        </div>
-                    </div>
-                </div>
-
             </div>
         </section>
 
-        <!-- SEÇÃO RESUMO EXECUTIVO VIA STREAMING DE IA -->
+        <!-- SEÇÃO RESUMO EXECUTIVO STREAMING IA -->
         <section id="resumo-executivo-ia" class="max-w-6xl mx-auto px-6">
             <div class="bg-white border border-slate-200 rounded-3xl p-6 md:p-10 shadow-sm space-y-6 relative overflow-hidden">
-                
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-6">
                     <div class="flex items-center gap-3">
                         <div class="w-10 h-10 rounded-2xl bg-quaest-tealLight border border-quaest-tealBorder flex items-center justify-center text-quaest-teal text-lg font-black shrink-0">
@@ -238,7 +153,6 @@
                         </div>
                     </div>
 
-                    <!-- CONTROLES: SELETOR DE MÊS + STATUS STREAMING + BOTÃO RECARREGAR -->
                     <div class="flex flex-wrap items-center gap-3">
                         <div class="flex items-center gap-2">
                             <label for="select-mes-resumo-ia" class="text-xs font-bold text-slate-500">Mês de Referência:</label>
@@ -258,20 +172,18 @@
                     </div>
                 </div>
 
-                <!-- CONTAINER DE BULLET POINTS GERADOS VIA STREAM -->
                 <div id="container-bullets-ia" class="space-y-3 min-h-[120px]">
                     <div class="text-slate-400 text-xs italic flex items-center gap-2 pt-2">
                         <i class="fa-solid fa-circle-notch animate-spin text-quaest-teal"></i> Conectando ao modelo analítico...
                     </div>
                 </div>
-
             </div>
         </section>
 
         <!-- CONTAINER DINÂMICO DOS MÓDULOS DE IPD -->
         <div id="container-relatorios-ipd" class="space-y-24 max-w-6xl mx-auto px-6">
             <div class="text-center py-12 text-slate-400 text-sm">
-                <i class="fa-solid fa-spinner animate-spin mr-2"></i> Mapeando e processando os relatorios dos IPDs...
+                <i class="fa-solid fa-spinner animate-spin mr-2"></i> Mapeando e processando os relatórios dos IPDs...
             </div>
         </div>
 
@@ -282,7 +194,6 @@
         <p>© 2026 Quaest Pesquisa e Consultoria. Todos os direitos reservados.</p>
     </footer>
 
-    <!-- LÓGICA ASSÍNCRONA E MONTAGEM DOS GRÁFICOS -->
     <script>
         const PROJETO_ID = "{{ projeto.id|default:'1' }}"; 
 
@@ -298,136 +209,243 @@
 
         let listaIPDsGlobais = [];
         let stateIPDs = {};
-        let mesesDisponiveisGlobais = [];
         let mapCausalCharts = {};
+
+        // FORMATAÇÃO DE DATA
+        function formatarDataParaAnoMes(dataRaw) {
+            if (!dataRaw) return '';
+            const str = String(dataRaw).trim();
+            if (str.includes('/')) {
+                const parts = str.split('/');
+                if (parts.length === 3) return `${parts[2]}-${parts[1].padStart(2, '0')}`;
+                if (parts.length === 2) return `20${parts[1]}-${parts[0].padStart(2, '0')}`;
+            }
+            if (str.includes('-')) {
+                const parts = str.split('-');
+                if (parts.length >= 2) return `${parts[0]}-${parts[1].padStart(2, '0')}`;
+            }
+            return str;
+        }
 
         function formatarDataAnoCurto(dataStr, apenasMes = false) {
             if (!dataStr) return '';
-            const parts = dataStr.split('-');
+            const parts = String(dataStr).split('-');
             if (parts.length >= 2) {
                 const anoCurto = parts[0].slice(-2);
                 const mes = parts[1];
-                if (apenasMes || parts.length === 2) {
-                    return `${mes}/${anoCurto}`;
-                }
-                const dia = parts[2];
-                return `${dia}/${mes}/${anoCurto}`;
+                if (apenasMes || parts.length === 2) return `${mes}/${anoCurto}`;
+                return `${parts[2]}/${mes}/${anoCurto}`;
             }
             return dataStr;
         }
 
-        function inicializarSeletorMesesResumo(meses) {
-            const select = document.getElementById('select-mes-resumo-ia');
-            if (!select || meses.length === 0) return;
+        // =====================================================================
+        // EMBED MULTIPLATAFORMA COMPLETO (Instagram, TikTok, Twitter, Youtube, Facebook)
+        // =====================================================================
+        function renderizarEmbedConteudo(ipdId, postUrl) {
+    const container = document.getElementById(`embed-box-${ipdId}`);
+    if (!container) return;
 
-            select.innerHTML = '';
-            
-            const mesesOrdenados = [...meses].sort();
-            mesesDisponiveisGlobais = mesesOrdenados;
+    if (!postUrl || typeof postUrl !== 'string' || !postUrl.startsWith('http')) {
+        container.innerHTML = `
+            <div class="text-center p-4 text-xs text-slate-400 italic">
+                <i class="fa-solid fa-link-slash text-slate-300 text-lg mb-1 block"></i>
+                Link de publicação indisponível.
+            </div>`;
+        return;
+    }
 
-            mesesOrdenados.forEach(m => {
-                const opt = document.createElement('option');
-                opt.value = m;
-                opt.innerText = formatarDataAnoCurto(m, true);
-                select.appendChild(opt);
-            });
+    container.innerHTML = '';
+    const urlLimpa = postUrl.trim();
 
-            const ultimoMes = mesesOrdenados[mesesOrdenados.length - 1];
-            select.value = ultimoMes;
-
-            carregarResumoExecutivoStream(ultimoMes);
+    // -------------------------------------------------------------------------
+    // 1. TIKTOK (Injeção Forçada de Player)
+    // -------------------------------------------------------------------------
+    if (urlLimpa.includes('tiktok.com')) {
+        // Extrai o ID numérico do vídeo da URL
+        let videoId = '';
+        if (urlLimpa.includes('/video/')) {
+            videoId = urlLimpa.split('/video/')[1]?.split('?')[0] || '';
         }
 
-        async function carregarResumoExecutivoStream(mesParam = null) {
-            const container = document.getElementById('container-bullets-ia');
-            const statusBox = document.getElementById('status-ia-streaming');
-            const selectMes = document.getElementById('select-mes-resumo-ia');
+        container.innerHTML = `
+            <blockquote 
+                class="tiktok-embed" 
+                cite="${urlLimpa}" 
+                data-video-id="${videoId}" 
+                style="max-width: 325px; min-width: 325px; margin: 0 auto;">
+                <section>
+                    <a target="_blank" title="TikTok" href="${urlLimpa}">Carregando vídeo do TikTok...</a>
+                </section>
+            </blockquote>
+        `;
 
-            const mesFinal = mesParam || (selectMes ? selectMes.value : '');
+        // Remove scripts antigos do TikTok para evitar conflitos de cache no DOM
+        const oldScript = document.getElementById('tiktok-embed-script');
+        if (oldScript) {
+            oldScript.remove();
+        }
 
-            container.innerHTML = `<div class="text-slate-400 text-xs italic flex items-center gap-2 pt-2"><i class="fa-solid fa-circle-notch animate-spin text-quaest-teal"></i> Sintetizando dados de ${formatarDataAnoCurto(mesFinal, true) || 'referência'}...</div>`;
-            statusBox.classList.remove('hidden');
-            statusBox.className = "flex items-center gap-2 text-xs font-bold text-quaest-teal bg-quaest-tealLight px-3 py-1.5 rounded-full border border-quaest-teal/20";
-            statusBox.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i> <span>Sintetizando...</span>`;
+        // Re-injeta o script oficial do TikTok para forçar a renderização imediata do iframe
+        const script = document.createElement('script');
+        script.id = 'tiktok-embed-script';
+        script.src = 'https://www.tiktok.com/embed.js';
+        script.async = true;
+        document.body.appendChild(script);
+    } 
 
-            let textoAcumulado = "";
+    // -------------------------------------------------------------------------
+    // 2. INSTAGRAM
+    // -------------------------------------------------------------------------
+    else if (urlLimpa.includes('instagram.com')) {
+        container.innerHTML = `<blockquote class="instagram-media" data-instgrm-permalink="${urlLimpa}" data-instgrm-version="14" style="width:100%; max-width:380px; margin:0 auto;"></blockquote>`;
+        if (window.instgrm && window.instgrm.Embeds) {
+            window.instgrm.Embeds.process();
+        } else {
+            let script = document.createElement('script');
+            script.src = "https://www.instagram.com/embed.js";
+            document.body.appendChild(script);
+        }
+    } 
+
+    // -------------------------------------------------------------------------
+    // 3. TWITTER / X
+    // -------------------------------------------------------------------------
+    else if (urlLimpa.includes('twitter.com') || urlLimpa.includes('x.com')) {
+        container.innerHTML = `<blockquote class="twitter-tweet" data-dnt="true" align="center"><a href="${urlLimpa}"></a></blockquote>`;
+        if (window.twttr && window.twttr.widgets) {
+            window.twttr.widgets.load(container);
+        } else {
+            let script = document.createElement('script');
+            script.src = "https://platform.twitter.com/widgets.js";
+            document.body.appendChild(script);
+        }
+    } 
+
+    // -------------------------------------------------------------------------
+    // 4. YOUTUBE (Vídeos e Shorts)
+    // -------------------------------------------------------------------------
+    else if (urlLimpa.includes('youtube.com') || urlLimpa.includes('youtu.be')) {
+        let videoId = '';
+        if (urlLimpa.includes('/shorts/')) videoId = urlLimpa.split('/shorts/')[1]?.split('?')[0];
+        else if (urlLimpa.includes('youtu.be/')) videoId = urlLimpa.split('youtu.be/')[1]?.split('?')[0];
+        else if (urlLimpa.includes('watch?v=')) videoId = urlLimpa.split('watch?v=')[1]?.split('&')[0];
+
+        if (videoId) {
+            container.innerHTML = `
+                <div class="w-full aspect-video max-w-md mx-auto rounded-xl overflow-hidden shadow-sm">
+                    <iframe class="w-full h-full" src="https://www.youtube.com/embed/${videoId}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+                </div>`;
+        } else {
+            container.innerHTML = `<a href="${urlLimpa}" target="_blank" class="px-4 py-2 rounded-xl bg-red-50 text-red-600 font-bold text-xs border border-red-200"><i class="fa-brands fa-youtube mr-1"></i> Abrir no YouTube</a>`;
+        }
+    } 
+
+    // -------------------------------------------------------------------------
+    // 5. FALLBACK
+    // -------------------------------------------------------------------------
+    else {
+        container.innerHTML = `
+            <a href="${urlLimpa}" target="_blank" class="px-4 py-2 rounded-xl bg-quaest-tealLight text-quaest-teal font-bold text-xs border border-quaest-teal/30 hover:bg-quaest-teal/10 transition">
+                Abrir Publicação Externa <i class="fa-solid fa-arrow-up-right-from-square ml-1"></i>
+            </a>`;
+    }
+}
+
+        // =====================================================================
+        // CARREGA MÉDRICAS DE CONTEÚDO E TOP POST
+        // =====================================================================
+        async function carregarMetricasConteudo(ipdId) {
+            const selectProfile = document.getElementById(`select-profile-postages-${ipdId}`);
+            const selectMes = document.getElementById(`select-mes-postages-${ipdId}`);
+
+            if (!selectProfile || !selectMes) return;
+
+            const profileName = selectProfile.value;
+            const mesAnoRaw = selectMes.value;
+
+            if (!profileName || !mesAnoRaw) {
+                const elTexto = document.getElementById(`top-post-texto-${ipdId}`);
+                if (elTexto) elTexto.innerText = "Selecione o perfil e o mês para consultar.";
+                return;
+            }
+
+            // Normaliza o mês para o formato YYYY-MM
+            const mesAno = formatarDataParaAnoMes(mesAnoRaw);
+
+            const url = `/api/conteudo/medias/?projeto_ipd=${ipdId}&profile=${encodeURIComponent(profileName)}&ano_mes=${mesAno}`;
 
             try {
-                const baseUrl = `/projetos/${PROJETO_ID}/resumo-executivo-stream/`;
-                const url = mesFinal ? `${baseUrl}?mes=${encodeURIComponent(mesFinal)}` : baseUrl;
-                
                 const response = await fetch(url);
+                const data = await response.json();
 
-                if (!response.ok || !response.body) {
-                    throw new Error("Falha na conexão com o serviço de IA.");
+                if (!response.ok || data.error) {
+                    const msgErro = data.error || "Erro ao consultar métricas do período.";
+                    
+                    document.getElementById(`val-media-likes-${ipdId}`).innerText = "0";
+                    document.getElementById(`val-media-comentarios-${ipdId}`).innerText = "0";
+                    document.getElementById(`val-total-posts-${ipdId}`).innerText = "0";
+                    
+                    document.getElementById(`top-post-texto-${ipdId}`).innerHTML = `
+                        <span class="text-rose-600 font-bold">
+                            <i class="fa-solid fa-triangle-exclamation mr-1"></i> ${msgErro}
+                        </span>`;
+                    
+                    document.getElementById(`embed-box-${ipdId}`).innerHTML = `
+                        <p class="text-xs text-slate-400 italic">Sem dados para o período informado.</p>`;
+                    return;
                 }
 
-                const reader = response.body.getReader();
-                const decoder = new TextDecoder("utf-8");
+                document.getElementById(`val-media-likes-${ipdId}`).innerText = Number(data.media_curtidas || 0).toLocaleString('pt-BR');
+                document.getElementById(`val-media-comentarios-${ipdId}`).innerText = Number(data.media_comentarios || 0).toLocaleString('pt-BR');
+                document.getElementById(`val-total-posts-${ipdId}`).innerText = data.total_posts || 0;
 
-                while (true) {
-                    const { done, value } = await reader.read();
-                    if (done) break;
+                // Substitua o bloco if (data.top_post) { ... } else { ... } dentro da função carregarMetricasConteudo por este:
 
-                    const chunk = decoder.decode(value, { stream: true });
-                    textoAcumulado += chunk;
+if (data.top_post) {
+    document.getElementById(`top-post-data-${ipdId}`).innerText = formatarDataAnoCurto(data.top_post.data);
+    document.getElementById(`top-post-likes-${ipdId}`).innerText = Number(data.top_post.curtidas || 0).toLocaleString('pt-BR');
+    document.getElementById(`top-post-comentarios-${ipdId}`).innerText = Number(data.top_post.comentarios || 0).toLocaleString('pt-BR');
+    document.getElementById(`top-post-texto-${ipdId}`).innerText = data.top_post.texto || "Sem legenda informativa.";
+    
+    const linkEl = document.getElementById(`top-post-link-${ipdId}`);
+    if (linkEl) {
+        linkEl.href = data.top_post.url || '#';
+        linkEl.classList.remove('pointer-events-none', 'opacity-50');
+    }
 
-                    renderizarBulletsResumo(textoAcumulado, true);
-                }
+    renderizarEmbedConteudo(ipdId, data.top_post.url);
+} else {
+    // =========================================================================
+    // RESET COMPLETO DOS CAMPOS QUANDO O PERFIL NÃO POSSUI POSTS NO MÊS
+    // =========================================================================
+    document.getElementById(`top-post-data-${ipdId}`).innerText = "-";
+    document.getElementById(`top-post-likes-${ipdId}`).innerText = "0";
+    document.getElementById(`top-post-comentarios-${ipdId}`).innerText = "0";
+    document.getElementById(`top-post-texto-${ipdId}`).innerText = "Nenhuma publicação localizada para este perfil no mês selecionado.";
+    
+    const linkEl = document.getElementById(`top-post-link-${ipdId}`);
+    if (linkEl) {
+        linkEl.href = "#";
+        linkEl.classList.add('pointer-events-none', 'opacity-50'); // Desabilita o clique no link antigo
+    }
 
-                renderizarBulletsResumo(textoAcumulado, false);
-                statusBox.className = "flex items-center gap-2 text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-200";
-                statusBox.innerHTML = `<i class="fa-solid fa-check"></i> <span>Síntese Concluída</span>`;
+    // Limpa o Iframe/Embed antigo
+    document.getElementById(`embed-box-${ipdId}`).innerHTML = `
+        <div class="text-center p-4 text-xs text-slate-400 italic">
+            <i class="fa-solid fa-folder-open text-slate-300 text-xl mb-2 block"></i>
+            Sem publicações para exibição no período.
+        </div>`;
+}
 
-            } catch (error) {
-                console.error("Erro no streaming de IA:", error);
-                container.innerHTML = `
-                    <div class="p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs flex items-center gap-2">
-                        <i class="fa-solid fa-triangle-exclamation text-amber-600"></i>
-                        <span>Não foi possível carregar o resumo executivo automatizado. Tente novamente em instantes.</span>
-                    </div>
-                `;
-                statusBox.classList.add('hidden');
+            } catch (err) {
+                console.error("Falha ao carregar conteúdos:", err);
+                const elTexto = document.getElementById(`top-post-texto-${ipdId}`);
+                if (elTexto) elTexto.innerText = "Falha na comunicação com o servidor.";
             }
         }
 
-        function renderizarBulletsResumo(textoRaw, isStreaming = false) {
-            const container = document.getElementById('container-bullets-ia');
-            
-            const linhas = textoRaw
-                .split('\n')
-                .map(l => l.trim())
-                .filter(l => l.length > 0);
-
-            if (linhas.length === 0) return;
-
-            let html = `<ul class="space-y-3">`;
-
-            linhas.forEach((linha) => {
-                let textoLimpo = linha.replace(/^[-*•\d+\.]+\s*/, '');
-                textoLimpo = textoLimpo.replace(/\*\*(.*?)\*\*/g, '<strong class="font-extrabold text-slate-900">$1</strong>');
-
-                html += `
-                    <li class="flex items-start gap-3 bg-slate-50/80 p-3.5 rounded-2xl border border-slate-200/80 hover:bg-slate-50 transition shadow-sm text-xs md:text-sm text-slate-700 leading-relaxed">
-                        <span class="w-2 h-2 rounded-full bg-quaest-teal mt-2 shrink-0"></span>
-                        <div class="flex-1">${textoLimpo}</div>
-                    </li>
-                `;
-            });
-
-            if (isStreaming) {
-                html += `
-                    <li class="flex items-center gap-2 text-xs text-quaest-teal font-bold px-1 pt-1">
-                        <span class="inline-block w-2 h-3 bg-quaest-teal animate-cursor rounded-sm"></span>
-                        <span class="italic text-slate-400 font-normal">Gerando pontos...</span>
-                    </li>
-                `;
-            }
-
-            html += `</ul>`;
-            container.innerHTML = html;
-        }
-
+        // ANÁLISE CAUSAL BSTS
         async function executarCalculoCausal(ipdId) {
             const perfil = document.getElementById(`causal-perfil-${ipdId}`).value;
             const dataInicio = document.getElementById(`causal-inicio-${ipdId}`).value;
@@ -495,22 +513,16 @@
                 const previstos = data.serie_temporal.map(item => item.ipd_sintetico_previsto);
                 
                 const limiteInferior = data.serie_temporal.map(item => {
-                    if (item.data >= posInicio && item.data <= posFim) {
-                        return item.limite_inferior;
-                    }
+                    if (item.data >= posInicio && item.data <= posFim) return item.limite_inferior;
                     return null;
                 });
 
                 const limiteSuperior = data.serie_temporal.map(item => {
-                    if (item.data >= posInicio && item.data <= posFim) {
-                        return item.limite_superior;
-                    }
+                    if (item.data >= posInicio && item.data <= posFim) return item.limite_superior;
                     return null;
                 });
 
-                if (mapCausalCharts[ipdId]) {
-                    mapCausalCharts[ipdId].destroy();
-                }
+                if (mapCausalCharts[ipdId]) mapCausalCharts[ipdId].destroy();
 
                 const verticalLinePlugin = {
                     id: 'eventVerticalLine',
@@ -600,11 +612,7 @@
                         },
                         scales: {
                             x: { grid: { color: '#E2E8F0' }, ticks: { font: { weight: 'bold', size: 10 } } },
-                            y: { 
-                                min: 0,
-                                grid: { color: '#E2E8F0' }, 
-                                ticks: { font: { weight: 'bold', size: 10 } } 
-                            }
+                            y: { min: 0, grid: { color: '#E2E8F0' }, ticks: { font: { weight: 'bold', size: 10 } } }
                         }
                     }
                 });
@@ -619,34 +627,105 @@
             }
         }
 
+        // CARREGAMENTO DE RESUMOS E INICIALIZAÇÃO DOS SELECTS
+        function inicializarSeletorMesesResumo(meses) {
+            const select = document.getElementById('select-mes-resumo-ia');
+            if (!select || meses.length === 0) return;
+            select.innerHTML = '';
+            const mesesOrdenados = [...meses].sort();
+
+            mesesOrdenados.forEach(m => {
+                const opt = document.createElement('option');
+                opt.value = m;
+                opt.innerText = formatarDataAnoCurto(m, true);
+                select.appendChild(opt);
+            });
+
+            // SELECIONA O ÚLTIMO MÊS DISPONÍVEL
+            const ultimoMes = mesesOrdenados[mesesOrdenados.length - 1];
+            select.value = ultimoMes;
+            carregarResumoExecutivoStream(ultimoMes);
+        }
+
+        async function carregarResumoExecutivoStream(mesParam = null) {
+            const container = document.getElementById('container-bullets-ia');
+            const statusBox = document.getElementById('status-ia-streaming');
+            const selectMes = document.getElementById('select-mes-resumo-ia');
+            const mesFinal = mesParam || (selectMes ? selectMes.value : '');
+
+            container.innerHTML = `<div class="text-slate-400 text-xs italic flex items-center gap-2 pt-2"><i class="fa-solid fa-circle-notch animate-spin text-quaest-teal"></i> Sintetizando dados de ${formatarDataAnoCurto(mesFinal, true) || 'referência'}...</div>`;
+            statusBox.classList.remove('hidden');
+            statusBox.className = "flex items-center gap-2 text-xs font-bold text-quaest-teal bg-quaest-tealLight px-3 py-1.5 rounded-full border border-quaest-teal/20";
+            statusBox.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i> <span>Sintetizando...</span>`;
+
+            let textoAcumulado = "";
+            try {
+                const baseUrl = `/projetos/${PROJETO_ID}/resumo-executivo-stream/`;
+                const url = mesFinal ? `${baseUrl}?mes=${encodeURIComponent(formatarDataParaAnoMes(mesFinal))}` : baseUrl;
+                const response = await fetch(url);
+
+                if (!response.ok || !response.body) throw new Error("Falha na conexão com o serviço de IA.");
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder("utf-8");
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    textoAcumulado += decoder.decode(value, { stream: true });
+                    renderizarBulletsResumo(textoAcumulado, true);
+                }
+
+                renderizarBulletsResumo(textoAcumulado, false);
+                statusBox.className = "flex items-center gap-2 text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-200";
+                statusBox.innerHTML = `<i class="fa-solid fa-check"></i> <span>Síntese Concluída</span>`;
+
+            } catch (error) {
+                console.error("Erro no streaming de IA:", error);
+                container.innerHTML = `<div class="p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs flex items-center gap-2"><i class="fa-solid fa-triangle-exclamation text-amber-600"></i> Não foi possível carregar o resumo executivo automatizado.</div>`;
+                statusBox.classList.add('hidden');
+            }
+        }
+
+        function renderizarBulletsResumo(textoRaw, isStreaming = false) {
+            const container = document.getElementById('container-bullets-ia');
+            const linhas = textoRaw.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+            if (linhas.length === 0) return;
+
+            let html = `<ul class="space-y-3">`;
+            linhas.forEach((linha) => {
+                let textoLimpo = linha.replace(/^[-*•\d+\.]+\s*/, '').replace(/\*\*(.*?)\*\*/g, '<strong class="font-extrabold text-slate-900">$1</strong>');
+                html += `
+                    <li class="flex items-start gap-3 bg-slate-50/80 p-3.5 rounded-2xl border border-slate-200/80 hover:bg-slate-50 transition shadow-sm text-xs md:text-sm text-slate-700 leading-relaxed">
+                        <span class="w-2 h-2 rounded-full bg-quaest-teal mt-2 shrink-0"></span>
+                        <div class="flex-1">${textoLimpo}</div>
+                    </li>`;
+            });
+            if (isStreaming) {
+                html += `<li class="flex items-center gap-2 text-xs text-quaest-teal font-bold px-1 pt-1"><span class="inline-block w-2 h-3 bg-quaest-teal animate-cursor rounded-sm"></span><span class="italic text-slate-400 font-normal">Gerando pontos...</span></li>`;
+            }
+            html += `</ul>`;
+            container.innerHTML = html;
+        }
+
         async function carregarRelatoriosAPI() {
             try {
                 const response = await fetch(`/projetos/${PROJETO_ID}/profiles/`);
                 if (!response.ok) return;
 
                 const data = await response.json();
-                
-                if (data.ipds) {
-                    listaIPDsGlobais = data.ipds;
-                } else if (data.ipd_id) {
-                    listaIPDsGlobais = [data];
-                }
+                if (data.ipds) listaIPDsGlobais = data.ipds;
+                else if (data.ipd_id) listaIPDsGlobais = [data];
 
                 renderizarRelatoriosExecutivos();
 
                 const conjuntoMeses = new Set();
                 listaIPDsGlobais.forEach(ipd => {
-                    const mensais = ipd.medias_mensais || [];
-                    mensais.forEach(m => {
-                        if (m.mes) conjuntoMeses.add(m.mes);
-                    });
+                    (ipd.medias_mensais || []).forEach(m => { if (m.mes) conjuntoMeses.add(m.mes); });
                 });
 
-                if (conjuntoMeses.size > 0) {
-                    inicializarSeletorMesesResumo(Array.from(conjuntoMeses));
-                } else {
-                    carregarResumoExecutivoStream();
-                }
+                if (conjuntoMeses.size > 0) inicializarSeletorMesesResumo(Array.from(conjuntoMeses));
+                else carregarResumoExecutivoStream();
 
             } catch (error) {
                 console.error("Erro na API de profiles:", error);
@@ -703,7 +782,7 @@
                         </div>
                     </div>
 
-                    <!-- 1. GRÁFICO HISTÓRICO DO IPD -->
+                    <!-- 1. GRÁFICO HISTÓRICO -->
                     <div class="space-y-6">
                         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                             <div>
@@ -884,13 +963,12 @@
                                     </div>
                                 </div>
                             </div>
-
                         </div>
                     </div>
 
                     <hr class="border-slate-100" />
 
-                    <!-- 4. MÓDULO DE POSTAGENS, MÉDIAS E EMBED EM DESTAQUE (NOVO) -->
+                    <!-- 4. MÓDULO DE POSTAGENS E EMBED EM DESTAQUE -->
                     <div class="space-y-6">
                         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
                             <div>
@@ -898,7 +976,6 @@
                                 <h3 class="text-xl font-black text-slate-900 mt-1">Análise de Conteúdo & Post em Destaque</h3>
                             </div>
                             
-                            <!-- FILTROS DO MÓDULO DE POSTAGENS -->
                             <div class="flex flex-wrap items-center gap-2">
                                 <select id="select-profile-postages-${ipdId}" class="bg-slate-100 text-slate-800 text-xs font-bold px-3 py-1.5 rounded-xl border border-slate-200 outline-none focus:border-quaest-teal">
                                     ${optionsPerfilHtml}
@@ -911,7 +988,6 @@
                             </div>
                         </div>
 
-                        <!-- CARDS DE MÉDIAS MENSGAIS DO CONTEÚDO -->
                         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                             <div class="p-5 rounded-2xl bg-white border border-slate-200 border-l-4 border-l-quaest-teal shadow-sm">
                                 <span class="text-[10px] text-slate-400 font-extrabold uppercase block">Média de Curtidas</span>
@@ -927,15 +1003,12 @@
                             </div>
                         </div>
 
-                        <!-- PAINEL DE POST EM DESTAQUE COM EMBED INCORPORADO -->
                         <div class="p-6 rounded-3xl bg-slate-50 border border-slate-200 space-y-6">
                             <div class="flex items-center gap-2 font-black text-slate-900 text-sm">
                                 <i class="fa-solid fa-fire text-rose-500"></i> Publicação em Destaque no Período (Mais Curtida)
                             </div>
 
                             <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-                                
-                                <!-- DETALHES DO POST EM TEXTO -->
                                 <div class="lg:col-span-6 bg-white p-5 rounded-2xl border border-slate-200 space-y-3">
                                     <div class="flex items-center justify-between text-xs text-slate-500 border-b border-slate-100 pb-2">
                                         <span><strong>Data:</strong> <span id="top-post-data-${ipdId}">-</span></span>
@@ -952,11 +1025,9 @@
                                     </div>
                                 </div>
 
-                                <!-- EMBED DA REDE SOCIAL (INSTAGRAM OU TIKTOK) -->
                                 <div class="lg:col-span-6 flex justify-center items-center min-h-[350px] bg-white p-4 rounded-2xl border border-slate-200 overflow-hidden" id="embed-box-${ipdId}">
                                     <p class="text-xs text-slate-400 italic">O player do post será incorporado aqui...</p>
                                 </div>
-
                             </div>
                         </div>
 
@@ -965,7 +1036,6 @@
                 `;
 
                 container.appendChild(ipdSection);
-
                 inicializarStateIPD(ipdObj, ipdId);
             });
         }
@@ -988,29 +1058,40 @@
             };
 
             const ref = stateIPDs[ipdId];
-
             const selectMesRadar = document.getElementById(`select-mes-radar-${ipdId}`);
             const selectMesPostages = document.getElementById(`select-mes-postages-${ipdId}`);
             
-            selectMesRadar.innerHTML = '';
+            if (selectMesRadar) selectMesRadar.innerHTML = '';
             if (selectMesPostages) selectMesPostages.innerHTML = '';
             
             const mesesDisponiveis = ref.profilesDataMes.datas;
             if (mesesDisponiveis.length > 0) {
-                mesesDisponiveis.forEach(m => {
-                    const opt1 = document.createElement('option');
-                    opt1.value = m;
-                    opt1.innerText = formatarDataAnoCurto(m, true);
-                    selectMesRadar.appendChild(opt1);
+                // ORDENA OS MESES PARA PEGAR O ÚLTIMO COM DADOS
+                const mesesOrdenados = [...mesesDisponiveis].sort();
+
+                mesesOrdenados.forEach(m => {
+                    if (selectMesRadar) {
+                        const opt1 = document.createElement('option');
+                        opt1.value = m; 
+                        opt1.innerText = formatarDataAnoCurto(m, true);
+                        selectMesRadar.appendChild(opt1);
+                    }
 
                     if (selectMesPostages) {
                         const opt2 = document.createElement('option');
-                        opt2.value = m;
+                        opt2.value = m; 
                         opt2.innerText = formatarDataAnoCurto(m, true);
                         selectMesPostages.appendChild(opt2);
                     }
                 });
-                ref.mesSelecionadoRadar = mesesDisponiveis[0];
+
+                // SELECIONA O ÚLTIMO MÊS COM DADOS AUTOMATICAMENTE NOS SELECTS
+                const ultimoMesComDados = mesesOrdenados[mesesOrdenados.length - 1];
+                
+                if (selectMesRadar) selectMesRadar.value = ultimoMesComDados;
+                if (selectMesPostages) selectMesPostages.value = ultimoMesComDados;
+
+                ref.mesSelecionadoRadar = ultimoMesComDados;
             }
 
             const ctxLine = document.getElementById(`chart-line-${ipdId}`).getContext('2d');
@@ -1056,185 +1137,13 @@
             montarBotoesRadar(ipdId);
             atualizarRadarPorMes(ipdId);
 
-            // AUTO-CARREGA CONTEÚDOS DO PRIMEIRO PERFIL
+            // AUTO-CARREGA CONTEÚDOS NO PRIMEIRO PERFIL USANDO O ÚLTIMO MÊS
             const selectProfile = document.getElementById(`select-profile-postages-${ipdId}`);
             if (selectProfile && selectProfile.options.length > 1) {
                 selectProfile.selectedIndex = 1;
                 carregarMetricasConteudo(ipdId);
             }
         }
-
-       async function carregarMetricasConteudo(ipdId) {
-    const selectProfile = document.getElementById(`select-profile-postages-${ipdId}`);
-    const selectMes = document.getElementById(`select-mes-postages-${ipdId}`);
-
-    if (!selectProfile || !selectMes) return;
-
-    const profileName = selectProfile.value;
-    const mesAno = selectMes.value;
-
-    if (!profileName || !mesAno) {
-        document.getElementById(`top-post-texto-${ipdId}`).innerText = "Selecione o perfil e o mês para consultar.";
-        return;
-    }
-
-    const url = `/api/conteudo/medias/?projeto_ipd=${ipdId}&profile=${encodeURIComponent(profileName)}&ano_mes=${mesAno}`;
-
-    try {
-        const response = await fetch(url);
-        const data = await response.json();
-
-        // Tratamento de Erro da API (ex: Formato de 'ano_mes' inválido)
-        if (!response.ok || data.error) {
-            const msgErro = data.error || "Erro ao consultar métricas do período.";
-            
-            document.getElementById(`val-media-likes-${ipdId}`).innerText = "0";
-            document.getElementById(`val-media-comentarios-${ipdId}`).innerText = "0";
-            document.getElementById(`val-total-posts-${ipdId}`).innerText = "0";
-            
-            document.getElementById(`top-post-texto-${ipdId}`).innerHTML = `
-                <span class="text-rose-600 font-bold">
-                    <i class="fa-solid fa-triangle-exclamation mr-1"></i> ${msgErro}
-                </span>`;
-            
-            document.getElementById(`embed-box-${ipdId}`).innerHTML = `
-                <p class="text-xs text-slate-400 italic">Sem dados para o período informado.</p>`;
-            return;
-        }
-
-        // Atualização dos Cards de Métricas
-        document.getElementById(`val-media-likes-${ipdId}`).innerText = Number(data.media_curtidas || 0).toLocaleString('pt-BR');
-        document.getElementById(`val-media-comentarios-${ipdId}`).innerText = Number(data.media_comentarios || 0).toLocaleString('pt-BR');
-        document.getElementById(`val-total-posts-${ipdId}`).innerText = data.total_posts || 0;
-
-        // Atualização do Top Post
-        if (data.top_post) {
-            document.getElementById(`top-post-data-${ipdId}`).innerText = formatarDataAnoCurto(data.top_post.data);
-            document.getElementById(`top-post-likes-${ipdId}`).innerText = Number(data.top_post.curtidas || 0).toLocaleString('pt-BR');
-            document.getElementById(`top-post-comentarios-${ipdId}`).innerText = Number(data.top_post.comentarios || 0).toLocaleString('pt-BR');
-            document.getElementById(`top-post-texto-${ipdId}`).innerText = data.top_post.texto || "Sem legenda informativa.";
-            
-            const linkEl = document.getElementById(`top-post-link-${ipdId}`);
-            if (linkEl) {
-                linkEl.href = data.top_post.url || '#';
-            }
-
-            renderizarEmbedConteudo(ipdId, data.top_post.url);
-        } else {
-            document.getElementById(`top-post-texto-${ipdId}`).innerText = "Nenhuma publicação localizada para este perfil no mês selecionado.";
-            document.getElementById(`embed-box-${ipdId}`).innerHTML = '<p class="text-xs text-slate-400 italic">Nenhum post para reprodução.</p>';
-        }
-
-    } catch (err) {
-        console.error("Falha ao carregar conteúdos:", err);
-        document.getElementById(`top-post-texto-${ipdId}`).innerText = "Falha na comunicação com o servidor.";
-    }
-}
-
-        function renderizarEmbedConteudo(ipdId, postUrl) {
-    const container = document.getElementById(`embed-box-${ipdId}`);
-    if (!container) return;
-
-    // Se o link vier vazio ou inválido
-    if (!postUrl || typeof postUrl !== 'string' || !postUrl.startsWith('http')) {
-        container.innerHTML = `
-            <div class="text-center p-4 text-xs text-slate-400 italic">
-                <i class="fa-solid fa-link-slash text-slate-300 text-lg mb-1 block"></i>
-                Link de publicação indisponível ou em formato inválido.
-            </div>`;
-        return;
-    }
-
-    container.innerHTML = ''; // Limpa o container anterior
-    const urlLimpa = postUrl.trim();
-
-    // -------------------------------------------------------------------------
-    // 1. INSTAGRAM (Reels / Posts)
-    // -------------------------------------------------------------------------
-    if (urlLimpa.includes('instagram.com')) {
-        container.innerHTML = `
-            <blockquote class="instagram-media" data-instgrm-permalink="${urlLimpa}" data-instgrm-version="14" style="width:100%; max-width:380px; margin:0 auto;"></blockquote>
-        `;
-        if (window.instgrm && window.instgrm.Embeds) {
-            window.instgrm.Embeds.process();
-        }
-    } 
-
-    // -------------------------------------------------------------------------
-    // 2. TIKTOK
-    // -------------------------------------------------------------------------
-    else if (urlLimpa.includes('tiktok.com')) {
-        const videoId = urlLimpa.split('/video/')[1]?.split('?')[0];
-        container.innerHTML = `
-            <blockquote class="tiktok-embed" cite="${urlLimpa}" data-video-id="${videoId}" style="width:100%; max-width:325px; margin:0 auto;">
-                <section></section>
-            </blockquote>
-        `;
-        if (window.tiktokEmbed) {
-            window.tiktokEmbed.process();
-        }
-    } 
-
-    // -------------------------------------------------------------------------
-    // 3. TWITTER / X
-    // -------------------------------------------------------------------------
-    else if (urlLimpa.includes('twitter.com') || urlLimpa.includes('x.com')) {
-        container.innerHTML = `
-            <blockquote class="twitter-tweet" data-dnt="true" align="center">
-                <a href="${urlLimpa}"></a>
-            </blockquote>
-        `;
-        if (window.twttr && window.twttr.widgets) {
-            window.twttr.widgets.load(container);
-        }
-    } 
-
-    // -------------------------------------------------------------------------
-    // 4. YOUTUBE (Vídeos Longos e Shorts)
-    // -------------------------------------------------------------------------
-    else if (urlLimpa.includes('youtube.com') || urlLimpa.includes('youtu.be')) {
-        let videoId = '';
-
-        if (urlLimpa.includes('/shorts/')) {
-            videoId = urlLimpa.split('/shorts/')[1]?.split('?')[0];
-        } else if (urlLimpa.includes('youtu.be/')) {
-            videoId = urlLimpa.split('youtu.be/')[1]?.split('?')[0];
-        } else if (urlLimpa.includes('watch?v=')) {
-            videoId = urlLimpa.split('watch?v=')[1]?.split('&')[0];
-        }
-
-        if (videoId) {
-            container.innerHTML = `
-                <div class="w-full aspect-video max-w-md mx-auto rounded-xl overflow-hidden shadow-sm">
-                    <iframe 
-                        class="w-full h-full" 
-                        src="https://www.youtube.com/embed/${videoId}" 
-                        title="YouTube video player" 
-                        frameborder="0" 
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                        allowfullscreen>
-                    </iframe>
-                </div>
-            `;
-        } else {
-            container.innerHTML = `
-                <a href="${urlLimpa}" target="_blank" class="px-4 py-2 rounded-xl bg-red-50 text-red-600 font-bold text-xs border border-red-200 hover:bg-red-100 transition">
-                    <i class="fa-brands fa-youtube mr-1"></i> Abrir no YouTube
-                </a>`;
-        }
-    } 
-
-    // -------------------------------------------------------------------------
-    // 5. OUTRAS PLATAFORMAS (Fallback)
-    // -------------------------------------------------------------------------
-    else {
-        container.innerHTML = `
-            <a href="${urlLimpa}" target="_blank" class="px-4 py-2 rounded-xl bg-quaest-tealLight text-quaest-teal font-bold text-xs border border-quaest-teal/30 hover:bg-quaest-teal/10 transition">
-                Abrir Publicação Externa <i class="fa-solid fa-arrow-up-right-from-square ml-1"></i>
-            </a>
-        `;
-    }
-}
 
         function processarMapeamentoPeriodo(listaMedicoes, tipoPeriodo) {
             const map = {};
@@ -1347,7 +1256,7 @@
         function montarBotoesRadar(ipdId) {
             const ref = stateIPDs[ipdId];
             const container = document.getElementById(`container-profiles-radar-${ipdId}`);
-            container.innerHTML = '<span class="text-xs font-bold text-slate-500 mr-2">Adicionar no Radar:</span>';
+            container.innerHTML = '<span class="text-xs font-bold text-slate-500 mr-2">Adicionar/Remover no Radar:</span>';
 
             const profiles = Object.keys(ref.profilesDataMes.profiles);
             ref.profilesSelecionadosRadar.clear();
@@ -1441,7 +1350,6 @@
             });
 
             ref.radarChart.update();
-
             ref.slideIndexAtual = 0;
             renderizarSlideCard(ipdId);
         }
