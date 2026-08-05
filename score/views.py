@@ -1,4 +1,4 @@
-from django.db.models import Avg
+from django.db.models import Avg, Count
 from django.db.models.functions import TruncMonth, TruncWeek
 from django.shortcuts import get_object_or_404
 from rest_framework import status
@@ -6,8 +6,9 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from .services import processar_analise_causal_ipd
 from client.models import ProjetoCliente, ProjetoIPD
-from score.models import IPD
-
+from score.models import IPD, Conteudo
+from datetime import datetime
+import calendar
 
 
 class ProjetoProfilesAPIView(APIView):
@@ -197,3 +198,81 @@ def analise_causal_impact_view(request, projeto_id):
 
     # Sucesso completo
     return JsonResponse(resultado, status=200)
+
+
+class MediaMetricasConteudoView(APIView):
+    """
+    GET /api/conteudo/medias/?projeto_ipd=1&profile=bbc&ano_mes=2026-06
+    Calcula a média de likes e comentários do mês e retorna o post mais curtido do perfil.
+    """
+    def get(self, request):
+        projeto_ipd_id = request.query_params.get('projeto_ipd')
+        profile = request.query_params.get('profile')
+        ano_mes = request.query_params.get('ano_mes')  # Formato esperado: YYYY-MM (ex: 2026-06)
+
+        # Validação dos parâmetros obrigatórios
+        if not projeto_ipd_id or not profile or not ano_mes:
+            return Response(
+                {"error": "Parâmetros obrigatórios ausentes: 'projeto_ipd', 'profile' e 'ano_mes' (ex: YYYY-MM)."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Calcula o primeiro e o último dia do mês
+        try:
+            data_obj = datetime.strptime(ano_mes, '%Y-%m')
+            ano = data_obj.year
+            mes = data_obj.month
+            
+            _, ultimo_dia = calendar.monthrange(ano, mes)
+            
+            data_inicio = f"{ano:04d}-{mes:02d}-01"
+            data_fim = f"{ano:04d}-{mes:02d}-{ultimo_dia:02d}"
+        except ValueError:
+            return Response(
+                {"error": "Formato de 'ano_mes' inválido. Use o formato YYYY-MM (ex: 2026-06)."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Queryset filtrado utilizando os índices compostos
+        queryset = Conteudo.objects.filter(
+            projeto_ipd__id=projeto_ipd_id,
+            profile__iexact=profile.strip(),
+            data__range=[data_inicio, data_fim]
+        )
+
+        # 1. Agregação das Média e Total de Posts
+        metricas = queryset.aggregate(
+            media_curtidas=Avg('curtidas'),
+            media_comentarios=Avg('comentarios'),
+            total_posts=Count('id_post')
+        )
+
+        total_posts = metricas['total_posts'] or 0
+
+        # 2. Busca do Post Mais Curtido do Período (Aproveita o índice idx_cnt_prof_data_curt_desc)
+        top_post_obj = queryset.order_by('-curtidas', '-comentarios').first()
+        
+        top_post_data = None
+        if top_post_obj:
+            top_post_data = {
+                "id_post": top_post_obj.id_post,
+                
+                "texto": top_post_obj.texto,
+                "data": top_post_obj.data,
+                "curtidas": top_post_obj.curtidas,
+                "comentarios": top_post_obj.comentarios,
+                "url": top_post_obj.link_post
+            }
+
+        # Formatação final do JSON de resposta
+        return Response({
+            "projeto_ipd": int(projeto_ipd_id) if str(projeto_ipd_id).isdigit() else projeto_ipd_id,
+            "profile": profile,
+            "periodo": ano_mes,
+            "data_inicio": data_inicio,
+            "data_fim": data_fim,
+            "total_posts": total_posts,
+            "media_curtidas": round(metricas['media_curtidas'] or 0, 2),
+            "media_comentarios": round(metricas['media_comentarios'] or 0, 2),
+            "top_post": top_post_data
+        }, status=status.HTTP_200_OK)

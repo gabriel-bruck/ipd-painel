@@ -13,6 +13,12 @@
     <!-- Chart.js CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
+    <!-- Scripts Oficiais para carregar Embeds de Mídias Sociais -->
+    <script async src="https://www.instagram.com/embed.js"></script>
+    <script async src="https://www.tiktok.com/embed.js"></script>
+    <!-- Scripts de Embeds Oficiais -->
+    <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
+
     <script>
         tailwind.config = {
             theme: {
@@ -265,7 +271,7 @@
         <!-- CONTAINER DINÂMICO DOS MÓDULOS DE IPD -->
         <div id="container-relatorios-ipd" class="space-y-24 max-w-6xl mx-auto px-6">
             <div class="text-center py-12 text-slate-400 text-sm">
-                <i class="fa-solid fa-spinner animate-spin mr-2"></i> Mapeando e processando os relatórios dos IPDs...
+                <i class="fa-solid fa-spinner animate-spin mr-2"></i> Mapeando e processando os relatorios dos IPDs...
             </div>
         </div>
 
@@ -310,7 +316,6 @@
             return dataStr;
         }
 
-        // PREENCHE O SELECT DE MESES DO RESUMO EXECUTIVO E SELECIONA O ÚLTIMO MÊS
         function inicializarSeletorMesesResumo(meses) {
             const select = document.getElementById('select-mes-resumo-ia');
             if (!select || meses.length === 0) return;
@@ -333,7 +338,6 @@
             carregarResumoExecutivoStream(ultimoMes);
         }
 
-        // DISPARO ASSÍNCRONO DO STREAMING DE IA
         async function carregarResumoExecutivoStream(mesParam = null) {
             const container = document.getElementById('container-bullets-ia');
             const statusBox = document.getElementById('status-ia-streaming');
@@ -387,7 +391,6 @@
             }
         }
 
-        // CONVERTE TEXTO RECEBIDO EM BULLET POINTS
         function renderizarBulletsResumo(textoRaw, isStreaming = false) {
             const container = document.getElementById('container-bullets-ia');
             
@@ -425,208 +428,197 @@
             container.innerHTML = html;
         }
 
-        // DISPARO E PROCESSAMENTO DA ANÁLISE CAUSAL POR MÓDULO DE IPD
-        // DISPARO E PROCESSAMENTO DA ANÁLISE CAUSAL POR MÓDULO DE IPD
-async function executarCalculoCausal(ipdId) {
-    const perfil = document.getElementById(`causal-perfil-${ipdId}`).value;
-    const dataInicio = document.getElementById(`causal-inicio-${ipdId}`).value;
-    const dataFim = document.getElementById(`causal-fim-${ipdId}`).value;
+        async function executarCalculoCausal(ipdId) {
+            const perfil = document.getElementById(`causal-perfil-${ipdId}`).value;
+            const dataInicio = document.getElementById(`causal-inicio-${ipdId}`).value;
+            const dataFim = document.getElementById(`causal-fim-${ipdId}`).value;
 
-    const boxLoading = document.getElementById(`causal-loading-${ipdId}`);
-    const boxErro = document.getElementById(`causal-erro-${ipdId}`);
-    const boxResultados = document.getElementById(`causal-resultados-${ipdId}`);
+            const boxLoading = document.getElementById(`causal-loading-${ipdId}`);
+            const boxErro = document.getElementById(`causal-erro-${ipdId}`);
+            const boxResultados = document.getElementById(`causal-resultados-${ipdId}`);
 
-    boxLoading.classList.remove('hidden');
-    boxErro.classList.add('hidden');
-    boxResultados.classList.add('hidden');
+            boxLoading.classList.remove('hidden');
+            boxErro.classList.add('hidden');
+            boxResultados.classList.add('hidden');
 
-    const url = `/projetos/${PROJETO_ID}/causal-impact/?perfil=${encodeURIComponent(perfil)}&data_inicio_evento=${dataInicio}&data_fim_evento=${dataFim}`;
+            const url = `/projetos/${PROJETO_ID}/causal-impact/?perfil=${encodeURIComponent(perfil)}&data_inicio_evento=${dataInicio}&data_fim_evento=${dataFim}`;
 
-    try {
-        const response = await fetch(url);
-        const data = await response.json();
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
 
-        boxLoading.classList.add('hidden');
+                boxLoading.classList.add('hidden');
 
-        if (!response.ok || !data.sucesso) {
-            document.getElementById(`causal-erro-etapa-${ipdId}`).innerHTML = `<i class="fa-solid fa-triangle-exclamation text-amber-600"></i> ${data.etapa_erro || 'Erro de Validação'}`;
-            document.getElementById(`causal-erro-msg-${ipdId}`).innerText = data.error || 'Ocorreu um erro ao calcular a análise causal.';
-            boxErro.classList.remove('hidden');
-            return;
-        }
+                if (!response.ok || !data.sucesso) {
+                    document.getElementById(`causal-erro-etapa-${ipdId}`).innerHTML = `<i class="fa-solid fa-triangle-exclamation text-amber-600"></i> ${data.etapa_erro || 'Erro de Validação'}`;
+                    document.getElementById(`causal-erro-msg-${ipdId}`).innerText = data.error || 'Ocorreu um erro ao calcular a análise causal.';
+                    boxErro.classList.remove('hidden');
+                    return;
+                }
 
-        // Preenche os KPIs de p-valor e janela
-        document.getElementById(`causal-pvalue-${ipdId}`).innerText = data.p_value;
-        document.getElementById(`causal-janela-${ipdId}`).innerText = `${data.periodo_pos[0]} a ${data.periodo_pos[1]}`;
+                document.getElementById(`causal-pvalue-${ipdId}`).innerText = data.p_value;
+                document.getElementById(`causal-janela-${ipdId}`).innerText = `${data.periodo_pos[0]} a ${data.periodo_pos[1]}`;
 
-        // Cálculo dinâmico do Tamanho do Impacto (%) no período Pós-Evento
-        const dadosPos = data.serie_temporal.filter(item => item.data >= data.periodo_pos[0] && item.data <= data.periodo_pos[1]);
-        
-        let pctVal = 0;
-        if (dadosPos.length > 0) {
-            const somaObservada = dadosPos.reduce((acc, item) => acc + (item.ipd_observado || 0), 0);
-            const somaPrevista = dadosPos.reduce((acc, item) => acc + (item.ipd_sintetico_previsto || 0), 0);
-            
-            if (somaPrevista !== 0) {
-                pctVal = ((somaObservada - somaPrevista) / somaPrevista) * 100;
-            }
-        }
-
-        // Exibição do KPI de Tamanho do Impacto
-        const elTamanho = document.getElementById(`causal-tamanho-${ipdId}`);
-        if (pctVal > 0) {
-            elTamanho.innerHTML = `<span class="text-emerald-600"><i class="fa-solid fa-arrow-trend-up mr-1"></i>+${pctVal.toFixed(2)}%</span>`;
-        } else if (pctVal < 0) {
-            elTamanho.innerHTML = `<span class="text-rose-600"><i class="fa-solid fa-arrow-trend-down mr-1"></i>${pctVal.toFixed(2)}%</span>`;
-        } else {
-            elTamanho.innerText = '0.00%';
-        }
-
-        // Badge de Significância
-        const badgeSig = document.getElementById(`causal-significativo-${ipdId}`);
-        if (data.estatisticamente_significativo) {
-            badgeSig.innerHTML = `<span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800"><i class="fa-solid fa-check-circle mr-1"></i> Impacto Relevante</span>`;
-        } else {
-            badgeSig.innerHTML = `<span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800"><i class="fa-solid fa-info-circle mr-1"></i> Sem Significância</span>`;
-        }
-
-        // Datas do Pós-Evento
-        const posInicio = data.periodo_pos[0];
-        const posFim = data.periodo_pos[1];
-
-        // Plot do Gráfico Contrafactual
-        const labels = data.serie_temporal.map(item => formatarDataAnoCurto(item.data));
-        const observados = data.serie_temporal.map(item => item.ipd_observado);
-        const previstos = data.serie_temporal.map(item => item.ipd_sintetico_previsto);
-        
-        // Exibe a área do intervalo de confiança APENAS no período Pós-Evento
-        const limiteInferior = data.serie_temporal.map(item => {
-            if (item.data >= posInicio && item.data <= posFim) {
-                return item.limite_inferior;
-            }
-            return null;
-        });
-
-        const limiteSuperior = data.serie_temporal.map(item => {
-            if (item.data >= posInicio && item.data <= posFim) {
-                return item.limite_superior;
-            }
-            return null;
-        });
-
-        if (mapCausalCharts[ipdId]) {
-            mapCausalCharts[ipdId].destroy();
-        }
-
-        // Plugin para linha vertical marcando a data do evento
-        const verticalLinePlugin = {
-            id: 'eventVerticalLine',
-            afterDraw: (chart) => {
-                const eventIndex = data.serie_temporal.findIndex(item => item.data === posInicio);
-                if (eventIndex !== -1) {
-                    const meta = chart.getDatasetMeta(0);
-                    if (meta.data[eventIndex]) {
-                        const x = meta.data[eventIndex].x;
-                        const topY = chart.scales.y.top;
-                        const bottomY = chart.scales.y.bottom;
-                        const ctx = chart.ctx;
-
-                        ctx.save();
-                        ctx.beginPath();
-                        ctx.moveTo(x, topY);
-                        ctx.lineTo(x, bottomY);
-                        ctx.lineWidth = 1.5;
-                        ctx.setLineDash([4, 4]);
-                        ctx.strokeStyle = '#F43F5E';
-                        ctx.stroke();
-
-                        ctx.fillStyle = '#F43F5E';
-                        ctx.font = 'bold 10px sans-serif';
-                        ctx.fillText(' Início Evento', x + 4, topY + 12);
-                        ctx.restore();
+                const dadosPos = data.serie_temporal.filter(item => item.data >= data.periodo_pos[0] && item.data <= data.periodo_pos[1]);
+                
+                let pctVal = 0;
+                if (dadosPos.length > 0) {
+                    const somaObservada = dadosPos.reduce((acc, item) => acc + (item.ipd_observado || 0), 0);
+                    const somaPrevista = dadosPos.reduce((acc, item) => acc + (item.ipd_sintetico_previsto || 0), 0);
+                    
+                    if (somaPrevista !== 0) {
+                        pctVal = ((somaObservada - somaPrevista) / somaPrevista) * 100;
                     }
                 }
-            }
-        };
 
-        const ctx = document.getElementById(`chartCausalImpactCanvas-${ipdId}`).getContext('2d');
-        mapCausalCharts[ipdId] = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: labels,
-                datasets: [
-                    {
-                        label: `IPD Real (${data.perfil_alvo})`,
-                        data: observados,
-                        borderColor: '#1FA4B6',
-                        backgroundColor: '#1FA4B6',
-                        borderWidth: 2.5,
-                        pointRadius: 2,
-                        tension: 0.1
-                    },
-                    {
-                        label: 'Projeção Contrafactual',
-                        data: previstos,
-                        borderColor: '#F43F5E',
-                        borderDash: [4, 4],
-                        borderWidth: 2,
-                        pointRadius: 0,
-                        tension: 0.1
-                    },
-                    {
-                        label: 'IC 95% Superior',
-                        data: limiteSuperior,
-                        borderColor: 'transparent',
-                        backgroundColor: 'rgba(244, 63, 94, 0.12)',
-                        pointRadius: 0,
-                        fill: '+1'
-                    },
-                    {
-                        label: 'IC 95% Inferior',
-                        data: limiteInferior,
-                        borderColor: 'transparent',
-                        backgroundColor: 'transparent',
-                        pointRadius: 0,
-                        fill: false
+                const elTamanho = document.getElementById(`causal-tamanho-${ipdId}`);
+                if (pctVal > 0) {
+                    elTamanho.innerHTML = `<span class="text-emerald-600"><i class="fa-solid fa-arrow-trend-up mr-1"></i>+${pctVal.toFixed(2)}%</span>`;
+                } else if (pctVal < 0) {
+                    elTamanho.innerHTML = `<span class="text-rose-600"><i class="fa-solid fa-arrow-trend-down mr-1"></i>${pctVal.toFixed(2)}%</span>`;
+                } else {
+                    elTamanho.innerText = '0.00%';
+                }
+
+                const badgeSig = document.getElementById(`causal-significativo-${ipdId}`);
+                if (data.estatisticamente_significativo) {
+                    badgeSig.innerHTML = `<span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800"><i class="fa-solid fa-check-circle mr-1"></i> Impacto Relevante</span>`;
+                } else {
+                    badgeSig.innerHTML = `<span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800"><i class="fa-solid fa-info-circle mr-1"></i> Sem Significância</span>`;
+                }
+
+                const posInicio = data.periodo_pos[0];
+                const posFim = data.periodo_pos[1];
+
+                const labels = data.serie_temporal.map(item => formatarDataAnoCurto(item.data));
+                const observados = data.serie_temporal.map(item => item.ipd_observado);
+                const previstos = data.serie_temporal.map(item => item.ipd_sintetico_previsto);
+                
+                const limiteInferior = data.serie_temporal.map(item => {
+                    if (item.data >= posInicio && item.data <= posFim) {
+                        return item.limite_inferior;
                     }
-                ]
-            },
-            plugins: [verticalLinePlugin],
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                interaction: { mode: 'index', intersect: false },
-                plugins: {
-                    legend: {
-                        position: 'top',
-                        labels: {
-                            filter: item => !item.text.includes('IC 95%'),
-                            font: { weight: 'bold', size: 11 }
+                    return null;
+                });
+
+                const limiteSuperior = data.serie_temporal.map(item => {
+                    if (item.data >= posInicio && item.data <= posFim) {
+                        return item.limite_superior;
+                    }
+                    return null;
+                });
+
+                if (mapCausalCharts[ipdId]) {
+                    mapCausalCharts[ipdId].destroy();
+                }
+
+                const verticalLinePlugin = {
+                    id: 'eventVerticalLine',
+                    afterDraw: (chart) => {
+                        const eventIndex = data.serie_temporal.findIndex(item => item.data === posInicio);
+                        if (eventIndex !== -1) {
+                            const meta = chart.getDatasetMeta(0);
+                            if (meta.data[eventIndex]) {
+                                const x = meta.data[eventIndex].x;
+                                const topY = chart.scales.y.top;
+                                const bottomY = chart.scales.y.bottom;
+                                const ctx = chart.ctx;
+
+                                ctx.save();
+                                ctx.beginPath();
+                                ctx.moveTo(x, topY);
+                                ctx.lineTo(x, bottomY);
+                                ctx.lineWidth = 1.5;
+                                ctx.setLineDash([4, 4]);
+                                ctx.strokeStyle = '#F43F5E';
+                                ctx.stroke();
+
+                                ctx.fillStyle = '#F43F5E';
+                                ctx.font = 'bold 10px sans-serif';
+                                ctx.fillText(' Início Evento', x + 4, topY + 12);
+                                ctx.restore();
+                            }
                         }
                     }
-                },
-                scales: {
-                    x: { grid: { color: '#E2E8F0' }, ticks: { font: { weight: 'bold', size: 10 } } },
-                    y: { 
-                        min: 0, // <-- O gráfico SEMPRE começará do zero
-                        grid: { color: '#E2E8F0' }, 
-                        ticks: { font: { weight: 'bold', size: 10 } } 
+                };
+
+                const ctx = document.getElementById(`chartCausalImpactCanvas-${ipdId}`).getContext('2d');
+                mapCausalCharts[ipdId] = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            {
+                                label: `IPD Real (${data.perfil_alvo})`,
+                                data: observados,
+                                borderColor: '#1FA4B6',
+                                backgroundColor: '#1FA4B6',
+                                borderWidth: 2.5,
+                                pointRadius: 2,
+                                tension: 0.1
+                            },
+                            {
+                                label: 'Projeção Contrafactual',
+                                data: previstos,
+                                borderColor: '#F43F5E',
+                                borderDash: [4, 4],
+                                borderWidth: 2,
+                                pointRadius: 0,
+                                tension: 0.1
+                            },
+                            {
+                                label: 'IC 95% Superior',
+                                data: limiteSuperior,
+                                borderColor: 'transparent',
+                                backgroundColor: 'rgba(244, 63, 94, 0.12)',
+                                pointRadius: 0,
+                                fill: '+1'
+                            },
+                            {
+                                label: 'IC 95% Inferior',
+                                data: limiteInferior,
+                                borderColor: 'transparent',
+                                backgroundColor: 'transparent',
+                                pointRadius: 0,
+                                fill: false
+                            }
+                        ]
+                    },
+                    plugins: [verticalLinePlugin],
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: { mode: 'index', intersect: false },
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                                labels: {
+                                    filter: item => !item.text.includes('IC 95%'),
+                                    font: { weight: 'bold', size: 11 }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: { grid: { color: '#E2E8F0' }, ticks: { font: { weight: 'bold', size: 10 } } },
+                            y: { 
+                                min: 0,
+                                grid: { color: '#E2E8F0' }, 
+                                ticks: { font: { weight: 'bold', size: 10 } } 
+                            }
+                        }
                     }
-                }
+                });
+
+                boxResultados.classList.remove('hidden');
+
+            } catch (err) {
+                boxLoading.classList.add('hidden');
+                document.getElementById(`causal-erro-etapa-${ipdId}`).innerHTML = `<i class="fa-solid fa-triangle-exclamation text-amber-600"></i> Falha de Conexão`;
+                document.getElementById(`causal-erro-msg-${ipdId}`).innerText = "Erro na comunicação com o servidor Django: " + err.message;
+                boxErro.classList.remove('hidden');
             }
-        });
+        }
 
-        boxResultados.classList.remove('hidden');
-
-    } catch (err) {
-        boxLoading.classList.add('hidden');
-        document.getElementById(`causal-erro-etapa-${ipdId}`).innerHTML = `<i class="fa-solid fa-triangle-exclamation text-amber-600"></i> Falha de Conexão`;
-        document.getElementById(`causal-erro-msg-${ipdId}`).innerText = "Erro na comunicação com o servidor Django: " + err.message;
-        boxErro.classList.remove('hidden');
-    }
-}
-
-        // DISPARO ASSÍNCRONO DA REQUISIÇÃO DE PROFILES DO PROJETO
         async function carregarRelatoriosAPI() {
             try {
                 const response = await fetch(`/projetos/${PROJETO_ID}/profiles/`);
@@ -762,7 +754,6 @@ async function executarCalculoCausal(ipdId) {
                             </span>
                         </div>
 
-                        <!-- Filtros Causal Impact -->
                         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 bg-slate-50/80 p-5 rounded-2xl border border-slate-200">
                             <div>
                                 <label for="causal-perfil-${ipdId}" class="block text-xs font-bold text-slate-600 uppercase mb-1">Perfil Alvo</label>
@@ -789,13 +780,11 @@ async function executarCalculoCausal(ipdId) {
                             </div>
                         </div>
 
-                        <!-- Estado Loading -->
                         <div id="causal-loading-${ipdId}" class="hidden p-6 text-center text-slate-500 text-xs italic space-y-2">
                             <i class="fa-solid fa-spinner animate-spin text-quaest-teal text-xl"></i>
                             <p>Treinando modelo contrafactual via Espaço de Estados...</p>
                         </div>
 
-                        <!-- Estado Erro -->
                         <div id="causal-erro-${ipdId}" class="hidden p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-800 text-xs space-y-1">
                             <div class="flex items-center gap-2 font-black text-amber-900" id="causal-erro-etapa-${ipdId}">
                                 <i class="fa-solid fa-triangle-exclamation text-amber-600"></i> Erro no cálculo
@@ -803,10 +792,7 @@ async function executarCalculoCausal(ipdId) {
                             <p id="causal-erro-msg-${ipdId}" class="text-amber-700">Detalhes da falha aqui.</p>
                         </div>
 
-                        <!-- Painel de Resultados com KPI de Tamanho do Impacto -->
                         <div id="causal-resultados-${ipdId}" class="hidden space-y-6">
-                            
-                            <!-- KPIs Estatísticos (4 Colunas) -->
                             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                                 <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200/80">
                                     <span class="text-[10px] text-slate-400 font-extrabold uppercase block">Tamanho do Impacto</span>
@@ -826,7 +812,6 @@ async function executarCalculoCausal(ipdId) {
                                 </div>
                             </div>
 
-                            <!-- Gráfico Contrafactual -->
                             <div class="p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
                                 <div class="flex items-center justify-between">
                                     <h4 class="text-xs font-black text-slate-900 uppercase tracking-wider">Trajetória Real Observada vs. Projeção Contrafactual</h4>
@@ -836,7 +821,6 @@ async function executarCalculoCausal(ipdId) {
                                     <canvas id="chartCausalImpactCanvas-${ipdId}"></canvas>
                                 </div>
                             </div>
-
                         </div>
                     </div>
 
@@ -862,14 +846,12 @@ async function executarCalculoCausal(ipdId) {
                         </div>
 
                         <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
-                            
                             <div class="lg:col-span-7 p-6 rounded-3xl bg-quaest-tealLight/40 border border-quaest-teal/20 flex items-center justify-center">
                                 <div class="h-80 w-full max-w-md">
                                     <canvas id="chart-radar-${ipdId}"></canvas>
                                 </div>
                             </div>
 
-                            <!-- CARROSSEL LATERAL CLARO -->
                             <div class="lg:col-span-5 p-6 rounded-3xl bg-quaest-tealLight border border-quaest-tealBorder text-slate-900 space-y-5 shadow-sm relative overflow-hidden">
                                 <div class="border-b border-quaest-tealBorder pb-3 flex items-center justify-between">
                                     <div class="flex items-center gap-2">
@@ -908,25 +890,78 @@ async function executarCalculoCausal(ipdId) {
 
                     <hr class="border-slate-100" />
 
-                    <!-- 4. MÓDULO DE POSTAGENS -->
+                    <!-- 4. MÓDULO DE POSTAGENS, MÉDIAS E EMBED EM DESTAQUE (NOVO) -->
                     <div class="space-y-6">
-                        <div class="flex items-center justify-between border-b border-slate-100 pb-4">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
                             <div>
                                 <span class="text-xs font-black text-quaest-teal uppercase tracking-widest">Métricas de Conteúdo</span>
-                                <h3 class="text-xl font-black text-slate-900 mt-1">Análise de Postagens Vinculadas ao IPD</h3>
+                                <h3 class="text-xl font-black text-slate-900 mt-1">Análise de Conteúdo & Post em Destaque</h3>
                             </div>
-                            <span class="px-3 py-1 rounded-full bg-slate-100 text-slate-600 text-xs font-bold">
-                                Módulo de Auditoria
-                            </span>
+                            
+                            <!-- FILTROS DO MÓDULO DE POSTAGENS -->
+                            <div class="flex flex-wrap items-center gap-2">
+                                <select id="select-profile-postages-${ipdId}" class="bg-slate-100 text-slate-800 text-xs font-bold px-3 py-1.5 rounded-xl border border-slate-200 outline-none focus:border-quaest-teal">
+                                    ${optionsPerfilHtml}
+                                </select>
+                                <select id="select-mes-postages-${ipdId}" class="bg-slate-100 text-slate-800 text-xs font-bold px-3 py-1.5 rounded-xl border border-slate-200 outline-none focus:border-quaest-teal">
+                                </select>
+                                <button onclick="carregarMetricasConteudo(${ipdId})" class="bg-quaest-teal hover:bg-quaest-tealDark text-white text-xs font-bold px-3 py-1.5 rounded-xl shadow-sm transition">
+                                    <i class="fa-solid fa-magnifying-glass mr-1"></i> Filtrar
+                                </button>
+                            </div>
                         </div>
 
-                        <div id="container-postagens-${ipdId}" class="space-y-3">
-                            <div class="p-5 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-slate-500 flex items-center justify-between">
-                                <span><i class="fa-solid fa-newspaper text-quaest-teal mr-2"></i> Aguardando integração dos dados de postagens atrelados a este IPD...</span>
-                                <button class="px-3 py-1.5 rounded-lg bg-white border font-bold text-slate-700 hover:bg-slate-100 transition">Carregar Conteúdos</button>
+                        <!-- CARDS DE MÉDIAS MENSGAIS DO CONTEÚDO -->
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <div class="p-5 rounded-2xl bg-white border border-slate-200 border-l-4 border-l-quaest-teal shadow-sm">
+                                <span class="text-[10px] text-slate-400 font-extrabold uppercase block">Média de Curtidas</span>
+                                <span id="val-media-likes-${ipdId}" class="text-2xl font-black text-slate-900 mt-1 block">0</span>
+                            </div>
+                            <div class="p-5 rounded-2xl bg-white border border-slate-200 border-l-4 border-l-emerald-500 shadow-sm">
+                                <span class="text-[10px] text-slate-400 font-extrabold uppercase block">Média de Comentários</span>
+                                <span id="val-media-comentarios-${ipdId}" class="text-2xl font-black text-slate-900 mt-1 block">0</span>
+                            </div>
+                            <div class="p-5 rounded-2xl bg-white border border-slate-200 border-l-4 border-l-amber-500 shadow-sm">
+                                <span class="text-[10px] text-slate-400 font-extrabold uppercase block">Total de Publicações</span>
+                                <span id="val-total-posts-${ipdId}" class="text-2xl font-black text-slate-900 mt-1 block">0</span>
                             </div>
                         </div>
+
+                        <!-- PAINEL DE POST EM DESTAQUE COM EMBED INCORPORADO -->
+                        <div class="p-6 rounded-3xl bg-slate-50 border border-slate-200 space-y-6">
+                            <div class="flex items-center gap-2 font-black text-slate-900 text-sm">
+                                <i class="fa-solid fa-fire text-rose-500"></i> Publicação em Destaque no Período (Mais Curtida)
+                            </div>
+
+                            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                                
+                                <!-- DETALHES DO POST EM TEXTO -->
+                                <div class="lg:col-span-6 bg-white p-5 rounded-2xl border border-slate-200 space-y-3">
+                                    <div class="flex items-center justify-between text-xs text-slate-500 border-b border-slate-100 pb-2">
+                                        <span><strong>Data:</strong> <span id="top-post-data-${ipdId}">-</span></span>
+                                        <a id="top-post-link-${ipdId}" href="#" target="_blank" class="text-quaest-teal font-bold hover:underline">Link Original <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i></a>
+                                    </div>
+
+                                    <div class="flex items-center gap-4 text-xs py-1">
+                                        <span class="text-slate-800 font-bold"><i class="fa-solid fa-heart text-rose-500 mr-1"></i> <span id="top-post-likes-${ipdId}">0</span> curtidas</span>
+                                        <span class="text-slate-800 font-bold"><i class="fa-solid fa-comment text-emerald-500 mr-1"></i> <span id="top-post-comentarios-${ipdId}">0</span> comentários</span>
+                                    </div>
+
+                                    <div id="top-post-texto-${ipdId}" class="text-xs text-slate-600 leading-relaxed max-h-48 overflow-y-auto whitespace-pre-line bg-slate-50 p-3 rounded-xl border border-slate-100">
+                                        Selecione um perfil e mês acima para carregar os conteúdos.
+                                    </div>
+                                </div>
+
+                                <!-- EMBED DA REDE SOCIAL (INSTAGRAM OU TIKTOK) -->
+                                <div class="lg:col-span-6 flex justify-center items-center min-h-[350px] bg-white p-4 rounded-2xl border border-slate-200 overflow-hidden" id="embed-box-${ipdId}">
+                                    <p class="text-xs text-slate-400 italic">O player do post será incorporado aqui...</p>
+                                </div>
+
+                            </div>
+                        </div>
+
                     </div>
+                </div>
                 `;
 
                 container.appendChild(ipdSection);
@@ -954,16 +989,26 @@ async function executarCalculoCausal(ipdId) {
 
             const ref = stateIPDs[ipdId];
 
-            const selectMes = document.getElementById(`select-mes-radar-${ipdId}`);
-            selectMes.innerHTML = '';
+            const selectMesRadar = document.getElementById(`select-mes-radar-${ipdId}`);
+            const selectMesPostages = document.getElementById(`select-mes-postages-${ipdId}`);
+            
+            selectMesRadar.innerHTML = '';
+            if (selectMesPostages) selectMesPostages.innerHTML = '';
             
             const mesesDisponiveis = ref.profilesDataMes.datas;
             if (mesesDisponiveis.length > 0) {
                 mesesDisponiveis.forEach(m => {
-                    const opt = document.createElement('option');
-                    opt.value = m;
-                    opt.innerText = formatarDataAnoCurto(m, true);
-                    selectMes.appendChild(opt);
+                    const opt1 = document.createElement('option');
+                    opt1.value = m;
+                    opt1.innerText = formatarDataAnoCurto(m, true);
+                    selectMesRadar.appendChild(opt1);
+
+                    if (selectMesPostages) {
+                        const opt2 = document.createElement('option');
+                        opt2.value = m;
+                        opt2.innerText = formatarDataAnoCurto(m, true);
+                        selectMesPostages.appendChild(opt2);
+                    }
                 });
                 ref.mesSelecionadoRadar = mesesDisponiveis[0];
             }
@@ -1010,7 +1055,186 @@ async function executarCalculoCausal(ipdId) {
             atualizarGraficoHistorico(ipdId);
             montarBotoesRadar(ipdId);
             atualizarRadarPorMes(ipdId);
+
+            // AUTO-CARREGA CONTEÚDOS DO PRIMEIRO PERFIL
+            const selectProfile = document.getElementById(`select-profile-postages-${ipdId}`);
+            if (selectProfile && selectProfile.options.length > 1) {
+                selectProfile.selectedIndex = 1;
+                carregarMetricasConteudo(ipdId);
+            }
         }
+
+       async function carregarMetricasConteudo(ipdId) {
+    const selectProfile = document.getElementById(`select-profile-postages-${ipdId}`);
+    const selectMes = document.getElementById(`select-mes-postages-${ipdId}`);
+
+    if (!selectProfile || !selectMes) return;
+
+    const profileName = selectProfile.value;
+    const mesAno = selectMes.value;
+
+    if (!profileName || !mesAno) {
+        document.getElementById(`top-post-texto-${ipdId}`).innerText = "Selecione o perfil e o mês para consultar.";
+        return;
+    }
+
+    const url = `/api/conteudo/medias/?projeto_ipd=${ipdId}&profile=${encodeURIComponent(profileName)}&ano_mes=${mesAno}`;
+
+    try {
+        const response = await fetch(url);
+        const data = await response.json();
+
+        // Tratamento de Erro da API (ex: Formato de 'ano_mes' inválido)
+        if (!response.ok || data.error) {
+            const msgErro = data.error || "Erro ao consultar métricas do período.";
+            
+            document.getElementById(`val-media-likes-${ipdId}`).innerText = "0";
+            document.getElementById(`val-media-comentarios-${ipdId}`).innerText = "0";
+            document.getElementById(`val-total-posts-${ipdId}`).innerText = "0";
+            
+            document.getElementById(`top-post-texto-${ipdId}`).innerHTML = `
+                <span class="text-rose-600 font-bold">
+                    <i class="fa-solid fa-triangle-exclamation mr-1"></i> ${msgErro}
+                </span>`;
+            
+            document.getElementById(`embed-box-${ipdId}`).innerHTML = `
+                <p class="text-xs text-slate-400 italic">Sem dados para o período informado.</p>`;
+            return;
+        }
+
+        // Atualização dos Cards de Métricas
+        document.getElementById(`val-media-likes-${ipdId}`).innerText = Number(data.media_curtidas || 0).toLocaleString('pt-BR');
+        document.getElementById(`val-media-comentarios-${ipdId}`).innerText = Number(data.media_comentarios || 0).toLocaleString('pt-BR');
+        document.getElementById(`val-total-posts-${ipdId}`).innerText = data.total_posts || 0;
+
+        // Atualização do Top Post
+        if (data.top_post) {
+            document.getElementById(`top-post-data-${ipdId}`).innerText = formatarDataAnoCurto(data.top_post.data);
+            document.getElementById(`top-post-likes-${ipdId}`).innerText = Number(data.top_post.curtidas || 0).toLocaleString('pt-BR');
+            document.getElementById(`top-post-comentarios-${ipdId}`).innerText = Number(data.top_post.comentarios || 0).toLocaleString('pt-BR');
+            document.getElementById(`top-post-texto-${ipdId}`).innerText = data.top_post.texto || "Sem legenda informativa.";
+            
+            const linkEl = document.getElementById(`top-post-link-${ipdId}`);
+            if (linkEl) {
+                linkEl.href = data.top_post.url || '#';
+            }
+
+            renderizarEmbedConteudo(ipdId, data.top_post.url);
+        } else {
+            document.getElementById(`top-post-texto-${ipdId}`).innerText = "Nenhuma publicação localizada para este perfil no mês selecionado.";
+            document.getElementById(`embed-box-${ipdId}`).innerHTML = '<p class="text-xs text-slate-400 italic">Nenhum post para reprodução.</p>';
+        }
+
+    } catch (err) {
+        console.error("Falha ao carregar conteúdos:", err);
+        document.getElementById(`top-post-texto-${ipdId}`).innerText = "Falha na comunicação com o servidor.";
+    }
+}
+
+        function renderizarEmbedConteudo(ipdId, postUrl) {
+    const container = document.getElementById(`embed-box-${ipdId}`);
+    if (!container) return;
+
+    // Se o link vier vazio ou inválido
+    if (!postUrl || typeof postUrl !== 'string' || !postUrl.startsWith('http')) {
+        container.innerHTML = `
+            <div class="text-center p-4 text-xs text-slate-400 italic">
+                <i class="fa-solid fa-link-slash text-slate-300 text-lg mb-1 block"></i>
+                Link de publicação indisponível ou em formato inválido.
+            </div>`;
+        return;
+    }
+
+    container.innerHTML = ''; // Limpa o container anterior
+    const urlLimpa = postUrl.trim();
+
+    // -------------------------------------------------------------------------
+    // 1. INSTAGRAM (Reels / Posts)
+    // -------------------------------------------------------------------------
+    if (urlLimpa.includes('instagram.com')) {
+        container.innerHTML = `
+            <blockquote class="instagram-media" data-instgrm-permalink="${urlLimpa}" data-instgrm-version="14" style="width:100%; max-width:380px; margin:0 auto;"></blockquote>
+        `;
+        if (window.instgrm && window.instgrm.Embeds) {
+            window.instgrm.Embeds.process();
+        }
+    } 
+
+    // -------------------------------------------------------------------------
+    // 2. TIKTOK
+    // -------------------------------------------------------------------------
+    else if (urlLimpa.includes('tiktok.com')) {
+        const videoId = urlLimpa.split('/video/')[1]?.split('?')[0];
+        container.innerHTML = `
+            <blockquote class="tiktok-embed" cite="${urlLimpa}" data-video-id="${videoId}" style="width:100%; max-width:325px; margin:0 auto;">
+                <section></section>
+            </blockquote>
+        `;
+        if (window.tiktokEmbed) {
+            window.tiktokEmbed.process();
+        }
+    } 
+
+    // -------------------------------------------------------------------------
+    // 3. TWITTER / X
+    // -------------------------------------------------------------------------
+    else if (urlLimpa.includes('twitter.com') || urlLimpa.includes('x.com')) {
+        container.innerHTML = `
+            <blockquote class="twitter-tweet" data-dnt="true" align="center">
+                <a href="${urlLimpa}"></a>
+            </blockquote>
+        `;
+        if (window.twttr && window.twttr.widgets) {
+            window.twttr.widgets.load(container);
+        }
+    } 
+
+    // -------------------------------------------------------------------------
+    // 4. YOUTUBE (Vídeos Longos e Shorts)
+    // -------------------------------------------------------------------------
+    else if (urlLimpa.includes('youtube.com') || urlLimpa.includes('youtu.be')) {
+        let videoId = '';
+
+        if (urlLimpa.includes('/shorts/')) {
+            videoId = urlLimpa.split('/shorts/')[1]?.split('?')[0];
+        } else if (urlLimpa.includes('youtu.be/')) {
+            videoId = urlLimpa.split('youtu.be/')[1]?.split('?')[0];
+        } else if (urlLimpa.includes('watch?v=')) {
+            videoId = urlLimpa.split('watch?v=')[1]?.split('&')[0];
+        }
+
+        if (videoId) {
+            container.innerHTML = `
+                <div class="w-full aspect-video max-w-md mx-auto rounded-xl overflow-hidden shadow-sm">
+                    <iframe 
+                        class="w-full h-full" 
+                        src="https://www.youtube.com/embed/${videoId}" 
+                        title="YouTube video player" 
+                        frameborder="0" 
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                        allowfullscreen>
+                    </iframe>
+                </div>
+            `;
+        } else {
+            container.innerHTML = `
+                <a href="${urlLimpa}" target="_blank" class="px-4 py-2 rounded-xl bg-red-50 text-red-600 font-bold text-xs border border-red-200 hover:bg-red-100 transition">
+                    <i class="fa-brands fa-youtube mr-1"></i> Abrir no YouTube
+                </a>`;
+        }
+    } 
+
+    // -------------------------------------------------------------------------
+    // 5. OUTRAS PLATAFORMAS (Fallback)
+    // -------------------------------------------------------------------------
+    else {
+        container.innerHTML = `
+            <a href="${urlLimpa}" target="_blank" class="px-4 py-2 rounded-xl bg-quaest-tealLight text-quaest-teal font-bold text-xs border border-quaest-teal/30 hover:bg-quaest-teal/10 transition">
+                Abrir Publicação Externa <i class="fa-solid fa-arrow-up-right-from-square ml-1"></i>
+            </a>
+        `;
+    }
+}
 
         function processarMapeamentoPeriodo(listaMedicoes, tipoPeriodo) {
             const map = {};

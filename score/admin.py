@@ -1,10 +1,12 @@
 import hashlib
+from datetime import datetime
 from django.contrib import admin
 from import_export import resources, fields
-from import_export.widgets import ForeignKeyWidget
+from import_export.widgets import ForeignKeyWidget, ManyToManyWidget
 from import_export.admin import ImportExportModelAdmin
 from .models import IPD, Conteudo
 from client.models import ProjetoIPD, ProjetoCliente
+
 
 class SmartForeignKeyWidget(ForeignKeyWidget):
     """Widget que aceita tanto o ID numérico quanto o Nome do projeto."""
@@ -14,6 +16,31 @@ class SmartForeignKeyWidget(ForeignKeyWidget):
         return self.model.objects.filter(nome__iexact=str(value).strip())
 
 
+class SmartManyToManyWidget(ManyToManyWidget):
+    """Widget ManyToMany que aceita IDs ou Nomes separados por vírgula ou ponto e vírgula."""
+    def clean(self, value, row=None, *args, **kwargs):
+        if not value:
+            return self.model.objects.none()
+        
+        raw_values = [v.strip() for v in str(value).replace(';', ',').split(',') if v.strip()]
+        pks = []
+        names = []
+
+        for val in raw_values:
+            if val.isdigit():
+                pks.append(int(val))
+            else:
+                names.append(val)
+
+        qs_pk = self.model.objects.filter(pk__in=pks) if pks else self.model.objects.none()
+        qs_name = self.model.objects.filter(nome__in=names) if names else self.model.objects.none()
+
+        return (qs_pk | qs_name).distinct()
+
+
+# =============================================================================
+# RECURSOS E ADMIN DO MODEL IPD
+# =============================================================================
 class IPDResource(resources.ModelResource):
     projeto_ipd = fields.Field(
         column_name='projeto_ipd',
@@ -30,11 +57,8 @@ class IPDResource(resources.ModelResource):
         model = IPD
         skip_unchanged = False
         report_skipped = True
-        
-        # IGNORA automaticamente qualquer coluna a mais presente na planilha
         ignore_unknown_fields = True
         
-        # Mapeia apenas as colunas oficiais que o model IPD utiliza
         fields = (
             'projeto_cliente',
             'projeto_ipd',
@@ -50,7 +74,6 @@ class IPDResource(resources.ModelResource):
 
     def before_import_row(self, row, **kwargs):
         """Prepara e traduz mapeamentos alternativos de colunas antes de importar."""
-        # Se a planilha tiver a coluna 'pd', mapeia para 'projeto_ipd'
         if 'pd' in row and ('projeto_ipd' not in row or not row['projeto_ipd']):
             row['projeto_ipd'] = row['pd']
             
@@ -60,8 +83,25 @@ class IPDResource(resources.ModelResource):
         if 'projeto_cliente_id' in row and ('projeto_cliente' not in row or not row['projeto_cliente']):
             row['projeto_cliente'] = row['projeto_cliente_id']
 
+        if 'perfil' in row and ('profile' not in row or not row['profile']):
+            row['profile'] = row['perfil']
+
+        # Tratamento de Data
+        data_raw = row.get('data')
+        if data_raw:
+            if isinstance(data_raw, datetime):
+                row['data'] = data_raw.strftime('%Y-%m-%d')
+            else:
+                data_str = str(data_raw).strip()
+                if ' ' in data_str:
+                    data_str = data_str.split(' ')[0]
+                if '/' in data_str:
+                    partes = data_str.split('/')
+                    if len(partes) == 3:
+                        data_str = f"{partes[2]}-{partes[1]}-{partes[0]}"
+                row['data'] = data_str
+
     def get_instance(self, instance_loader, row):
-        """Localiza o registro para atualizar em vez de duplicar."""
         proj_ipd_val = row.get('projeto_ipd') or row.get('pd')
         profile = row.get('profile')
         data = row.get('data')
@@ -75,10 +115,11 @@ class IPDResource(resources.ModelResource):
             if proj_ipd:
                 return IPD.objects.filter(
                     projeto_ipd=proj_ipd,
-                    profile=profile,
+                    profile=str(profile).strip(),
                     data=data
                 ).first()
         return None
+
 
 @admin.register(IPD)
 class IPDAdmin(ImportExportModelAdmin):
@@ -90,9 +131,134 @@ class IPDAdmin(ImportExportModelAdmin):
     ordering = ('-data',)
 
 
+# =============================================================================
+# RECURSOS E ADMIN DO MODEL CONTEUDO (POSTS)
+# =============================================================================
+class ConteudoResource(resources.ModelResource):
+    projeto_ipd = fields.Field(
+        column_name='projeto_ipd',
+        attribute='projeto_ipd',
+        widget=SmartManyToManyWidget(ProjetoIPD, field='id')
+    )
+    
+    projeto_cliente = fields.Field(
+        column_name='projeto_cliente',
+        attribute='projeto_cliente',
+        widget=SmartForeignKeyWidget(ProjetoCliente, field='id')
+    ) if hasattr(Conteudo, 'projeto_cliente') else None
+
+    class Meta:
+        model = Conteudo
+        skip_unchanged = False
+        report_skipped = True
+        ignore_unknown_fields = True
+        
+        # 'titulo' removido da lista de campos oficiais de importação
+        fields = (
+            'id_post',
+            'projeto_ipd',
+            'profile',
+            'texto',
+            'link_post',
+            'curtidas',
+            'comentarios',
+            'data',
+        )
+
+    def before_import(self, dataset, **kwargs):
+        super().before_import(dataset, **kwargs)
+        self.seen_ids = set()
+
+    def before_import_row(self, row, **kwargs):
+        """Prepara e traduz mapeamentos alternativos de colunas antes de importar."""
+
+        if 'pd' in row and ('projeto_ipd' not in row or not row['projeto_ipd']):
+            row['projeto_ipd'] = row['pd']
+            
+        if 'projeto_ipd_id' in row and ('projeto_ipd' not in row or not row['projeto_ipd']):
+            row['projeto_ipd'] = row['projeto_ipd_id']
+
+        if 'id' in row and ('id_post' not in row or not row['id_post']):
+            row['id_post'] = row['id']
+            
+        if 'url' in row and ('link_post' not in row or not row['link_post']):
+            row['link_post'] = row['url']
+
+        if 'link' in row and ('link_post' not in row or not row['link_post']):
+            row['link_post'] = row['link']
+
+        if 'perfil' in row and ('profile' not in row or not row['profile']):
+            row['profile'] = row['perfil']
+
+        if 'likes' in row and ('curtidas' not in row or not row['curtidas']):
+            row['curtidas'] = row['likes']
+
+        # Tratamento da Data
+        data_raw = row.get('data')
+        if data_raw:
+            if isinstance(data_raw, datetime):
+                row['data'] = data_raw.strftime('%Y-%m-%d')
+            else:
+                data_str = str(data_raw).strip()
+                if ' ' in data_str:
+                    data_str = data_str.split(' ')[0]
+                if '/' in data_str:
+                    partes = data_str.split('/')
+                    if len(partes) == 3:
+                        data_str = f"{partes[2]}-{partes[1]}-{partes[0]}"
+                row['data'] = data_str
+
+        # Tratamento e Limpeza do Link/URL
+        link_raw = row.get('link_post') or row.get('url') or row.get('link')
+        if link_raw:
+            # Strip remove espaços, quebras de linha (\n, \r) e caracteres invisíveis
+            link_limpo = str(link_raw).strip().replace('\n', '').replace('\r', '')
+            
+            # Garante que o link comece com protocolo http/https
+            if link_limpo and not link_limpo.startswith(('http://', 'https://')):
+                link_limpo = f"https://{link_limpo}"
+                
+            row['link_post'] = link_limpo
+        # Se id_post não for informado, gera Hash MD5 usando apenas profile, data, link e inicio do texto
+      
+
+    def get_instance(self, instance_loader, row):
+        id_post_val = str(row.get('id_post') or '').strip()
+
+        if id_post_val:
+            instance = Conteudo.objects.filter(id_post=id_post_val).first()
+            if instance:
+                return instance
+
+            link_val = str(row.get('link_post') or '').strip()
+            profile_val = str(row.get('profile') or '').strip()
+            if link_val and profile_val:
+                instance_link = Conteudo.objects.filter(link_post=link_val, profile=profile_val).first()
+                if instance_link:
+                    return instance_link
+
+        return None
+
+    def after_import_row(self, row, row_result, **kwargs):
+        super().after_import_row(row, row_result, **kwargs)
+        id_post_val = str(row.get('id_post') or '').strip()
+        if id_post_val:
+            self.seen_ids.add(id_post_val)
+
+
 @admin.register(Conteudo)
-class ConteudoAdmin(admin.ModelAdmin):
-    list_display = ('id_post', 'titulo', 'data', 'projeto_cliente', 'projeto_ipd')
-    list_filter = ('projeto_cliente', 'projeto_ipd', 'data')
-    search_fields = ('id_post', 'titulo', 'texto')
-    filter_horizontal = ('ipds',)
+class ConteudoAdmin(ImportExportModelAdmin):
+    resource_classes = [ConteudoResource]
+    list_display = ('id_post', 'data', 'exibir_projetos_ipd')
+    list_filter = ('data', 'projeto_ipd')
+    search_fields = ('id_post', 'texto', 'profile')
+    filter_horizontal = ('projeto_ipd',)
+
+    autocomplete_fields = ['projeto_cliente'] if hasattr(Conteudo, 'projeto_cliente') else []
+
+    @admin.display(description='Projetos IPD Vinculados')
+    def exibir_projetos_ipd(self, obj):
+        projetos = obj.projeto_ipd.all()
+        if not projetos:
+            return "-"
+        return ", ".join([p.nome for p in projetos])

@@ -27,5 +27,7 @@ urlpatterns = [
         'projetos/<int:projeto_id>/causal-impact/',
         score_views.analise_causal_impact_view,
         name='projeto-causal-impact'
-    )
+    ),
+
+    path('api/conteudo/medias/', score_views.MediaMetricasConteudoView.as_view(), name='media-metricas-conteudo'),
 ]
