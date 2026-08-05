@@ -3,17 +3,20 @@ from django.db.models import Avg
 from django.db.models.functions import TruncMonth
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
+from dotenv import load_dotenv
 from .models import ProjetoCliente, ProjetoIPD, IPD
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 import numpy as np
 import pandas as pd
+# Carrega as variáveis do arquivo .env
+load_dotenv()
+
+# Pega a chave (ajuste o nome da chave conforme o seu arquivo .env)
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
 
 
-
-OPENROUTER_API_KEY = os.getenv(
-    "OPENROUTER_API_KEY", "")
 
 def extrair_insumo_mes(projeto_id, mes_referencia=None):
     """
