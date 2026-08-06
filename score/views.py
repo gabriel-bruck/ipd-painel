@@ -141,7 +141,7 @@ from .services import extrair_insumo_mes, gerar_resumo_executivo_stream
 @require_GET
 def resumo_executivo_stream_view(request, projeto_id):
     mes_referencia = request.GET.get('mes', None)
-
+    
     # Captura insumo_texto e nome_cliente da função
     insumo_texto, nome_cliente = extrair_insumo_mes(projeto_id, mes_referencia)
 

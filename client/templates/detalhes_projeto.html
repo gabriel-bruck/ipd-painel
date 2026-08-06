@@ -68,20 +68,100 @@
 
     <main class="pt-20 pb-24 space-y-16">
         
-        <!-- SEÇÃO HERO -->
-        <section id="contexto-projeto" class="max-w-6xl mx-auto px-6 pt-8 pb-4">
-            <div class="p-8 md:p-10 rounded-3xl bg-white border border-slate-200 shadow-sm space-y-4">
-                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-quaest-tealLight text-quaest-teal border border-quaest-teal/20 text-xs font-black uppercase tracking-widest">
-                    <i class="fa-solid fa-folder-open"></i> Projeto Analítico
+        <!-- SEÇÃO HERO REVISADA (DESIGN TECH / CORPORATIVO) -->
+<!-- SEÇÃO HERO REVISADA (DESIGN EXECUTIVO CLARO - QUAEST) -->
+<section id="contexto-projeto" class="max-w-6xl mx-auto px-6 pt-6 pb-2">
+    <div class="relative overflow-hidden rounded-3xl bg-white border border-quaest-tealBorder p-8 md:p-12 shadow-sm space-y-8">
+        
+        <!-- Detalhe Gráfico sutil de Fundo (Apenas linhas e brilho leve em Teal) -->
+        <div class="absolute inset-0 bg-[radial-gradient(#1FA4B6_1px,transparent_1px)] [background-size:24px_24px] opacity-[0.04] pointer-events-none"></div>
+        <div class="absolute -top-24 -right-24 w-80 h-80 bg-quaest-tealLight rounded-full blur-3xl pointer-events-none"></div>
+
+        <div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+            
+            <div class="space-y-4 max-w-3xl">
+                <!-- Badge Institucional Quaest -->
+                <div class="inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-quaest-tealLight text-quaest-teal border border-quaest-teal/30 text-xs font-black uppercase tracking-widest">
+                    <span class="relative flex h-2 w-2">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-quaest-teal opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-2 w-2 bg-quaest-teal"></span>
+                    </span>
+                    <i class="fa-solid fa-chart-line text-xs"></i> Monitoramento de Performance Digital
                 </div>
+
+                <!-- Título com Destaque na Cor da Quaest -->
                 <h1 class="text-3xl md:text-5xl font-black text-slate-900 tracking-tight leading-tight">
-                    <span id="nome-projeto-hero" class="text-quaest-teal">{{ projeto.nome|default:"Carregando Projeto..." }}</span>
+                    <span id="nome-projeto-hero" class="text-quaest-teal">
+                        {{ projeto.nome|default:"Carregando Projeto..." }}
+                    </span>
                 </h1>
-                <p class="text-base md:text-lg text-quaest-textMuted font-normal leading-relaxed max-w-3xl">
-                    Diagnóstico de popularidade digital, estrutura dos indicadores, análises temporais e auditoria de postagens.
+
+                <!-- Descrição Técnica -->
+                <p class="text-sm md:text-base text-quaest-textMuted font-normal leading-relaxed">
+                    Diagnóstico de popularidade digital, estrutura multidimensional de indicadores, análises temporais e auditoria de postagens.
                 </p>
             </div>
-        </section>
+<div class="shrink-0 bg-quaest-tealLight/50 border border-quaest-tealBorder p-5 rounded-2xl space-y-2 min-w-[210px] text-xs shadow-sm">
+    <div class="flex items-center justify-between text-quaest-teal font-extrabold uppercase tracking-wider text-[10px]">
+        <span>última atualização</span>
+        <i class="fa-regular fa-calendar-check text-quaest-teal"></i>
+    </div>
+    <!-- ID ADICIONADO AQUI -->
+    <div id="mes-referencia-hero" class="text-xl font-black text-slate-900">
+        Carregando...
+    </div>
+                <div class="pt-2 border-t border-quaest-tealBorder flex items-center gap-2 text-emerald-700 font-bold text-[11px]">
+                    <i class="fa-solid fa-circle-check text-[10px]"></i> Dados Consolidados
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Mini Grid de Recursos (Clean & Tech) -->
+        <div class="relative z-10 grid grid-cols-2 md:grid-cols-4 gap-4 pt-6 border-t border-slate-100 text-xs">
+            <div class="flex items-center gap-3 p-2.5 rounded-xl bg-slate-50/80 border border-slate-200/80">
+                <div class="w-8 h-8 rounded-lg bg-quaest-tealLight border border-quaest-tealBorder flex items-center justify-center text-quaest-teal shrink-0">
+                    <i class="fa-solid fa-layer-group"></i>
+                </div>
+                <div>
+                    <span class="block text-[10px] text-slate-400 font-bold uppercase">Módulos</span>
+                    <strong class="font-extrabold text-slate-800">Visão Integrada</strong>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-3 p-2.5 rounded-xl bg-slate-50/80 border border-slate-200/80">
+                <div class="w-8 h-8 rounded-lg bg-quaest-tealLight border border-quaest-tealBorder flex items-center justify-center text-quaest-teal shrink-0">
+                    <i class="fa-solid fa-microchip"></i>
+                </div>
+                <div>
+                    <span class="block text-[10px] text-slate-400 font-bold uppercase">Análise</span>
+                    <strong class="font-extrabold text-slate-800">Algoritmo IPD</strong>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-3 p-2.5 rounded-xl bg-slate-50/80 border border-slate-200/80">
+                <div class="w-8 h-8 rounded-lg bg-quaest-tealLight border border-quaest-tealBorder flex items-center justify-center text-quaest-teal shrink-0">
+                    <i class="fa-solid fa-globe"></i>
+                </div>
+                <div>
+                    <span class="block text-[10px] text-slate-400 font-bold uppercase">Escopo</span>
+                    <strong class="font-extrabold text-slate-800">Multiplataforma</strong>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-3 p-2.5 rounded-xl bg-slate-50/80 border border-slate-200/80">
+                <div class="w-8 h-8 rounded-lg bg-quaest-tealLight border border-quaest-tealBorder flex items-center justify-center text-quaest-teal shrink-0">
+                    <i class="fa-solid fa-shield-halved"></i>
+                </div>
+                <div>
+                    <span class="block text-[10px] text-slate-400 font-bold uppercase">Auditoria</span>
+                    <strong class="font-extrabold text-slate-800">Engajamento Real</strong>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</section>
 
         <!-- SEÇÃO PRIMEIRO PLANO: O QUE É O IPD (COM LOGO E ILUSTRAÇÃO 3D DAS PLATAFORMAS) -->
         <section id="explicacao-ipd" class="max-w-6xl mx-auto px-6 space-y-8">
@@ -290,6 +370,23 @@
     </footer>
 
     <script>
+
+        function formatarMesExtenso(dataStr) {
+    if (!dataStr) return 'N/A';
+    const partes = String(dataStr).split('-');
+    if (partes.length >= 2) {
+        const ano = partes[0];
+        const mesIndex = parseInt(partes[1], 10) - 1;
+        const meses = [
+            "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+            "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
+        ];
+        if (mesIndex >= 0 && mesIndex < 12) {
+            return `${meses[mesIndex]}, ${ano}`;
+        }
+    }
+    return dataStr;
+}
         const PROJETO_ID = "{{ projeto.id|default:'1' }}"; 
 
         window.onscroll = function() {
@@ -724,24 +821,31 @@ if (data.top_post) {
 
         // CARREGAMENTO DE RESUMOS E INICIALIZAÇÃO DOS SELECTS
         function inicializarSeletorMesesResumo(meses) {
-            const select = document.getElementById('select-mes-resumo-ia');
-            if (!select || meses.length === 0) return;
-            select.innerHTML = '';
-            const mesesOrdenados = [...meses].sort();
+    const select = document.getElementById('select-mes-resumo-ia');
+    if (!select || meses.length === 0) return;
+    
+    select.innerHTML = '';
+    const mesesOrdenados = [...meses].sort();
 
-            mesesOrdenados.forEach(m => {
-                const opt = document.createElement('option');
-                opt.value = m;
-                opt.innerText = formatarDataAnoCurto(m, true);
-                select.appendChild(opt);
-            });
+    mesesOrdenados.forEach(m => {
+        const opt = document.createElement('option');
+        opt.value = m;
+        opt.innerText = formatarDataAnoCurto(m, true);
+        select.appendChild(opt);
+    });
 
-            // SELECIONA O ÚLTIMO MÊS DISPONÍVEL
-            const ultimoMes = mesesOrdenados[mesesOrdenados.length - 1];
-            select.value = ultimoMes;
-            carregarResumoExecutivoStream(ultimoMes);
-        }
+    // Pega o último mês com dados
+    const ultimoMes = mesesOrdenados[mesesOrdenados.length - 1];
+    select.value = ultimoMes;
 
+    // ATUALIZA O CARD DO HERO AUTOMATICAMENTE COM O ÚLTIMO MÊS DA BASE
+    const elHeroData = document.getElementById('mes-referencia-hero');
+    if (elHeroData) {
+        elHeroData.innerText = formatarMesExtenso(ultimoMes);
+    }
+
+    carregarResumoExecutivoStream(ultimoMes);
+}
         async function carregarResumoExecutivoStream(mesParam = null) {
             const container = document.getElementById('container-bullets-ia');
             const statusBox = document.getElementById('status-ia-streaming');

@@ -4,7 +4,7 @@ from django.db.models.functions import TruncMonth
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from dotenv import load_dotenv
-from .models import ProjetoCliente, ProjetoIPD, IPD
+from .models import Conteudo, ProjetoCliente, ProjetoIPD, IPD
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
@@ -20,8 +20,8 @@ OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
 
 def extrair_insumo_mes(projeto_id, mes_referencia=None):
     """
-    Busca apenas o mês filtrado (ou o último disponível) para cada IPD do Projeto
-    e formata o insumo em texto otimizado para o prompt do LangChain.
+    Busca o mês filtrado (ou o último disponível) para cada IPD do Projeto,
+    filtra o Top 10 posts mais engajados POR IPD no mês e formata o insumo para a IA.
     """
     projeto = get_object_or_404(ProjetoCliente, pk=projeto_id)
     nome_cliente = getattr(projeto, 'cliente', 'Cliente')
@@ -31,15 +31,19 @@ def extrair_insumo_mes(projeto_id, mes_referencia=None):
 
     for ipd in projetos_ipd:
         medicoes = IPD.objects.filter(projeto_ipd=ipd)
-
         qs_mensal = medicoes.annotate(mes_trunc=TruncMonth("data"))
 
+        # Determina o mês exato a ser analisado
         if mes_referencia:
-            qs_mensal = qs_mensal.filter(mes_trunc__startswith=str(mes_referencia)[:7])
+            mes_alvo_str = str(mes_referencia)[:7]  # Formato 'YYYY-MM'
+            qs_mensal = qs_mensal.filter(mes_trunc__startswith=mes_alvo_str)
         else:
-            ultimo_mes = qs_mensal.order_by("-mes_trunc").values_list("mes_trunc", flat=True).first()
-            if ultimo_mes:
-                qs_mensal = qs_mensal.filter(mes_trunc=ultimo_mes)
+            ultimo_mes_dt = qs_mensal.order_by("-mes_trunc").values_list("mes_trunc", flat=True).first()
+            if ultimo_mes_dt:
+                qs_mensal = qs_mensal.filter(mes_trunc=ultimo_mes_dt)
+                mes_alvo_str = ultimo_mes_dt.strftime("%Y-%m") if hasattr(ultimo_mes_dt, 'strftime') else str(ultimo_mes_dt)[:7]
+            else:
+                mes_alvo_str = None
 
         mensais = (
             qs_mensal.values("profile", "mes_trunc")
@@ -54,12 +58,16 @@ def extrair_insumo_mes(projeto_id, mes_referencia=None):
             .order_by("profile")
         )
 
-        insumo_texto += f"\n--- MÓDULO IPD: {ipd.nome} ---\n"
+        insumo_texto += f"\n=========================================\n"
+        insumo_texto += f"--- MÓDULO IPD: {ipd.nome} ---\n"
+        insumo_texto += f"=========================================\n"
         
         if not mensais:
-            insumo_texto += "Sem dados disponíveis para o período especificado.\n"
+            insumo_texto += "Sem dados de medição disponíveis para este IPD no período especificado.\n"
             continue
 
+        # 1. MÉTRICAS GERAIS DO MÊS DESTE IPD
+        insumo_texto += "\n[MÉTRICAS DO IPD NO MÊS]:\n"
         for m in mensais:
             mes_val = m.get('mes_trunc')
             data_str = mes_val.strftime('%m/%Y') if hasattr(mes_val, 'strftime') else str(mes_val or 'N/A')
@@ -70,6 +78,29 @@ def extrair_insumo_mes(projeto_id, mes_referencia=None):
                 f"  - Mobilização: {round(m['media_mob'] or 0, 2)} | Valência: {round(m['media_valencia'] or 0, 2)}\n"
                 f"  - Interesse: {round(m['media_interesse'] or 0, 2)}\n"
             )
+
+        # 2. CONTEÚDOS: TOP 10 POSTS MAIS ENGAJADOS DO MÊS VINCULADOS A ESTE IPD
+        if mes_alvo_str:
+            top_posts = (
+                Conteudo.objects.filter(
+                    projeto_ipd=ipd,             # Filtra posts associados a ESTE IPD (Relação M2M)
+                    data__startswith=mes_alvo_str # Filtra a data no mês alvo 'YYYY-MM'
+                )
+                .order_by('-curtidas', '-comentarios')[:10]  # Pega os 10 mais engajados
+            )
+
+            insumo_texto += f"\n[TOP 10 POSTS MAIS ENGAJADOS DO MÊS NO IPD '{ipd.nome}']:\n"
+            if top_posts.exists():
+                for idx, post in enumerate(top_posts, 1):
+                    texto_limpo = (post.texto or "").replace("\n", " ").strip()
+                    texto_curto = texto_limpo[:220] + "..." if len(texto_limpo) > 220 else texto_limpo
+                    
+                    insumo_texto += (
+                        f"{idx}. [{post.profile}] ({post.data}) - Likes: {post.curtidas} | Comentários: {post.comentarios}\n"
+                        f"   Texto: \"{texto_curto}\"\n"
+                    )
+            else:
+                insumo_texto += f"Nenhuma publicação vinculada ao IPD '{ipd.nome}' no mês {mes_alvo_str}.\n"
 
     return insumo_texto, str(nome_cliente)
 
@@ -92,13 +123,14 @@ def gerar_resumo_executivo_stream(insumo_texto, nome_cliente, mes_referencia):
         "- O IPD varia de 1.00 a 4.00, calculado via 175 variáveis em 7 plataformas ativas no Brasil.\n"
         "- Avalia 6 dimensões: Presença Digital, Fama, Engajamento, Mobilização, Valência e Interesse.\n\n"
         "REGRAS DE ESTRUTURA E ESTILO:\n"
-        "1. A resposta DEVE conter EXATAMENTE 3 tópicos principais (parágrafos em bullet points começando com '- ').\n"
+        "1. A resposta DEVE conter EXATAMENTE 4 tópicos principais (parágrafos em bullet points começando com '- ').\n"
         "2. Cada tópico deve ser um parágrafo bem desenvolvido, com texto fluido, tom consultivo, leve e dinâmico (evite frases muito curtas ou puramente estatísticas).\n"
         "3. Tópico 1: Visão Geral e Destaques de Liderança (quem dominou o IPD, Fama e Interesse no mês).\n"
         "4. Tópico 2: Dinâmica de Engajamento e Mobilização (como o público interagiu, compartilhou e repercutiu o conteúdo).\n"
         "5. Tópico 3: Valência, Percepção e Oportunidades (análise da qualidade das reações positivas vs. negativas e pontos de atenção).\n"
-        "6. Use **negrito** para destacar nomes de perfis, notas importantes e insights vitais.\n"
-        "7. NÃO inclua saudações, introduções ou conclusões genéricas. Comece direto no primeiro bullet point."
+        "6. Tópico 4: uma análise das postagens que mais engajaram e os temas delas.\n"
+        "7. Use **negrito** para destacar nomes de perfis, notas importantes e insights vitais.\n"
+        "8. NÃO inclua saudações, introduções ou conclusões genéricas. Comece direto no primeiro bullet point."
     )),
     ("user", "Mês de Análise: {mes}\n\nInsumos do Banco de Dados:\n{insumo}")
 ])
