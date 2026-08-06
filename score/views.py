@@ -199,11 +199,10 @@ def analise_causal_impact_view(request, projeto_id):
     # Sucesso completo
     return JsonResponse(resultado, status=200)
 
-
 class MediaMetricasConteudoView(APIView):
     """
     GET /api/conteudo/medias/?projeto_ipd=1&profile=bbc&ano_mes=2026-06
-    Calcula a média de likes e comentários do mês e retorna o post mais curtido do perfil.
+    Calcula a média de likes e comentários do mês e retorna os Top 3 posts mais curtidos do perfil.
     """
     def get(self, request):
         projeto_ipd_id = request.query_params.get('projeto_ipd')
@@ -249,20 +248,19 @@ class MediaMetricasConteudoView(APIView):
 
         total_posts = metricas['total_posts'] or 0
 
-        # 2. Busca do Post Mais Curtido do Período (Aproveita o índice idx_cnt_prof_data_curt_desc)
-        top_post_obj = queryset.order_by('-curtidas', '-comentarios').first()
+        # 2. Busca dos TOP 3 Posts Mais Curtidos do Período
+        top_posts_objs = queryset.order_by('-curtidas', '-comentarios')[:3]
         
-        top_post_data = None
-        if top_post_obj:
-            top_post_data = {
-                "id_post": top_post_obj.id_post,
-                
-                "texto": top_post_obj.texto,
-                "data": top_post_obj.data,
-                "curtidas": top_post_obj.curtidas,
-                "comentarios": top_post_obj.comentarios,
-                "url": top_post_obj.link_post
-            }
+        top_posts_data = []
+        for post in top_posts_objs:
+            top_posts_data.append({
+                "id_post": post.id_post,
+                "texto": post.texto,
+                "data": post.data,
+                "curtidas": post.curtidas or 0,
+                "comentarios": post.comentarios or 0,
+                "url": post.link_post
+            })
 
         # Formatação final do JSON de resposta
         return Response({
@@ -274,5 +272,5 @@ class MediaMetricasConteudoView(APIView):
             "total_posts": total_posts,
             "media_curtidas": round(metricas['media_curtidas'] or 0, 2),
             "media_comentarios": round(metricas['media_comentarios'] or 0, 2),
-            "top_post": top_post_data
+            "top_posts": top_posts_data
         }, status=status.HTTP_200_OK)

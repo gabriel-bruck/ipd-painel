@@ -68,102 +68,95 @@
 
     <main class="pt-20 pb-24 space-y-16">
         
-        <!-- SEÇÃO HERO REVISADA (DESIGN TECH / CORPORATIVO) -->
-<!-- SEÇÃO HERO REVISADA (DESIGN EXECUTIVO CLARO - QUAEST) -->
-<section id="contexto-projeto" class="max-w-6xl mx-auto px-6 pt-6 pb-2">
-    <div class="relative overflow-hidden rounded-3xl bg-white border border-quaest-tealBorder p-8 md:p-12 shadow-sm space-y-8">
-        
-        <!-- Detalhe Gráfico sutil de Fundo (Apenas linhas e brilho leve em Teal) -->
-        <div class="absolute inset-0 bg-[radial-gradient(#1FA4B6_1px,transparent_1px)] [background-size:24px_24px] opacity-[0.04] pointer-events-none"></div>
-        <div class="absolute -top-24 -right-24 w-80 h-80 bg-quaest-tealLight rounded-full blur-3xl pointer-events-none"></div>
+        <!-- SEÇÃO HERO (DESIGN EXECUTIVO CLARO - QUAEST) -->
+        <section id="contexto-projeto" class="max-w-6xl mx-auto px-6 pt-6 pb-2">
+            <div class="relative overflow-hidden rounded-3xl bg-white border border-quaest-tealBorder p-8 md:p-12 shadow-sm space-y-8">
+                
+                <div class="absolute inset-0 bg-[radial-gradient(#1FA4B6_1px,transparent_1px)] [background-size:24px_24px] opacity-[0.04] pointer-events-none"></div>
+                <div class="absolute -top-24 -right-24 w-80 h-80 bg-quaest-tealLight rounded-full blur-3xl pointer-events-none"></div>
 
-        <div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-            
-            <div class="space-y-4 max-w-3xl">
-                <!-- Badge Institucional Quaest -->
-                <div class="inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-quaest-tealLight text-quaest-teal border border-quaest-teal/30 text-xs font-black uppercase tracking-widest">
-                    <span class="relative flex h-2 w-2">
-                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-quaest-teal opacity-75"></span>
-                        <span class="relative inline-flex rounded-full h-2 w-2 bg-quaest-teal"></span>
-                    </span>
-                    <i class="fa-solid fa-chart-line text-xs"></i> Monitoramento de Performance Digital
+                <div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                    
+                    <div class="space-y-4 max-w-3xl">
+                        <div class="inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-quaest-tealLight text-quaest-teal border border-quaest-teal/30 text-xs font-black uppercase tracking-widest">
+                            <span class="relative flex h-2 w-2">
+                                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-quaest-teal opacity-75"></span>
+                                <span class="relative inline-flex rounded-full h-2 w-2 bg-quaest-teal"></span>
+                            </span>
+                            <i class="fa-solid fa-chart-line text-xs"></i> Monitoramento de Performance Digital
+                        </div>
+
+                        <h1 class="text-3xl md:text-5xl font-black text-slate-900 tracking-tight leading-tight">
+                            <span id="nome-projeto-hero" class="text-quaest-teal">
+                                {{ projeto.nome|default:"Carregando Projeto..." }}
+                            </span>
+                        </h1>
+
+                        <p class="text-sm md:text-base text-quaest-textMuted font-normal leading-relaxed">
+                            Diagnóstico de popularidade digital, estrutura multidimensional de indicadores, análises temporais e auditoria de postagens.
+                        </p>
+                    </div>
+
+                    <div class="shrink-0 bg-quaest-tealLight/50 border border-quaest-tealBorder p-5 rounded-2xl space-y-2 min-w-[210px] text-xs shadow-sm">
+                        <div class="flex items-center justify-between text-quaest-teal font-extrabold uppercase tracking-wider text-[10px]">
+                            <span>Última Atualização</span>
+                            <i class="fa-regular fa-calendar-check text-quaest-teal"></i>
+                        </div>
+                        <div id="mes-referencia-hero" class="text-xl font-black text-slate-900">
+                            Carregando...
+                        </div>
+                        <div class="pt-2 border-t border-quaest-tealBorder flex items-center gap-2 text-emerald-700 font-bold text-[11px]">
+                            <i class="fa-solid fa-circle-check text-[10px]"></i> Dados Consolidados
+                        </div>
+                    </div>
+
                 </div>
 
-                <!-- Título com Destaque na Cor da Quaest -->
-                <h1 class="text-3xl md:text-5xl font-black text-slate-900 tracking-tight leading-tight">
-                    <span id="nome-projeto-hero" class="text-quaest-teal">
-                        {{ projeto.nome|default:"Carregando Projeto..." }}
-                    </span>
-                </h1>
+                <div class="relative z-10 grid grid-cols-2 md:grid-cols-4 gap-4 pt-6 border-t border-slate-100 text-xs">
+                    <div class="flex items-center gap-3 p-2.5 rounded-xl bg-slate-50/80 border border-slate-200/80">
+                        <div class="w-8 h-8 rounded-lg bg-quaest-tealLight border border-quaest-tealBorder flex items-center justify-center text-quaest-teal shrink-0">
+                            <i class="fa-solid fa-layer-group"></i>
+                        </div>
+                        <div>
+                            <span class="block text-[10px] text-slate-400 font-bold uppercase">Módulos</span>
+                            <strong class="font-extrabold text-slate-800">Visão Integrada</strong>
+                        </div>
+                    </div>
 
-                <!-- Descrição Técnica -->
-                <p class="text-sm md:text-base text-quaest-textMuted font-normal leading-relaxed">
-                    Diagnóstico de popularidade digital, estrutura multidimensional de indicadores, análises temporais e auditoria de postagens.
-                </p>
+                    <div class="flex items-center gap-3 p-2.5 rounded-xl bg-slate-50/80 border border-slate-200/80">
+                        <div class="w-8 h-8 rounded-lg bg-quaest-tealLight border border-quaest-tealBorder flex items-center justify-center text-quaest-teal shrink-0">
+                            <i class="fa-solid fa-microchip"></i>
+                        </div>
+                        <div>
+                            <span class="block text-[10px] text-slate-400 font-bold uppercase">Análise</span>
+                            <strong class="font-extrabold text-slate-800">Algoritmo IPD</strong>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-3 p-2.5 rounded-xl bg-slate-50/80 border border-slate-200/80">
+                        <div class="w-8 h-8 rounded-lg bg-quaest-tealLight border border-quaest-tealBorder flex items-center justify-center text-quaest-teal shrink-0">
+                            <i class="fa-solid fa-globe"></i>
+                        </div>
+                        <div>
+                            <span class="block text-[10px] text-slate-400 font-bold uppercase">Escopo</span>
+                            <strong class="font-extrabold text-slate-800">Multiplataforma</strong>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-3 p-2.5 rounded-xl bg-slate-50/80 border border-slate-200/80">
+                        <div class="w-8 h-8 rounded-lg bg-quaest-tealLight border border-quaest-tealBorder flex items-center justify-center text-quaest-teal shrink-0">
+                            <i class="fa-solid fa-shield-halved"></i>
+                        </div>
+                        <div>
+                            <span class="block text-[10px] text-slate-400 font-bold uppercase">Auditoria</span>
+                            <strong class="font-extrabold text-slate-800">Engajamento Real</strong>
+                        </div>
+                    </div>
+                </div>
+
             </div>
-<div class="shrink-0 bg-quaest-tealLight/50 border border-quaest-tealBorder p-5 rounded-2xl space-y-2 min-w-[210px] text-xs shadow-sm">
-    <div class="flex items-center justify-between text-quaest-teal font-extrabold uppercase tracking-wider text-[10px]">
-        <span>última atualização</span>
-        <i class="fa-regular fa-calendar-check text-quaest-teal"></i>
-    </div>
-    <!-- ID ADICIONADO AQUI -->
-    <div id="mes-referencia-hero" class="text-xl font-black text-slate-900">
-        Carregando...
-    </div>
-                <div class="pt-2 border-t border-quaest-tealBorder flex items-center gap-2 text-emerald-700 font-bold text-[11px]">
-                    <i class="fa-solid fa-circle-check text-[10px]"></i> Dados Consolidados
-                </div>
-            </div>
-
-        </div>
-
-        <!-- Mini Grid de Recursos (Clean & Tech) -->
-        <div class="relative z-10 grid grid-cols-2 md:grid-cols-4 gap-4 pt-6 border-t border-slate-100 text-xs">
-            <div class="flex items-center gap-3 p-2.5 rounded-xl bg-slate-50/80 border border-slate-200/80">
-                <div class="w-8 h-8 rounded-lg bg-quaest-tealLight border border-quaest-tealBorder flex items-center justify-center text-quaest-teal shrink-0">
-                    <i class="fa-solid fa-layer-group"></i>
-                </div>
-                <div>
-                    <span class="block text-[10px] text-slate-400 font-bold uppercase">Módulos</span>
-                    <strong class="font-extrabold text-slate-800">Visão Integrada</strong>
-                </div>
-            </div>
-
-            <div class="flex items-center gap-3 p-2.5 rounded-xl bg-slate-50/80 border border-slate-200/80">
-                <div class="w-8 h-8 rounded-lg bg-quaest-tealLight border border-quaest-tealBorder flex items-center justify-center text-quaest-teal shrink-0">
-                    <i class="fa-solid fa-microchip"></i>
-                </div>
-                <div>
-                    <span class="block text-[10px] text-slate-400 font-bold uppercase">Análise</span>
-                    <strong class="font-extrabold text-slate-800">Algoritmo IPD</strong>
-                </div>
-            </div>
-
-            <div class="flex items-center gap-3 p-2.5 rounded-xl bg-slate-50/80 border border-slate-200/80">
-                <div class="w-8 h-8 rounded-lg bg-quaest-tealLight border border-quaest-tealBorder flex items-center justify-center text-quaest-teal shrink-0">
-                    <i class="fa-solid fa-globe"></i>
-                </div>
-                <div>
-                    <span class="block text-[10px] text-slate-400 font-bold uppercase">Escopo</span>
-                    <strong class="font-extrabold text-slate-800">Multiplataforma</strong>
-                </div>
-            </div>
-
-            <div class="flex items-center gap-3 p-2.5 rounded-xl bg-slate-50/80 border border-slate-200/80">
-                <div class="w-8 h-8 rounded-lg bg-quaest-tealLight border border-quaest-tealBorder flex items-center justify-center text-quaest-teal shrink-0">
-                    <i class="fa-solid fa-shield-halved"></i>
-                </div>
-                <div>
-                    <span class="block text-[10px] text-slate-400 font-bold uppercase">Auditoria</span>
-                    <strong class="font-extrabold text-slate-800">Engajamento Real</strong>
-                </div>
-            </div>
-        </div>
-
-    </div>
-</section>
-
-        <!-- SEÇÃO PRIMEIRO PLANO: O QUE É O IPD (COM LOGO E ILUSTRAÇÃO 3D DAS PLATAFORMAS) -->
+        </section>
+<!-- SEÇÃO PRIMEIRO PLANO: O QUE É O IPD (COM LOGO E ILUSTRAÇÃO 3D DAS PLATAFORMAS) -->
         <section id="explicacao-ipd" class="max-w-6xl mx-auto px-6 space-y-8">
             <div class="p-8 md:p-12 rounded-3xl bg-quaest-tealLight/60 border border-quaest-tealBorder space-y-10 shadow-sm relative overflow-hidden">
                 
@@ -369,24 +362,8 @@
         <p>© 2026 Quaest Pesquisa e Consultoria. Todos os direitos reservados.</p>
     </footer>
 
+    <!-- LOGICA JAVASCRIPT INTEGRADA -->
     <script>
-
-        function formatarMesExtenso(dataStr) {
-    if (!dataStr) return 'N/A';
-    const partes = String(dataStr).split('-');
-    if (partes.length >= 2) {
-        const ano = partes[0];
-        const mesIndex = parseInt(partes[1], 10) - 1;
-        const meses = [
-            "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
-            "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
-        ];
-        if (mesIndex >= 0 && mesIndex < 12) {
-            return `${meses[mesIndex]}, ${ano}`;
-        }
-    }
-    return dataStr;
-}
         const PROJETO_ID = "{{ projeto.id|default:'1' }}"; 
 
         window.onscroll = function() {
@@ -402,8 +379,26 @@
         let listaIPDsGlobais = [];
         let stateIPDs = {};
         let mapCausalCharts = {};
+        let mapRankingCharts = {};
 
-        // FORMATAÇÃO DE DATA
+        // FORMATAÇÃO E NORMALIZAÇÃO DE DATA
+        function formatarMesExtenso(dataStr) {
+            if (!dataStr) return 'N/A';
+            const partes = String(dataStr).split('-');
+            if (partes.length >= 2) {
+                const ano = partes[0];
+                const mesIndex = parseInt(partes[1], 10) - 1;
+                const meses = [
+                    "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+                    "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
+                ];
+                if (mesIndex >= 0 && mesIndex < 12) {
+                    return `${meses[mesIndex]}, ${ano}`;
+                }
+            }
+            return dataStr;
+        }
+
         function formatarDataParaAnoMes(dataRaw) {
             if (!dataRaw) return '';
             const str = String(dataRaw).trim();
@@ -431,122 +426,136 @@
             return dataStr;
         }
 
-        // =====================================================================
-        // EMBED MULTIPLATAFORMA COMPLETO (Instagram, TikTok, Twitter, Youtube, Facebook)
-        // =====================================================================
+        // EMBED MULTIPLATAFORMA COMPLETO (INSTAGRAM, FACEBOOK, TIKTOK, TWITTER, YOUTUBE)
         function renderizarEmbedConteudo(ipdId, postUrl) {
-    const container = document.getElementById(`embed-box-${ipdId}`);
-    if (!container) return;
+            const container = document.getElementById(`embed-box-${ipdId}`);
+            if (!container) return;
 
-    if (!postUrl || typeof postUrl !== 'string' || !postUrl.startsWith('http')) {
-        container.innerHTML = `
-            <div class="text-center p-4 text-xs text-slate-400 italic">
-                <i class="fa-solid fa-link-slash text-slate-300 text-lg mb-1 block"></i>
-                Link de publicação indisponível.
-            </div>`;
-        return;
-    }
+            if (!postUrl || typeof postUrl !== 'string' || !postUrl.startsWith('http')) {
+                container.innerHTML = `
+                    <div class="text-center p-4 text-xs text-slate-400 italic">
+                        <i class="fa-solid fa-link-slash text-slate-300 text-lg mb-1 block"></i>
+                        Link de publicação indisponível.
+                    </div>`;
+                return;
+            }
 
-    container.innerHTML = '';
-    const urlLimpa = postUrl.trim();
+            container.innerHTML = '';
+            const urlLimpa = postUrl.trim();
 
-    // -------------------------------------------------------------------------
-    // 1. TIKTOK (Injeção Forçada de Player)
-    // -------------------------------------------------------------------------
-    if (urlLimpa.includes('tiktok.com')) {
-        // Extrai o ID numérico do vídeo da URL
-        let videoId = '';
-        if (urlLimpa.includes('/video/')) {
-            videoId = urlLimpa.split('/video/')[1]?.split('?')[0] || '';
+            // 1. EMBED FACEBOOK (REELS E VÍDEOS)
+            if (urlLimpa.includes('facebook.com') || urlLimpa.includes('fb.watch')) {
+                const urlEncoded = encodeURIComponent(urlLimpa);
+                container.innerHTML = `
+                    <div class="w-full flex justify-center items-center overflow-hidden rounded-xl">
+                        <iframe 
+                            src="https://www.facebook.com/plugins/video.php?height=314&href=${urlEncoded}&show_text=false&width=560&t=0" 
+                            width="100%" 
+                            height="280" 
+                            style="border:none; overflow:hidden; max-width:340px;" 
+                            scrolling="no" 
+                            frameborder="0" 
+                            allowfullscreen="true" 
+                            allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share">
+                        </iframe>
+                    </div>`;
+            }
+            // 2. EMBED INSTAGRAM (OFICIAL META)
+            else if (urlLimpa.includes('instagram.com')) {
+                container.innerHTML = `
+                    <blockquote class="instagram-media" data-instgrm-captioned data-instgrm-permalink="${urlLimpa}" data-instgrm-version="14" style="background:#FFF; border:0; border-radius:12px; box-shadow:0 0 1px 0 rgba(0,0,0,0.5),0 1px 10px 0 rgba(0,0,0,0.15); margin: 1px; max-width:540px; min-width:280px; padding:0; width:99.375%;">
+                        <div style="padding:16px;"> 
+                            <a href="${urlLimpa}" style="background:#FFFFFF; line-height:0; padding:0 0; text-align:center; text-decoration:none; width:100%;" target="_blank"> 
+                                <div style="display: flex; flex-direction: row; align-items: center;"> 
+                                    <div style="background-color: #F4F4F4; border-radius: 50%; flex-grow: 0; height: 40px; margin-right: 14px; width: 40px;"></div> 
+                                    <div style="display: flex; flex-direction: column; flex-grow: 1; justify-content: center;"> 
+                                        <div style="background-color: #F4F4F4; border-radius: 4px; flex-grow: 0; height: 14px; margin-bottom: 6px; width: 100px;"></div> 
+                                        <div style="background-color: #F4F4F4; border-radius: 4px; flex-grow: 0; height: 14px; width: 60px;"></div>
+                                    </div>
+                                </div>
+                                <div style="padding: 19% 0;"></div> 
+                                <div style="display:block; height:50px; margin:0 auto 12px; width:50px;">
+                                    <svg width="50px" height="50px" viewBox="0 0 60 60" version="1.1" xmlns="https://www.w3.org/2000/svg" xmlns:xlink="https://www.w3.org/1999/xlink">
+                                        <g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+                                            <g transform="translate(-511.000000, -20.000000)" fill="#000000">
+                                                <g>
+                                                    <path d="M556.869,30.41 C554.814,30.41 553.148,32.076 553.148,34.131 C553.148,36.186 554.814,37.852 556.869,37.852 C558.924,37.852 560.59,36.186 560.59,34.131 C560.59,32.076 558.924,30.41 556.869,30.41 M541,60.657 C535.114,60.657 530.342,55.887 530.342,50 C530.342,44.114 535.114,39.342 541,39.342 C546.887,39.342 551.658,44.114 551.658,50 C551.658,55.887 546.887,60.657 541,60.657 M541,33.886 C532.1,33.886 524.886,41.1 524.886,50 C524.886,58.899 532.1,66.113 541,66.113 C549.9,66.113 557.115,58.899 557.115,50 C557.115,41.1 549.9,33.886 541,33.886 M565.378,62.101 C565.244,65.022 564.756,66.606 564.346,67.663 C563.803,69.06 563.154,70.057 562.106,71.106 C561.058,72.155 560.06,72.803 558.662,73.347 C557.607,73.757 556.021,74.244 553.102,74.378 C549.944,74.521 548.997,74.552 541,74.552 C533.003,74.552 532.056,74.521 528.898,74.378 C525.979,74.244 524.393,73.757 523.338,73.347 C521.94,72.803 520.942,72.155 519.894,71.106 C518.846,70.057 518.197,69.06 517.654,67.663 C517.244,66.606 516.755,65.022 516.623,62.101 C516.479,58.943 516.448,57.996 516.448,50 C516.448,42.003 516.479,41.056 516.623,37.899 C516.755,34.978 517.244,33.391 517.654,32.338 C518.197,30.938 518.846,29.942 519.894,28.894 C520.942,27.846 521.94,27.196 523.338,26.654 C524.393,26.244 525.979,25.756 528.898,25.623 C532.057,25.479 533.004,25.448 541,25.448 C548.997,25.448 549.943,25.479 553.102,25.623 C556.021,25.756 557.607,26.244 558.662,26.654 C560.06,27.196 561.058,27.846 562.106,28.894 C563.154,29.942 563.803,30.938 564.346,32.338 C564.756,33.391 565.244,34.978 565.378,37.899 C565.522,41.056 565.552,42.003 565.552,50 C565.552,57.996 565.522,58.943 565.378,62.101 M570.82,37.631 C570.674,34.438 570.167,32.258 569.425,30.349 C568.659,28.377 567.633,26.702 565.965,25.035 C564.297,23.368 562.623,22.342 560.652,21.575 C558.743,20.834 556.562,20.326 553.369,20.18 C550.169,20.033 549.148,20 541,20 C532.853,20 531.831,20.033 528.631,20.18 C525.438,20.326 523.257,20.834 521.349,21.575 C519.376,22.342 517.703,23.368 516.035,25.035 C514.368,26.702 513.342,28.377 512.574,30.349 C511.834,32.258 511.326,34.438 511.181,37.631 C511.035,40.831 511,41.851 511,50 C511,58.147 511.035,59.17 511.181,62.369 C511.326,65.562 511.834,67.743 512.574,69.651 C513.342,71.625 514.368,73.296 516.035,74.965 C517.703,76.634 519.376,77.658 521.349,78.425 C523.257,79.167 525.438,79.673 528.631,79.82 C531.831,79.965 532.853,80.001 541,80.001 C549.148,80.001 550.169,79.965 553.369,79.82 C556.562,79.673 558.743,79.167 560.652,78.425 C562.623,77.658 564.297,76.634 565.965,74.965 C567.633,73.296 568.659,71.625 569.425,69.651 C570.167,67.743 570.674,65.562 570.82,62.369 C570.966,59.17 571,58.147 571,50 C571,41.851 570.966,40.831 570.82,37.631"></path>
+                                                </g>
+                                            </g>
+                                        </g>
+                                    </svg>
+                                </div>
+                                <div style="padding-top: 8px;"> 
+                                    <div style="color:#3897f0; font-family:Arial,sans-serif; font-size:14px; font-style:normal; font-weight:550; line-height:18px;">Ver essa publicação no Instagram</div>
+                                </div>
+                            </a>
+                        </div>
+                    </blockquote>`;
+
+                if (window.instgrm && window.instgrm.Embeds) {
+                    window.instgrm.Embeds.process();
+                } else {
+                    let script = document.createElement('script');
+                    script.src = "https://www.instagram.com/embed.js";
+                    script.async = true;
+                    document.body.appendChild(script);
+                }
+            } 
+            // 3. EMBED TIKTOK
+            else if (urlLimpa.includes('tiktok.com')) {
+                let videoId = urlLimpa.includes('/video/') ? urlLimpa.split('/video/')[1]?.split('?')[0] || '' : '';
+                container.innerHTML = `
+                    <blockquote class="tiktok-embed" cite="${urlLimpa}" data-video-id="${videoId}" style="max-width: 325px; min-width: 280px; margin: 0 auto;">
+                        <section><a target="_blank" title="TikTok" href="${urlLimpa}">Carregando vídeo do TikTok...</a></section>
+                    </blockquote>`;
+                
+                const oldScript = document.getElementById('tiktok-embed-script');
+                if (oldScript) oldScript.remove();
+
+                const script = document.createElement('script');
+                script.id = 'tiktok-embed-script';
+                script.src = 'https://www.tiktok.com/embed.js';
+                script.async = true;
+                document.body.appendChild(script);
+            } 
+            // 4. EMBED TWITTER / X
+            else if (urlLimpa.includes('twitter.com') || urlLimpa.includes('x.com')) {
+                container.innerHTML = `<blockquote class="twitter-tweet" data-dnt="true" align="center"><a href="${urlLimpa}"></a></blockquote>`;
+                if (window.twttr && window.twttr.widgets) window.twttr.widgets.load(container);
+                else {
+                    let script = document.createElement('script');
+                    script.src = "https://platform.twitter.com/widgets.js";
+                    document.body.appendChild(script);
+                }
+            } 
+            // 5. EMBED YOUTUBE
+            else if (urlLimpa.includes('youtube.com') || urlLimpa.includes('youtu.be')) {
+                let videoId = '';
+                if (urlLimpa.includes('/shorts/')) videoId = urlLimpa.split('/shorts/')[1]?.split('?')[0];
+                else if (urlLimpa.includes('youtu.be/')) videoId = urlLimpa.split('youtu.be/')[1]?.split('?')[0];
+                else if (urlLimpa.includes('watch?v=')) videoId = urlLimpa.split('watch?v=')[1]?.split('&')[0];
+
+                if (videoId) {
+                    container.innerHTML = `
+                        <div class="w-full aspect-video max-w-md mx-auto rounded-xl overflow-hidden shadow-sm">
+                            <iframe class="w-full h-full" src="https://www.youtube.com/embed/${videoId}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+                        </div>`;
+                } else {
+                    container.innerHTML = `<a href="${urlLimpa}" target="_blank" class="px-4 py-2 rounded-xl bg-red-50 text-red-600 font-bold text-xs border border-red-200"><i class="fa-brands fa-youtube mr-1"></i> Abrir no YouTube</a>`;
+                }
+            } 
+            // DEFAULT
+            else {
+                container.innerHTML = `
+                    <a href="${urlLimpa}" target="_blank" class="px-4 py-2 rounded-xl bg-quaest-tealLight text-quaest-teal font-bold text-xs border border-quaest-teal/30 hover:bg-quaest-teal/10 transition">
+                        Abrir Publicação Externa <i class="fa-solid fa-arrow-up-right-from-square ml-1"></i>
+                    </a>`;
+            }
         }
+        // CARREGA MÉDRICAS DE CONTEÚDO
+        // Cache global dos Top Posts carregados por módulo
+        let cacheTopPostsPorModulo = {};
 
-        container.innerHTML = `
-            <blockquote 
-                class="tiktok-embed" 
-                cite="${urlLimpa}" 
-                data-video-id="${videoId}" 
-                style="max-width: 325px; min-width: 325px; margin: 0 auto;">
-                <section>
-                    <a target="_blank" title="TikTok" href="${urlLimpa}">Carregando vídeo do TikTok...</a>
-                </section>
-            </blockquote>
-        `;
-
-        // Remove scripts antigos do TikTok para evitar conflitos de cache no DOM
-        const oldScript = document.getElementById('tiktok-embed-script');
-        if (oldScript) {
-            oldScript.remove();
-        }
-
-        // Re-injeta o script oficial do TikTok para forçar a renderização imediata do iframe
-        const script = document.createElement('script');
-        script.id = 'tiktok-embed-script';
-        script.src = 'https://www.tiktok.com/embed.js';
-        script.async = true;
-        document.body.appendChild(script);
-    } 
-
-    // -------------------------------------------------------------------------
-    // 2. INSTAGRAM
-    // -------------------------------------------------------------------------
-    else if (urlLimpa.includes('instagram.com')) {
-        container.innerHTML = `<blockquote class="instagram-media" data-instgrm-permalink="${urlLimpa}" data-instgrm-version="14" style="width:100%; max-width:380px; margin:0 auto;"></blockquote>`;
-        if (window.instgrm && window.instgrm.Embeds) {
-            window.instgrm.Embeds.process();
-        } else {
-            let script = document.createElement('script');
-            script.src = "https://www.instagram.com/embed.js";
-            document.body.appendChild(script);
-        }
-    } 
-
-    // -------------------------------------------------------------------------
-    // 3. TWITTER / X
-    // -------------------------------------------------------------------------
-    else if (urlLimpa.includes('twitter.com') || urlLimpa.includes('x.com')) {
-        container.innerHTML = `<blockquote class="twitter-tweet" data-dnt="true" align="center"><a href="${urlLimpa}"></a></blockquote>`;
-        if (window.twttr && window.twttr.widgets) {
-            window.twttr.widgets.load(container);
-        } else {
-            let script = document.createElement('script');
-            script.src = "https://platform.twitter.com/widgets.js";
-            document.body.appendChild(script);
-        }
-    } 
-
-    // -------------------------------------------------------------------------
-    // 4. YOUTUBE (Vídeos e Shorts)
-    // -------------------------------------------------------------------------
-    else if (urlLimpa.includes('youtube.com') || urlLimpa.includes('youtu.be')) {
-        let videoId = '';
-        if (urlLimpa.includes('/shorts/')) videoId = urlLimpa.split('/shorts/')[1]?.split('?')[0];
-        else if (urlLimpa.includes('youtu.be/')) videoId = urlLimpa.split('youtu.be/')[1]?.split('?')[0];
-        else if (urlLimpa.includes('watch?v=')) videoId = urlLimpa.split('watch?v=')[1]?.split('&')[0];
-
-        if (videoId) {
-            container.innerHTML = `
-                <div class="w-full aspect-video max-w-md mx-auto rounded-xl overflow-hidden shadow-sm">
-                    <iframe class="w-full h-full" src="https://www.youtube.com/embed/${videoId}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
-                </div>`;
-        } else {
-            container.innerHTML = `<a href="${urlLimpa}" target="_blank" class="px-4 py-2 rounded-xl bg-red-50 text-red-600 font-bold text-xs border border-red-200"><i class="fa-brands fa-youtube mr-1"></i> Abrir no YouTube</a>`;
-        }
-    } 
-
-    // -------------------------------------------------------------------------
-    // 5. FALLBACK
-    // -------------------------------------------------------------------------
-    else {
-        container.innerHTML = `
-            <a href="${urlLimpa}" target="_blank" class="px-4 py-2 rounded-xl bg-quaest-tealLight text-quaest-teal font-bold text-xs border border-quaest-teal/30 hover:bg-quaest-teal/10 transition">
-                Abrir Publicação Externa <i class="fa-solid fa-arrow-up-right-from-square ml-1"></i>
-            </a>`;
-    }
-}
-
-        // =====================================================================
-        // CARREGA MÉDRICAS DE CONTEÚDO E TOP POST
-        // =====================================================================
         async function carregarMetricasConteudo(ipdId) {
             const selectProfile = document.getElementById(`select-profile-postages-${ipdId}`);
             const selectMes = document.getElementById(`select-mes-postages-${ipdId}`);
@@ -562,9 +571,7 @@
                 return;
             }
 
-            // Normaliza o mês para o formato YYYY-MM
             const mesAno = formatarDataParaAnoMes(mesAnoRaw);
-
             const url = `/api/conteudo/medias/?projeto_ipd=${ipdId}&profile=${encodeURIComponent(profileName)}&ano_mes=${mesAno}`;
 
             try {
@@ -573,70 +580,459 @@
 
                 if (!response.ok || data.error) {
                     const msgErro = data.error || "Erro ao consultar métricas do período.";
-                    
                     document.getElementById(`val-media-likes-${ipdId}`).innerText = "0";
                     document.getElementById(`val-media-comentarios-${ipdId}`).innerText = "0";
                     document.getElementById(`val-total-posts-${ipdId}`).innerText = "0";
+                    document.getElementById(`top-post-texto-${ipdId}`).innerHTML = `<span class="text-rose-600 font-bold"><i class="fa-solid fa-triangle-exclamation mr-1"></i> ${msgErro}</span>`;
+                    document.getElementById(`embed-box-${ipdId}`).innerHTML = `<p class="text-xs text-slate-400 italic">Sem dados para o período informado.</p>`;
                     
-                    document.getElementById(`top-post-texto-${ipdId}`).innerHTML = `
-                        <span class="text-rose-600 font-bold">
-                            <i class="fa-solid fa-triangle-exclamation mr-1"></i> ${msgErro}
-                        </span>`;
-                    
-                    document.getElementById(`embed-box-${ipdId}`).innerHTML = `
-                        <p class="text-xs text-slate-400 italic">Sem dados para o período informado.</p>`;
+                    resetarPainelInsights(ipdId);
                     return;
                 }
 
-                document.getElementById(`val-media-likes-${ipdId}`).innerText = Number(data.media_curtidas || 0).toLocaleString('pt-BR');
-                document.getElementById(`val-media-comentarios-${ipdId}`).innerText = Number(data.media_comentarios || 0).toLocaleString('pt-BR');
-                document.getElementById(`val-total-posts-${ipdId}`).innerText = data.total_posts || 0;
+                const mediaCurtidas = Number(data.media_curtidas || 0);
+                const mediaComentarios = Number(data.media_comentarios || 0);
+                const totalPosts = Number(data.total_posts || 0);
 
-                // Substitua o bloco if (data.top_post) { ... } else { ... } dentro da função carregarMetricasConteudo por este:
+                document.getElementById(`val-media-likes-${ipdId}`).innerText = mediaCurtidas.toLocaleString('pt-BR');
+                document.getElementById(`val-media-comentarios-${ipdId}`).innerText = mediaComentarios.toLocaleString('pt-BR');
+                document.getElementById(`val-total-posts-${ipdId}`).innerText = totalPosts;
 
-if (data.top_post) {
-    document.getElementById(`top-post-data-${ipdId}`).innerText = formatarDataAnoCurto(data.top_post.data);
-    document.getElementById(`top-post-likes-${ipdId}`).innerText = Number(data.top_post.curtidas || 0).toLocaleString('pt-BR');
-    document.getElementById(`top-post-comentarios-${ipdId}`).innerText = Number(data.top_post.comentarios || 0).toLocaleString('pt-BR');
-    document.getElementById(`top-post-texto-${ipdId}`).innerText = data.top_post.texto || "Sem legenda informativa.";
-    
-    const linkEl = document.getElementById(`top-post-link-${ipdId}`);
-    if (linkEl) {
-        linkEl.href = data.top_post.url || '#';
-        linkEl.classList.remove('pointer-events-none', 'opacity-50');
-    }
+                // Suporta a nova lista "top_posts" ou o antigo "top_post"
+                let listaTopPosts = data.top_posts || (data.top_post ? [data.top_post] : []);
 
-    renderizarEmbedConteudo(ipdId, data.top_post.url);
-} else {
-    // =========================================================================
-    // RESET COMPLETO DOS CAMPOS QUANDO O PERFIL NÃO POSSUI POSTS NO MÊS
-    // =========================================================================
-    document.getElementById(`top-post-data-${ipdId}`).innerText = "-";
-    document.getElementById(`top-post-likes-${ipdId}`).innerText = "0";
-    document.getElementById(`top-post-comentarios-${ipdId}`).innerText = "0";
-    document.getElementById(`top-post-texto-${ipdId}`).innerText = "Nenhuma publicação localizada para este perfil no mês selecionado.";
-    
-    const linkEl = document.getElementById(`top-post-link-${ipdId}`);
-    if (linkEl) {
-        linkEl.href = "#";
-        linkEl.classList.add('pointer-events-none', 'opacity-50'); // Desabilita o clique no link antigo
-    }
+                cacheTopPostsPorModulo[ipdId] = {
+                    listaPosts: listaTopPosts,
+                    mediaCurtidas: mediaCurtidas,
+                    mediaComentarios: mediaComentarios,
+                    totalPosts: totalPosts
+                };
 
-    // Limpa o Iframe/Embed antigo
-    document.getElementById(`embed-box-${ipdId}`).innerHTML = `
-        <div class="text-center p-4 text-xs text-slate-400 italic">
-            <i class="fa-solid fa-folder-open text-slate-300 text-xl mb-2 block"></i>
-            Sem publicações para exibição no período.
-        </div>`;
-}
+                // Exibe por padrão o 1º mais curtido (índice 0)
+                selecionarTopPostAba(ipdId, 0);
 
             } catch (err) {
                 console.error("Falha ao carregar conteúdos:", err);
                 const elTexto = document.getElementById(`top-post-texto-${ipdId}`);
                 if (elTexto) elTexto.innerText = "Falha na comunicação com o servidor.";
+                resetarPainelInsights(ipdId);
             }
         }
 
+        // ALTERNA A VISUALIZAÇÃO ENTRE O 1º, 2º E 3º COLOCADO
+        function selecionarTopPostAba(ipdId, indexAba) {
+            const cache = cacheTopPostsPorModulo[ipdId];
+            if (!cache || !cache.listaPosts) return;
+
+            const lista = cache.listaPosts;
+
+            // Atualiza o estilo dos botões das abas
+            [0, 1, 2].forEach(i => {
+                const btn = document.getElementById(`btn-top-${i + 1}-${ipdId}`);
+                if (btn) {
+                    if (i === indexAba) {
+                        btn.className = "px-3 py-1 rounded-lg bg-white text-quaest-teal shadow-sm transition font-extrabold";
+                    } else {
+                        btn.className = "px-3 py-1 rounded-lg text-slate-600 hover:text-slate-900 transition font-bold";
+                    }
+                }
+            });
+
+            const badgePos = document.getElementById(`badge-posicao-post-${ipdId}`);
+            if (badgePos) badgePos.innerText = `${indexAba + 1}º Mais Curtido`;
+
+            const postObj = lista[indexAba];
+
+            if (postObj) {
+                const likesPost = Number(postObj.curtidas || 0);
+                const comentariosPost = Number(postObj.comentarios || 0);
+
+                document.getElementById(`top-post-data-${ipdId}`).innerText = formatarDataAnoCurto(postObj.data);
+                document.getElementById(`top-post-likes-${ipdId}`).innerText = likesPost.toLocaleString('pt-BR');
+                document.getElementById(`top-post-comentarios-${ipdId}`).innerText = comentariosPost.toLocaleString('pt-BR');
+                document.getElementById(`top-post-texto-${ipdId}`).innerText = postObj.texto || "Sem legenda informativa.";
+                
+                const linkEl = document.getElementById(`top-post-link-${ipdId}`);
+                if (linkEl) {
+                    linkEl.href = postObj.url || '#';
+                    linkEl.classList.remove('pointer-events-none', 'opacity-50');
+                }
+
+                renderizarEmbedConteudo(ipdId, postObj.url);
+
+                // RECALCULA OS INSIGHTS DEDICADOS AO POST SELECIONADO
+                const mediaCurtidas = cache.mediaCurtidas;
+                const totalPosts = cache.totalPosts;
+
+                // 1. Desempenho do Post Selecionado vs. Média do Mês
+                const elInsightPerf = document.getElementById(`insight-performance-relativa-${ipdId}`);
+                if (elInsightPerf && mediaCurtidas > 0) {
+                    const pctAumento = Math.round(((likesPost - mediaCurtidas) / mediaCurtidas) * 100);
+                    if (pctAumento > 0) {
+                        elInsightPerf.innerHTML = `<span class="text-emerald-600 font-extrabold"><i class="fa-solid fa-arrow-trend-up"></i> +${pctAumento}% acima</span> <span class="text-xs text-slate-500 font-normal">da média mensal do perfil</span>`;
+                    } else if (pctAumento < 0) {
+                        elInsightPerf.innerHTML = `<span class="text-rose-600 font-extrabold"><i class="fa-solid fa-arrow-trend-down"></i> ${pctAumento}% abaixo</span> <span class="text-xs text-slate-500 font-normal">da média mensal do perfil</span>`;
+                    } else {
+                        elInsightPerf.innerHTML = `<span class="text-slate-700 font-bold">= Na média do perfil</span>`;
+                    }
+                }
+
+                // 2. Razão de Engajamento
+                const elInsightRazao = document.getElementById(`insight-razao-engajamento-${ipdId}`);
+                if (elInsightRazao && likesPost > 0) {
+                    const taxaComent = ((comentariosPost / likesPost) * 100).toFixed(1);
+                    elInsightRazao.innerHTML = `<span class="text-quaest-teal font-extrabold">${taxaComent}</span> <span class="text-xs text-slate-500 font-normal">comentários para cada 100 curtidas</span>`;
+                }
+
+                // 3. Ritmo de Postagem
+                const elInsightRitmo = document.getElementById(`insight-ritmo-postagens-${ipdId}`);
+                if (elInsightRitmo) {
+                    const mediaPostsSemana = (totalPosts / 4).toFixed(1);
+                    elInsightRitmo.innerHTML = `<span class="text-slate-900 font-extrabold">~${mediaPostsSemana} posts/semana</span> <span class="text-xs text-slate-500 font-normal">(${totalPosts} publicações no mês)</span>`;
+                }
+
+            } else {
+                document.getElementById(`top-post-data-${ipdId}`).innerText = "-";
+                document.getElementById(`top-post-likes-${ipdId}`).innerText = "0";
+                document.getElementById(`top-post-comentarios-${ipdId}`).innerText = "0";
+                document.getElementById(`top-post-texto-${ipdId}`).innerText = `Não há ${indexAba + 1}º post cadastrado para este perfil no mês.`;
+                
+                const linkEl = document.getElementById(`top-post-link-${ipdId}`);
+                if (linkEl) {
+                    linkEl.href = "#";
+                    linkEl.classList.add('pointer-events-none', 'opacity-50');
+                }
+
+                document.getElementById(`embed-box-${ipdId}`).innerHTML = `
+                    <div class="text-center p-4 text-xs text-slate-400 italic">
+                        <i class="fa-solid fa-folder-open text-slate-300 text-xl mb-2 block"></i>
+                        Sem publicação nesta posição.
+                    </div>`;
+
+                resetarPainelInsights(ipdId);
+            }
+        }
+
+       
+
+        function resetarPainelInsights(ipdId) {
+            const el1 = document.getElementById(`insight-performance-relativa-${ipdId}`);
+            const el2 = document.getElementById(`insight-razao-engajamento-${ipdId}`);
+            const el3 = document.getElementById(`insight-ritmo-postagens-${ipdId}`);
+
+            if (el1) el1.innerHTML = `<span class="text-slate-400 text-xs font-normal">Sem dados no período</span>`;
+            if (el2) el2.innerHTML = `<span class="text-slate-400 text-xs font-normal">Sem dados no período</span>`;
+            if (el3) el3.innerHTML = `<span class="text-slate-400 text-xs font-normal">Sem dados no período</span>`;
+        }
+        // =====================================================================
+        // LÓGICA DO RANKING MENSAL DO IPD POR MÓDULO (ISOLADO)
+        // =====================================================================
+        function inicializarRankingIpdModulo(ipdObj, ipdId) {
+            const selectMes = document.getElementById(`select-mes-ranking-${ipdId}`);
+            if (!selectMes) return;
+
+            const ref = stateIPDs[ipdId];
+            const mesesDisponiveis = (ref && ref.profilesDataMes && ref.profilesDataMes.datas) || [];
+            if (mesesDisponiveis.length === 0) return;
+
+            selectMes.innerHTML = '';
+            const mesesOrdenados = [...mesesDisponiveis].sort();
+
+            mesesOrdenados.forEach(m => {
+                const opt = document.createElement('option');
+                opt.value = m;
+                opt.innerText = formatarDataAnoCurto(m, true);
+                selectMes.appendChild(opt);
+            });
+
+            const ultimoMes = mesesOrdenados[mesesOrdenados.length - 1];
+            selectMes.value = ultimoMes;
+
+            atualizarRankingIpdModulo(ipdId, ultimoMes);
+        }
+
+        function obterRankingModuloIpd(ipdId, mesAlvo) {
+            const ref = stateIPDs[ipdId];
+            if (!ref || !ref.profilesDataMes) return [];
+
+            const profilesMap = ref.profilesDataMes.profiles;
+            const lista = [];
+
+            Object.keys(profilesMap).forEach(profileName => {
+                const reg = profilesMap[profileName].registrosPorData[mesAlvo];
+                if (reg) {
+                    lista.push({
+                        profile: profileName,
+                        score: parseFloat(reg.ipd.toFixed(2))
+                    });
+                }
+            });
+
+            lista.sort((a, b) => b.score - a.score);
+            return lista;
+        }
+// Dicionário global para controlar os destaques de marcas ativas
+        let perfisDestacadosPorModulo = {};
+
+        function atualizarRankingIpdModulo(ipdId, mesSelecionado) {
+            const selectMes = document.getElementById(`select-mes-ranking-${ipdId}`);
+            if (!selectMes) return;
+
+            if (!perfisDestacadosPorModulo[ipdId]) {
+                perfisDestacadosPorModulo[ipdId] = new Set();
+            }
+
+            const opcoesMeses = Array.from(selectMes.options).map(opt => opt.value).sort();
+            const indexAtual = opcoesMeses.indexOf(mesSelecionado);
+            const mesAnterior = indexAtual > 0 ? opcoesMeses[indexAtual - 1] : null;
+
+            const rankingAtual = obterRankingModuloIpd(ipdId, mesSelecionado);
+            const rankingAnterior = mesAnterior ? obterRankingModuloIpd(ipdId, mesAnterior) : [];
+
+            const mapaPosAnterior = {};
+            const mapaScoreAnterior = {};
+            rankingAnterior.forEach((item, idx) => {
+                mapaPosAnterior[item.profile] = idx + 1;
+                mapaScoreAnterior[item.profile] = item.score;
+            });
+
+            const dadosProcessados = rankingAtual.map((item, idxAtual) => {
+                const posAtual = idxAtual + 1;
+                const posAnt = mapaPosAnterior[item.profile];
+                const scoreAnt = mapaScoreAnterior[item.profile];
+
+                let varPosicao = 0;
+                if (posAnt) varPosicao = posAnt - posAtual;
+
+                let diffScore = 0;
+                if (scoreAnt !== undefined) diffScore = parseFloat((item.score - scoreAnt).toFixed(2));
+
+                return {
+                    profile: item.profile,
+                    score: item.score,
+                    posicao: posAtual,
+                    varPosicao: varPosicao,
+                    diffScore: diffScore,
+                    isNovo: !posAnt
+                };
+            });
+
+            // 1. CARDS LATERAIS DA DIREITA
+            renderizarPainelCardsRanking(ipdId, dadosProcessados);
+
+            // 2. CONTAINER DO GRÁFICO (RECONSTRÓI O CANVAS APENAS NA TROCA DE MÊS / CARREGAMENTO INICIAL)
+            const ctxCanvas = document.getElementById(`chart-ranking-canvas-${ipdId}`);
+            if (!ctxCanvas) return;
+
+            const totalPerfis = dadosProcessados.length;
+            const alturaPorBarra = 32; 
+            const alturaTotalCanvas = totalPerfis * alturaPorBarra;
+
+            const wrapperCanvas = ctxCanvas.parentElement;
+            if (wrapperCanvas) {
+                wrapperCanvas.style.height = `${alturaTotalCanvas}px`;
+                wrapperCanvas.parentElement.className = "lg:col-span-7 p-4 rounded-2xl bg-slate-50 border border-slate-200/80 h-[310px] overflow-y-auto ranking-scroll";
+            }
+
+            if (mapRankingCharts[ipdId]) {
+                mapRankingCharts[ipdId].destroy();
+            }
+
+            const labels = dadosProcessados.map(i => i.profile);
+            const scores = dadosProcessados.map(i => i.score);
+
+            const bgColors = labels.map(pName => {
+                return perfisDestacadosPorModulo[ipdId].has(pName) ? '#1FA4B6' : '#E2E8F0';
+            });
+
+            const borderColors = labels.map(pName => {
+                return perfisDestacadosPorModulo[ipdId].has(pName) ? '#178392' : '#CBD5E1';
+            });
+
+            // PLUGIN: DESENHA O VALOR DO IPD APÓS A BARRA
+            const renderDataValuesPlugin = {
+                id: 'renderDataValuesPlugin',
+                afterDatasetsDraw(chart) {
+                    const { ctx } = chart;
+                    chart.data.datasets.forEach((dataset, i) => {
+                        const meta = chart.getDatasetMeta(i);
+                        meta.data.forEach((bar, index) => {
+                            const val = dataset.data[index];
+                            if (val !== null && val !== undefined) {
+                                const xPos = bar.x + 8;
+                                const yPos = bar.y + 4;
+                                const pName = labels[index];
+                                const isDestacado = perfisDestacadosPorModulo[ipdId].has(pName);
+
+                                ctx.save();
+                                ctx.font = isDestacado ? 'bold 12px sans-serif' : 'bold 11px sans-serif';
+                                ctx.fillStyle = isDestacado ? '#1FA4B6' : '#0F172A';
+                                ctx.fillText(val.toFixed(2), xPos, yPos);
+                                ctx.restore();
+                            }
+                        });
+                    });
+                }
+            };
+
+            mapRankingCharts[ipdId] = new Chart(ctxCanvas.getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: scores,
+                        backgroundColor: bgColors,
+                        borderColor: borderColors,
+                        borderWidth: 1,
+                        borderRadius: 0,
+                        barThickness: 12,
+                        maxBarThickness: 14
+                    }]
+                },
+                plugins: [renderDataValuesPlugin],
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: false, // DESATIVA QUALQUER ANIMAÇÃO DE ENTRADA AO CLICAR
+                    layout: {
+                        padding: { top: 4, bottom: 4, right: 45 }
+                    },
+                    onClick: (e, elements) => {
+                        if (elements.length > 0) {
+                            const indexClicado = elements[0].index;
+                            const perfilClicado = labels[indexClicado];
+                            alternarDestaquePerfilRanking(ipdId, perfilClicado);
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#0F172A',
+                            titleFont: { weight: 'bold', size: 12 },
+                            bodyFont: { size: 12 },
+                            padding: 10,
+                            displayColors: false,
+                            callbacks: {
+                                label: (ctx) => ` IPD: ${ctx.parsed.x.toFixed(2)} (Clique para destacar)`
+                            }
+                        }
+                    },
+                    scales: {
+                        x: { 
+                            min: 0, 
+                            max: 100, 
+                            display: false 
+                        },
+                        y: { 
+                            grid: { display: false }, 
+                            ticks: { 
+                                font: { weight: 'bold', size: 11 },
+                                color: (context) => {
+                                    const pName = labels[context.index];
+                                    return (perfisDestacadosPorModulo[ipdId] && perfisDestacadosPorModulo[ipdId].has(pName)) ? '#1FA4B6' : '#0F172A';
+                                },
+                                autoSkip: false 
+                            } 
+                        }
+                    }
+                }
+            });
+
+            // Guarda os dados processados no objeto do gráfico para reuso rápido
+            mapRankingCharts[ipdId]._dadosProcessadosUltimo = dadosProcessados;
+        }
+
+        // RENDERIZA OS CARDS LATERAIS
+        function renderizarPainelCardsRanking(ipdId, dados) {
+            const containerCards = document.getElementById(`lista-ranking-cards-${ipdId}`);
+            if (!containerCards) return;
+
+            containerCards.parentElement.className = "lg:col-span-5 flex flex-col justify-between";
+            containerCards.className = "space-y-2 h-[310px] overflow-y-auto pr-2 ranking-scroll";
+            containerCards.innerHTML = '';
+
+            if (!dados || dados.length === 0) {
+                containerCards.innerHTML = `<p class="text-xs text-slate-400 italic text-center py-4">Sem dados no período.</p>`;
+                return;
+            }
+
+            dados.forEach(item => {
+                let badgeHtml = item.isNovo 
+                    ? `<span class="px-2 py-0.5 rounded text-[10px] font-extrabold bg-blue-50 text-blue-700 border border-blue-200">Novo</span>`
+                    : (item.varPosicao > 0 
+                        ? `<span class="px-2 py-0.5 rounded text-[10px] font-black bg-emerald-50 text-emerald-700 border border-emerald-200"><i class="fa-solid fa-arrow-up"></i> +${item.varPosicao} pos</span>`
+                        : (item.varPosicao < 0 
+                            ? `<span class="px-2 py-0.5 rounded text-[10px] font-black bg-rose-50 text-rose-700 border border-rose-200"><i class="fa-solid fa-arrow-down"></i> ${item.varPosicao} pos</span>`
+                            : `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-500 border border-slate-200">= Manteve</span>`));
+
+                let diffScoreHtml = item.diffScore > 0 
+                    ? `<span class="text-[10px] font-bold text-emerald-600 ml-1.5">(+${item.diffScore})</span>` 
+                    : (item.diffScore < 0 ? `<span class="text-[10px] font-bold text-rose-600 ml-1.5">(${item.diffScore})</span>` : '');
+
+                const isDestacado = perfisDestacadosPorModulo[ipdId].has(item.profile);
+                const cardEstilo = isDestacado 
+                    ? 'bg-quaest-tealLight border-quaest-teal/50 shadow-sm' 
+                    : 'bg-slate-50 border-slate-200/80 hover:bg-white hover:shadow-sm';
+
+                const numBadgeEstilo = isDestacado
+                    ? 'bg-quaest-teal text-white shadow-sm'
+                    : 'bg-white border text-slate-700';
+
+                containerCards.innerHTML += `
+                    <div id="card-ranking-item-${ipdId}-${encodeURIComponent(item.profile)}" onclick="alternarDestaquePerfilRanking(${ipdId}, '${item.profile}')" class="flex items-center justify-between p-2.5 rounded-xl border transition cursor-pointer ${cardEstilo}">
+                        <div class="flex items-center gap-2.5 truncate mr-2">
+                            <span class="w-5 h-5 rounded-md font-black text-[11px] flex items-center justify-center shrink-0 ${numBadgeEstilo}">
+                                ${item.posicao}º
+                            </span>
+                            <span class="text-xs font-black ${isDestacado ? 'text-quaest-tealDark' : 'text-slate-900'} truncate" title="${item.profile}">
+                                ${item.profile}
+                            </span>
+                        </div>
+                        <div class="flex items-center gap-2 shrink-0">
+                            <span class="text-xs font-black text-slate-900">${item.score}${diffScoreHtml}</span>
+                            ${badgeHtml}
+                        </div>
+                    </div>`;
+            });
+        }
+
+        // ALTERNA O DESTAQUE INSTANTANEAMENTE (SEM REINICIAR O GRÁFICO OU O SCROLL)
+        function alternarDestaquePerfilRanking(ipdId, perfilNome) {
+            if (!perfisDestacadosPorModulo[ipdId]) {
+                perfisDestacadosPorModulo[ipdId] = new Set();
+            }
+
+            const conjunto = perfisDestacadosPorModulo[ipdId];
+
+            if (conjunto.has(perfilNome)) {
+                conjunto.delete(perfilNome);
+            } else {
+                conjunto.add(perfilNome);
+            }
+
+            const chart = mapRankingCharts[ipdId];
+            if (!chart) return;
+
+            const labels = chart.data.labels;
+
+            // 1. Atualiza as cores dos datasets do Chart.js instantaneamente
+            chart.data.datasets[0].backgroundColor = labels.map(pName => {
+                return conjunto.has(pName) ? '#1FA4B6' : '#E2E8F0';
+            });
+
+            chart.data.datasets[0].borderColor = labels.map(pName => {
+                return conjunto.has(pName) ? '#178392' : '#CBD5E1';
+            });
+
+            // 2. Executa a atualização sem animação ou efeito de recarregamento
+            chart.update('none');
+
+            // 3. Atualiza os cards laterais sem perder o scroll atual
+            if (chart._dadosProcessadosUltimo) {
+                renderizarPainelCardsRanking(ipdId, chart._dadosProcessadosUltimo);
+            }
+        }
         // ANÁLISE CAUSAL BSTS
         async function executarCalculoCausal(ipdId) {
             const perfil = document.getElementById(`causal-perfil-${ipdId}`).value;
@@ -819,33 +1215,31 @@ if (data.top_post) {
             }
         }
 
-        // CARREGAMENTO DE RESUMOS E INICIALIZAÇÃO DOS SELECTS
+        // CARREGAMENTO DE RESUMOS
         function inicializarSeletorMesesResumo(meses) {
-    const select = document.getElementById('select-mes-resumo-ia');
-    if (!select || meses.length === 0) return;
-    
-    select.innerHTML = '';
-    const mesesOrdenados = [...meses].sort();
+            const select = document.getElementById('select-mes-resumo-ia');
+            if (!select || meses.length === 0) return;
+            select.innerHTML = '';
+            const mesesOrdenados = [...meses].sort();
 
-    mesesOrdenados.forEach(m => {
-        const opt = document.createElement('option');
-        opt.value = m;
-        opt.innerText = formatarDataAnoCurto(m, true);
-        select.appendChild(opt);
-    });
+            mesesOrdenados.forEach(m => {
+                const opt = document.createElement('option');
+                opt.value = m;
+                opt.innerText = formatarDataAnoCurto(m, true);
+                select.appendChild(opt);
+            });
 
-    // Pega o último mês com dados
-    const ultimoMes = mesesOrdenados[mesesOrdenados.length - 1];
-    select.value = ultimoMes;
+            const ultimoMes = mesesOrdenados[mesesOrdenados.length - 1];
+            select.value = ultimoMes;
 
-    // ATUALIZA O CARD DO HERO AUTOMATICAMENTE COM O ÚLTIMO MÊS DA BASE
-    const elHeroData = document.getElementById('mes-referencia-hero');
-    if (elHeroData) {
-        elHeroData.innerText = formatarMesExtenso(ultimoMes);
-    }
+            const elHeroData = document.getElementById('mes-referencia-hero');
+            if (elHeroData) {
+                elHeroData.innerText = formatarMesExtenso(ultimoMes);
+            }
 
-    carregarResumoExecutivoStream(ultimoMes);
-}
+            carregarResumoExecutivoStream(ultimoMes);
+        }
+
         async function carregarResumoExecutivoStream(mesParam = null) {
             const container = document.getElementById('container-bullets-ia');
             const statusBox = document.getElementById('status-ia-streaming');
@@ -981,7 +1375,48 @@ if (data.top_post) {
                         </div>
                     </div>
 
-                    <!-- 1. GRÁFICO HISTÓRICO -->
+                    <!-- 1º GRÁFICO DO MÓDULO: RANKING MENSAL DO IPD DASTE MÓDULO -->
+                    <div class="space-y-6">
+                        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-9 h-9 rounded-xl bg-quaest-tealLight border border-quaest-tealBorder flex items-center justify-center text-quaest-teal text-base font-black shrink-0">
+                                    <i class="fa-solid fa-trophy"></i>
+                                </div>
+                                <div>
+                                    <span class="text-[10px] font-black text-quaest-teal uppercase tracking-widest block">Classificação do Módulo</span>
+                                    <h3 class="text-xl font-black text-slate-900">Ranking do IPD por Perfil / Marca (${nomeIpd})</h3>
+                                </div>
+                            </div>
+
+                            <div class="flex items-center gap-2">
+                                <label for="select-mes-ranking-${ipdId}" class="text-xs font-bold text-slate-500">Mês do Ranking:</label>
+                                <select id="select-mes-ranking-${ipdId}" onchange="atualizarRankingIpdModulo(${ipdId}, this.value)" class="bg-slate-100 text-slate-800 text-xs font-bold px-3 py-1.5 rounded-xl border border-slate-200 outline-none focus:border-quaest-teal transition cursor-pointer">
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+                            <div class="lg:col-span-7 p-4 rounded-2xl bg-slate-50 border border-slate-200/80">
+                                <div class="h-72 w-full relative">
+                                    <canvas id="chart-ranking-canvas-${ipdId}"></canvas>
+                                </div>
+                            </div>
+
+                            <div class="lg:col-span-5 space-y-3">
+                                <div class="flex items-center justify-between pb-1 border-b border-slate-100 text-xs font-black text-slate-400 uppercase tracking-wider">
+                                    <span>Perfil / Marca</span>
+                                    <span>Pontuação & Posição</span>
+                                </div>
+                                <div id="lista-ranking-cards-${ipdId}" class="space-y-2 max-h-64 overflow-y-auto pr-1">
+                                    <p class="text-xs text-slate-400 italic text-center py-4">Carregando posições do ranking...</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr class="border-slate-100" />
+
+                    <!-- 2º GRÁFICO DO MÓDULO: EVOLUÇÃO HISTÓRICA DO IPD -->
                     <div class="space-y-6">
                         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                             <div>
@@ -1015,7 +1450,7 @@ if (data.top_post) {
                         </div>
                     </div>
 
-                    <!-- 2. MÓDULO DE ANÁLISE DE IMPACTO CAUSAL -->
+                    <!-- 3. MÓDULO DE ANÁLISE DE IMPACTO CAUSAL (BSTS) -->
                     <div class="space-y-6 pt-4 border-t border-slate-100">
                         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                             <div class="flex items-center gap-3">
@@ -1104,7 +1539,7 @@ if (data.top_post) {
 
                     <hr class="border-slate-100" />
 
-                    <!-- 3. RADAR MENSAL E CARROSSEL -->
+                    <!-- 4. RADAR MENSAL E CARROSSEL -->
                     <div class="space-y-6">
                         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                             <div>
@@ -1167,71 +1602,123 @@ if (data.top_post) {
 
                     <hr class="border-slate-100" />
 
-                    <!-- 4. MÓDULO DE POSTAGENS E EMBED EM DESTAQUE -->
-                    <div class="space-y-6">
-                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
-                            <div>
-                                <span class="text-xs font-black text-quaest-teal uppercase tracking-widest">Métricas de Conteúdo</span>
-                                <h3 class="text-xl font-black text-slate-900 mt-1">Análise de Conteúdo & Post em Destaque</h3>
+                   <!-- 5. MÓDULO DE POSTAGENS: TOP 3 POSTS + EMBED COMPACTO + INSIGHTS LATERAIS -->
+    <div class="space-y-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+            <div>
+                <span class="text-xs font-black text-quaest-teal uppercase tracking-widest">Métricas de Conteúdo</span>
+                <h3 class="text-xl font-black text-slate-900 mt-1">Análise de Conteúdo & Top 3 Publicações</h3>
+            </div>
+            
+            <div class="flex flex-wrap items-center gap-2">
+                <select id="select-profile-postages-${ipdId}" class="bg-slate-100 text-slate-800 text-xs font-bold px-3 py-1.5 rounded-xl border border-slate-200 outline-none focus:border-quaest-teal cursor-pointer">
+                    ${optionsPerfilHtml}
+                </select>
+                <select id="select-mes-postages-${ipdId}" class="bg-slate-100 text-slate-800 text-xs font-bold px-3 py-1.5 rounded-xl border border-slate-200 outline-none focus:border-quaest-teal cursor-pointer">
+                </select>
+                <button onclick="carregarMetricasConteudo(${ipdId})" class="bg-quaest-teal hover:bg-quaest-tealDark text-white text-xs font-bold px-3.5 py-1.5 rounded-xl shadow-sm transition">
+                    <i class="fa-solid fa-magnifying-glass mr-1"></i> Filtrar
+                </button>
+            </div>
+        </div>
+
+        <!-- CARDS DE VISÃO GERAL MENSAL DO PERFIL -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div class="p-4 rounded-2xl bg-white border border-slate-200 border-l-4 border-l-quaest-teal shadow-sm">
+                <span class="text-[10px] text-slate-400 font-extrabold uppercase block">Média de Curtidas / Post</span>
+                <span id="val-media-likes-${ipdId}" class="text-xl font-black text-slate-900 mt-0.5 block">0</span>
+            </div>
+            <div class="p-4 rounded-2xl bg-white border border-slate-200 border-l-4 border-l-emerald-500 shadow-sm">
+                <span class="text-[10px] text-slate-400 font-extrabold uppercase block">Média de Comentários / Post</span>
+                <span id="val-media-comentarios-${ipdId}" class="text-xl font-black text-slate-900 mt-0.5 block">0</span>
+            </div>
+            <div class="p-4 rounded-2xl bg-white border border-slate-200 border-l-4 border-l-amber-500 shadow-sm">
+                <span class="text-[10px] text-slate-400 font-extrabold uppercase block">Total de Publicações no Mês</span>
+                <span id="val-total-posts-${ipdId}" class="text-xl font-black text-slate-900 mt-0.5 block">0</span>
+            </div>
+        </div>
+
+        <!-- PAINEL PRINCIPAL: SELETOR TOP 3 + POST (ESQUERDA) + INSIGHTS DEDICADOS (DIREITA) -->
+        <div class="p-6 rounded-3xl bg-slate-50 border border-slate-200 space-y-4">
+            
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200/80 pb-3">
+                <div class="flex items-center gap-2 font-black text-slate-900 text-sm">
+                    <i class="fa-solid fa-fire text-rose-500"></i> Top Publicações do Mês
+                </div>
+                
+                <!-- SELETOR EM ABAS DO TOP 1, 2 E 3 -->
+                <div id="container-abas-top-posts-${ipdId}" class="inline-flex p-1 bg-slate-200/60 rounded-xl border border-slate-200 text-xs font-bold gap-1">
+                    <button id="btn-top-1-${ipdId}" onclick="selecionarTopPostAba(${ipdId}, 0)" class="px-3 py-1 rounded-lg bg-white text-quaest-teal shadow-sm transition">1º Destaque</button>
+                    <button id="btn-top-2-${ipdId}" onclick="selecionarTopPostAba(${ipdId}, 1)" class="px-3 py-1 rounded-lg text-slate-600 hover:text-slate-900 transition">2º Destaque</button>
+                    <button id="btn-top-3-${ipdId}" onclick="selecionarTopPostAba(${ipdId}, 2)" class="px-3 py-1 rounded-lg text-slate-600 hover:text-slate-900 transition">3º Destaque</button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                
+                <!-- COLUNA 1: EMBED E TEXTO DO POST SELECIONADO (7 COLUNAS) -->
+                <div class="lg:col-span-7 bg-white p-4 rounded-2xl border border-slate-200 space-y-3">
+                    <div class="flex items-center justify-between text-xs text-slate-500 border-b border-slate-100 pb-2">
+                        <span><strong>Data:</strong> <span id="top-post-data-${ipdId}">-</span></span>
+                        <a id="top-post-link-${ipdId}" href="#" target="_blank" class="text-quaest-teal font-bold hover:underline">
+                            Link Original <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+                        </a>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-12 gap-4 items-center">
+                        <div class="sm:col-span-6 space-y-2">
+                            <div class="flex items-center gap-3 text-xs py-1 border-b border-slate-100">
+                                <span class="text-slate-800 font-extrabold"><i class="fa-solid fa-heart text-rose-500 mr-1"></i> <span id="top-post-likes-${ipdId}">0</span></span>
+                                <span class="text-slate-800 font-extrabold"><i class="fa-solid fa-comment text-emerald-500 mr-1"></i> <span id="top-post-comentarios-${ipdId}">0</span></span>
                             </div>
-                            
-                            <div class="flex flex-wrap items-center gap-2">
-                                <select id="select-profile-postages-${ipdId}" class="bg-slate-100 text-slate-800 text-xs font-bold px-3 py-1.5 rounded-xl border border-slate-200 outline-none focus:border-quaest-teal">
-                                    ${optionsPerfilHtml}
-                                </select>
-                                <select id="select-mes-postages-${ipdId}" class="bg-slate-100 text-slate-800 text-xs font-bold px-3 py-1.5 rounded-xl border border-slate-200 outline-none focus:border-quaest-teal">
-                                </select>
-                                <button onclick="carregarMetricasConteudo(${ipdId})" class="bg-quaest-teal hover:bg-quaest-tealDark text-white text-xs font-bold px-3 py-1.5 rounded-xl shadow-sm transition">
-                                    <i class="fa-solid fa-magnifying-glass mr-1"></i> Filtrar
-                                </button>
+
+                            <div id="top-post-texto-${ipdId}" class="text-xs text-slate-600 leading-relaxed max-h-32 overflow-y-auto whitespace-pre-line bg-slate-50 p-2.5 rounded-xl border border-slate-100 ranking-scroll">
+                                Selecione um perfil e mês acima para carregar os conteúdos.
                             </div>
                         </div>
 
-                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                            <div class="p-5 rounded-2xl bg-white border border-slate-200 border-l-4 border-l-quaest-teal shadow-sm">
-                                <span class="text-[10px] text-slate-400 font-extrabold uppercase block">Média de Curtidas</span>
-                                <span id="val-media-likes-${ipdId}" class="text-2xl font-black text-slate-900 mt-1 block">0</span>
-                            </div>
-                            <div class="p-5 rounded-2xl bg-white border border-slate-200 border-l-4 border-l-emerald-500 shadow-sm">
-                                <span class="text-[10px] text-slate-400 font-extrabold uppercase block">Média de Comentários</span>
-                                <span id="val-media-comentarios-${ipdId}" class="text-2xl font-black text-slate-900 mt-1 block">0</span>
-                            </div>
-                            <div class="p-5 rounded-2xl bg-white border border-slate-200 border-l-4 border-l-amber-500 shadow-sm">
-                                <span class="text-[10px] text-slate-400 font-extrabold uppercase block">Total de Publicações</span>
-                                <span id="val-total-posts-${ipdId}" class="text-2xl font-black text-slate-900 mt-1 block">0</span>
-                            </div>
+                        <div class="sm:col-span-6 flex justify-center items-center h-48 bg-slate-50 p-2 rounded-xl border border-slate-200 overflow-hidden" id="embed-box-${ipdId}">
+                            <p class="text-xs text-slate-400 italic text-center">O player do post será exibido aqui...</p>
                         </div>
-
-                        <div class="p-6 rounded-3xl bg-slate-50 border border-slate-200 space-y-6">
-                            <div class="flex items-center gap-2 font-black text-slate-900 text-sm">
-                                <i class="fa-solid fa-fire text-rose-500"></i> Publicação em Destaque no Período (Mais Curtida)
-                            </div>
-
-                            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-                                <div class="lg:col-span-6 bg-white p-5 rounded-2xl border border-slate-200 space-y-3">
-                                    <div class="flex items-center justify-between text-xs text-slate-500 border-b border-slate-100 pb-2">
-                                        <span><strong>Data:</strong> <span id="top-post-data-${ipdId}">-</span></span>
-                                        <a id="top-post-link-${ipdId}" href="#" target="_blank" class="text-quaest-teal font-bold hover:underline">Link Original <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i></a>
-                                    </div>
-
-                                    <div class="flex items-center gap-4 text-xs py-1">
-                                        <span class="text-slate-800 font-bold"><i class="fa-solid fa-heart text-rose-500 mr-1"></i> <span id="top-post-likes-${ipdId}">0</span> curtidas</span>
-                                        <span class="text-slate-800 font-bold"><i class="fa-solid fa-comment text-emerald-500 mr-1"></i> <span id="top-post-comentarios-${ipdId}">0</span> comentários</span>
-                                    </div>
-
-                                    <div id="top-post-texto-${ipdId}" class="text-xs text-slate-600 leading-relaxed max-h-48 overflow-y-auto whitespace-pre-line bg-slate-50 p-3 rounded-xl border border-slate-100">
-                                        Selecione um perfil e mês acima para carregar os conteúdos.
-                                    </div>
-                                </div>
-
-                                <div class="lg:col-span-6 flex justify-center items-center min-h-[350px] bg-white p-4 rounded-2xl border border-slate-200 overflow-hidden" id="embed-box-${ipdId}">
-                                    <p class="text-xs text-slate-400 italic">O player do post será incorporado aqui...</p>
-                                </div>
-                            </div>
-                        </div>
-
                     </div>
                 </div>
+
+                <!-- COLUNA 2: INSIGHTS REATIVOS AO POST SELECIONADO (5 COLUNAS) -->
+                <div class="lg:col-span-5 space-y-3">
+                    <div class="text-xs font-black text-slate-400 uppercase tracking-wider flex items-center justify-between">
+                        <span><i class="fa-solid fa-lightbulb text-amber-500 mr-1"></i> Insights da Publicação</span>
+                        <span id="badge-posicao-post-${ipdId}" class="text-[10px] bg-quaest-tealLight text-quaest-teal px-2 py-0.5 rounded-md font-extrabold border border-quaest-teal/20">1º Mais Curtido</span>
+                    </div>
+
+                    <!-- CARD DE IMPACTO RELATIVO -->
+                    <div class="p-3.5 rounded-2xl bg-white border border-slate-200 space-y-1 shadow-sm">
+                        <span class="text-[10px] text-slate-400 font-bold uppercase block">Desempenho da Postagem vs. Média do Perfil</span>
+                        <div id="insight-performance-relativa-${ipdId}" class="text-sm font-black text-slate-800 flex items-center gap-1.5">
+                            <span class="text-slate-400 text-xs font-normal">Aguardando dados...</span>
+                        </div>
+                    </div>
+
+                    <!-- CARD DE ENGAJAMENTO E PROPORÇÃO -->
+                    <div class="p-3.5 rounded-2xl bg-white border border-slate-200 space-y-1 shadow-sm">
+                        <span class="text-[10px] text-slate-400 font-bold uppercase block">Razão de Comentários / Curtidas</span>
+                        <div id="insight-razao-engajamento-${ipdId}" class="text-sm font-black text-slate-800">
+                            <span class="text-slate-400 text-xs font-normal">Aguardando dados...</span>
+                        </div>
+                    </div>
+
+                    <!-- CARD DE CONSISTÊNCIA -->
+                    <div class="p-3.5 rounded-2xl bg-white border border-slate-200 space-y-1 shadow-sm">
+                        <span class="text-[10px] text-slate-400 font-bold uppercase block">Consistência de Publicação no Perfil</span>
+                        <div id="insight-ritmo-postagens-${ipdId}" class="text-xs font-extrabold text-slate-700">
+                            <span class="text-slate-400 text-xs font-normal">Aguardando dados...</span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+    </div>       
                 `;
 
                 container.appendChild(ipdSection);
@@ -1265,7 +1752,6 @@ if (data.top_post) {
             
             const mesesDisponiveis = ref.profilesDataMes.datas;
             if (mesesDisponiveis.length > 0) {
-                // ORDENA OS MESES PARA PEGAR O ÚLTIMO COM DADOS
                 const mesesOrdenados = [...mesesDisponiveis].sort();
 
                 mesesOrdenados.forEach(m => {
@@ -1284,9 +1770,7 @@ if (data.top_post) {
                     }
                 });
 
-                // SELECIONA O ÚLTIMO MÊS COM DADOS AUTOMATICAMENTE NOS SELECTS
                 const ultimoMesComDados = mesesOrdenados[mesesOrdenados.length - 1];
-                
                 if (selectMesRadar) selectMesRadar.value = ultimoMesComDados;
                 if (selectMesPostages) selectMesPostages.value = ultimoMesComDados;
 
@@ -1332,11 +1816,13 @@ if (data.top_post) {
                 }
             });
 
+            // INICIALIZA O RANKING DE BARRAS COMO PRIMEIRO GRÁFICO DO MÓDULO
+            inicializarRankingIpdModulo(ipdObj, ipdId);
+
             atualizarGraficoHistorico(ipdId);
             montarBotoesRadar(ipdId);
             atualizarRadarPorMes(ipdId);
 
-            // AUTO-CARREGA CONTEÚDOS NO PRIMEIRO PERFIL USANDO O ÚLTIMO MÊS
             const selectProfile = document.getElementById(`select-profile-postages-${ipdId}`);
             if (selectProfile && selectProfile.options.length > 1) {
                 selectProfile.selectedIndex = 1;
