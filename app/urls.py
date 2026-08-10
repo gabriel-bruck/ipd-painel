@@ -30,4 +30,5 @@ urlpatterns = [
     ),
 
     path('api/conteudo/medias/', score_views.MediaMetricasConteudoView.as_view(), name='media-metricas-conteudo'),
+
 ]

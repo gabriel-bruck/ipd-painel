@@ -9,6 +9,11 @@ from client.models import ProjetoCliente, ProjetoIPD
 from score.models import IPD, Conteudo
 from datetime import datetime
 import calendar
+import os
+from django.conf import settings
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from rest_framework import status
 
 
 class ProjetoProfilesAPIView(APIView):
@@ -274,3 +279,4 @@ class MediaMetricasConteudoView(APIView):
             "media_comentarios": round(metricas['media_comentarios'] or 0, 2),
             "top_posts": top_posts_data
         }, status=status.HTTP_200_OK)
+

@@ -156,42 +156,34 @@
 
             </div>
         </section>
-<!-- SEÇÃO PRIMEIRO PLANO: O QUE É O IPD (COM LOGO E ILUSTRAÇÃO 3D DAS PLATAFORMAS) -->
+
+        <!-- SEÇÃO PRIMEIRO PLANO: O QUE É O IPD -->
         <section id="explicacao-ipd" class="max-w-6xl mx-auto px-6 space-y-8">
             <div class="p-8 md:p-12 rounded-3xl bg-quaest-tealLight/60 border border-quaest-tealBorder space-y-10 shadow-sm relative overflow-hidden">
                 
-                <!-- LAYOUT DUAS COLUNAS: TEXTO EXPLICATIVO + ILUSTRAÇÃO DAS PLATAFORMAS -->
                 <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
                     
-                    <!-- COLUNA ESQUERDA: LOGO IPD + EXPLICAÇÃO CONCEITUAL -->
                     <div class="lg:col-span-7 space-y-6">
-                        
-                        <!-- LOGO VETORIAL IPD (SEM FUNDO BRANCO / TRANSPARENTE) -->
-<!-- LOGO VETORIAL IPD AJUSTADA (SEM SOBREPOSIÇÃO) -->
-<div class="flex items-center gap-3">
-    <svg class="h-11 w-auto text-slate-900" viewBox="0 0 210 80" fill="currentColor">
-        <!-- Ícone da molécula/rede -->
-        <circle cx="15" cy="18" r="4.5" />
-        <circle cx="15" cy="62" r="5.5" />
-        <path d="M 15 62 L 26 46" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" />
-        <circle cx="26" cy="46" r="4" />
-        <path d="M 26 46 L 33 32" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" />
-        <circle cx="33" cy="32" r="4" />
-        <path d="M 33 32 L 40 20" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" />
-        <circle cx="40" cy="20" r="4" />
+                        <div class="flex items-center gap-3">
+                            <svg class="h-11 w-auto text-slate-900" viewBox="0 0 210 80" fill="currentColor">
+                                <circle cx="15" cy="18" r="4.5" />
+                                <circle cx="15" cy="62" r="5.5" />
+                                <path d="M 15 62 L 26 46" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" />
+                                <circle cx="26" cy="46" r="4" />
+                                <path d="M 26 46 L 33 32" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" />
+                                <circle cx="33" cy="32" r="4" />
+                                <path d="M 33 32 L 40 20" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" />
+                                <circle cx="40" cy="20" r="4" />
 
-        <!-- Sigla 'ipd' em destaque -->
-        <text x="48" y="55" font-family="sans-serif" font-weight="900" font-size="42" letter-spacing="-2">ipd</text>
+                                <text x="48" y="55" font-family="sans-serif" font-weight="900" font-size="42" letter-spacing="-2">ipd</text>
 
-        <!-- Linha divisória vertical -->
-        <line x1="112" y1="18" x2="112" y2="60" stroke="#94A3B8" stroke-width="1.5"/>
+                                <line x1="112" y1="18" x2="112" y2="60" stroke="#94A3B8" stroke-width="1.5"/>
 
-        <!-- Textos 'Índice de Popularidade Digital' (afastados para leitura limpa) -->
-        <text x="122" y="30" font-family="sans-serif" font-weight="500" font-size="11" fill="#475569">Índice de</text>
-        <text x="122" y="44" font-family="sans-serif" font-weight="800" font-size="12" fill="#0F172A">Popularidade</text>
-        <text x="122" y="58" font-family="sans-serif" font-weight="800" font-size="12" fill="#0F172A">Digital</text>
-    </svg>
-</div>
+                                <text x="122" y="30" font-family="sans-serif" font-weight="500" font-size="11" fill="#475569">Índice de</text>
+                                <text x="122" y="44" font-family="sans-serif" font-weight="800" font-size="12" fill="#0F172A">Popularidade</text>
+                                <text x="122" y="58" font-family="sans-serif" font-weight="800" font-size="12" fill="#0F172A">Digital</text>
+                            </svg>
+                        </div>
 
                         <div class="space-y-3">
                             <span class="text-xs font-black text-quaest-teal uppercase tracking-widest">Metodologia Oficial</span>
@@ -201,7 +193,6 @@
                             </p>
                         </div>
 
-                        <!-- CARDS DE DESTAQUE FLUIDOS -->
                         <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
                             <div class="p-3 bg-white rounded-xl border border-quaest-tealBorder">
                                 <span class="block text-xl font-black text-quaest-teal">175</span>
@@ -224,10 +215,8 @@
 
                     </div>
 
-                    <!-- COLUNA DIREITA: IMAGEM DAS PLATAFORMAS (SMARTPHONE + REDES SOCIAIS) -->
                     <div class="lg:col-span-5 flex items-center justify-center p-2">
                         <div class="relative max-w-sm w-full">
-                            <!-- TAG DE IMAGEM COM COMPATIBILIDADE DJANGO STATIC E FALLBACK DIRECTO -->
                             <img src="{% static 'images/plataformas-ipd.png' %}" 
                                  onerror="this.onerror=null; this.src='/static/images/plataformas-ipd.png';"
                                  alt="Plataformas Monitoradas pelo IPD: Facebook, Instagram, X, TikTok, Wikipedia, Google, YouTube" 
@@ -237,7 +226,6 @@
 
                 </div>
 
-                <!-- CARDS CONCEITUAIS DAS 6 DIMENSÕES DO IPD -->
                 <div class="space-y-4 pt-6 border-t border-quaest-tealBorder">
                     <h3 class="text-xs font-extrabold uppercase text-slate-500 tracking-wider">As 6 Dimensões Analíticas do IPD:</h3>
 
@@ -362,7 +350,7 @@
         <p>© 2026 Quaest Pesquisa e Consultoria. Todos os direitos reservados.</p>
     </footer>
 
-    <!-- LOGICA JAVASCRIPT INTEGRADA -->
+    <!-- LÓGICA JAVASCRIPT INTEGRADA -->
     <script>
         const PROJETO_ID = "{{ projeto.id|default:'1' }}"; 
 
@@ -426,7 +414,7 @@
             return dataStr;
         }
 
-        // EMBED MULTIPLATAFORMA COMPLETO (INSTAGRAM, FACEBOOK, TIKTOK, TWITTER, YOUTUBE)
+        // EMBED MULTIPLATAFORMA COMPLETO
         function renderizarEmbedConteudo(ipdId, postUrl) {
             const container = document.getElementById(`embed-box-${ipdId}`);
             if (!container) return;
@@ -443,7 +431,6 @@
             container.innerHTML = '';
             const urlLimpa = postUrl.trim();
 
-            // 1. EMBED FACEBOOK (REELS E VÍDEOS)
             if (urlLimpa.includes('facebook.com') || urlLimpa.includes('fb.watch')) {
                 const urlEncoded = encodeURIComponent(urlLimpa);
                 container.innerHTML = `
@@ -459,9 +446,7 @@
                             allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share">
                         </iframe>
                     </div>`;
-            }
-            // 2. EMBED INSTAGRAM (OFICIAL META)
-            else if (urlLimpa.includes('instagram.com')) {
+            } else if (urlLimpa.includes('instagram.com')) {
                 container.innerHTML = `
                     <blockquote class="instagram-media" data-instgrm-captioned data-instgrm-permalink="${urlLimpa}" data-instgrm-version="14" style="background:#FFF; border:0; border-radius:12px; box-shadow:0 0 1px 0 rgba(0,0,0,0.5),0 1px 10px 0 rgba(0,0,0,0.15); margin: 1px; max-width:540px; min-width:280px; padding:0; width:99.375%;">
                         <div style="padding:16px;"> 
@@ -500,9 +485,7 @@
                     script.async = true;
                     document.body.appendChild(script);
                 }
-            } 
-            // 3. EMBED TIKTOK
-            else if (urlLimpa.includes('tiktok.com')) {
+            } else if (urlLimpa.includes('tiktok.com')) {
                 let videoId = urlLimpa.includes('/video/') ? urlLimpa.split('/video/')[1]?.split('?')[0] || '' : '';
                 container.innerHTML = `
                     <blockquote class="tiktok-embed" cite="${urlLimpa}" data-video-id="${videoId}" style="max-width: 325px; min-width: 280px; margin: 0 auto;">
@@ -517,9 +500,7 @@
                 script.src = 'https://www.tiktok.com/embed.js';
                 script.async = true;
                 document.body.appendChild(script);
-            } 
-            // 4. EMBED TWITTER / X
-            else if (urlLimpa.includes('twitter.com') || urlLimpa.includes('x.com')) {
+            } else if (urlLimpa.includes('twitter.com') || urlLimpa.includes('x.com')) {
                 container.innerHTML = `<blockquote class="twitter-tweet" data-dnt="true" align="center"><a href="${urlLimpa}"></a></blockquote>`;
                 if (window.twttr && window.twttr.widgets) window.twttr.widgets.load(container);
                 else {
@@ -527,9 +508,7 @@
                     script.src = "https://platform.twitter.com/widgets.js";
                     document.body.appendChild(script);
                 }
-            } 
-            // 5. EMBED YOUTUBE
-            else if (urlLimpa.includes('youtube.com') || urlLimpa.includes('youtu.be')) {
+            } else if (urlLimpa.includes('youtube.com') || urlLimpa.includes('youtu.be')) {
                 let videoId = '';
                 if (urlLimpa.includes('/shorts/')) videoId = urlLimpa.split('/shorts/')[1]?.split('?')[0];
                 else if (urlLimpa.includes('youtu.be/')) videoId = urlLimpa.split('youtu.be/')[1]?.split('?')[0];
@@ -543,17 +522,15 @@
                 } else {
                     container.innerHTML = `<a href="${urlLimpa}" target="_blank" class="px-4 py-2 rounded-xl bg-red-50 text-red-600 font-bold text-xs border border-red-200"><i class="fa-brands fa-youtube mr-1"></i> Abrir no YouTube</a>`;
                 }
-            } 
-            // DEFAULT
-            else {
+            } else {
                 container.innerHTML = `
                     <a href="${urlLimpa}" target="_blank" class="px-4 py-2 rounded-xl bg-quaest-tealLight text-quaest-teal font-bold text-xs border border-quaest-teal/30 hover:bg-quaest-teal/10 transition">
                         Abrir Publicação Externa <i class="fa-solid fa-arrow-up-right-from-square ml-1"></i>
                     </a>`;
             }
         }
-        // CARREGA MÉDRICAS DE CONTEÚDO
-        // Cache global dos Top Posts carregados por módulo
+
+        // CARREGA MÉTRICAS DE CONTEÚDO
         let cacheTopPostsPorModulo = {};
 
         async function carregarMetricasConteudo(ipdId) {
@@ -598,7 +575,6 @@
                 document.getElementById(`val-media-comentarios-${ipdId}`).innerText = mediaComentarios.toLocaleString('pt-BR');
                 document.getElementById(`val-total-posts-${ipdId}`).innerText = totalPosts;
 
-                // Suporta a nova lista "top_posts" ou o antigo "top_post"
                 let listaTopPosts = data.top_posts || (data.top_post ? [data.top_post] : []);
 
                 cacheTopPostsPorModulo[ipdId] = {
@@ -608,7 +584,6 @@
                     totalPosts: totalPosts
                 };
 
-                // Exibe por padrão o 1º mais curtido (índice 0)
                 selecionarTopPostAba(ipdId, 0);
 
             } catch (err) {
@@ -619,14 +594,12 @@
             }
         }
 
-        // ALTERNA A VISUALIZAÇÃO ENTRE O 1º, 2º E 3º COLOCADO
         function selecionarTopPostAba(ipdId, indexAba) {
             const cache = cacheTopPostsPorModulo[ipdId];
             if (!cache || !cache.listaPosts) return;
 
             const lista = cache.listaPosts;
 
-            // Atualiza o estilo dos botões das abas
             [0, 1, 2].forEach(i => {
                 const btn = document.getElementById(`btn-top-${i + 1}-${ipdId}`);
                 if (btn) {
@@ -660,11 +633,9 @@
 
                 renderizarEmbedConteudo(ipdId, postObj.url);
 
-                // RECALCULA OS INSIGHTS DEDICADOS AO POST SELECIONADO
                 const mediaCurtidas = cache.mediaCurtidas;
                 const totalPosts = cache.totalPosts;
 
-                // 1. Desempenho do Post Selecionado vs. Média do Mês
                 const elInsightPerf = document.getElementById(`insight-performance-relativa-${ipdId}`);
                 if (elInsightPerf && mediaCurtidas > 0) {
                     const pctAumento = Math.round(((likesPost - mediaCurtidas) / mediaCurtidas) * 100);
@@ -677,14 +648,12 @@
                     }
                 }
 
-                // 2. Razão de Engajamento
                 const elInsightRazao = document.getElementById(`insight-razao-engajamento-${ipdId}`);
                 if (elInsightRazao && likesPost > 0) {
                     const taxaComent = ((comentariosPost / likesPost) * 100).toFixed(1);
                     elInsightRazao.innerHTML = `<span class="text-quaest-teal font-extrabold">${taxaComent}</span> <span class="text-xs text-slate-500 font-normal">comentários para cada 100 curtidas</span>`;
                 }
 
-                // 3. Ritmo de Postagem
                 const elInsightRitmo = document.getElementById(`insight-ritmo-postagens-${ipdId}`);
                 if (elInsightRitmo) {
                     const mediaPostsSemana = (totalPosts / 4).toFixed(1);
@@ -713,8 +682,6 @@
             }
         }
 
-       
-
         function resetarPainelInsights(ipdId) {
             const el1 = document.getElementById(`insight-performance-relativa-${ipdId}`);
             const el2 = document.getElementById(`insight-razao-engajamento-${ipdId}`);
@@ -724,9 +691,8 @@
             if (el2) el2.innerHTML = `<span class="text-slate-400 text-xs font-normal">Sem dados no período</span>`;
             if (el3) el3.innerHTML = `<span class="text-slate-400 text-xs font-normal">Sem dados no período</span>`;
         }
-        // =====================================================================
-        // LÓGICA DO RANKING MENSAL DO IPD POR MÓDULO (ISOLADO)
-        // =====================================================================
+
+        // RANKING MENSAL DO IPD POR MÓDULO
         function inicializarRankingIpdModulo(ipdObj, ipdId) {
             const selectMes = document.getElementById(`select-mes-ranking-${ipdId}`);
             if (!selectMes) return;
@@ -771,7 +737,7 @@
             lista.sort((a, b) => b.score - a.score);
             return lista;
         }
-// Dicionário global para controlar os destaques de marcas ativas
+
         let perfisDestacadosPorModulo = {};
 
         function atualizarRankingIpdModulo(ipdId, mesSelecionado) {
@@ -817,10 +783,8 @@
                 };
             });
 
-            // 1. CARDS LATERAIS DA DIREITA
             renderizarPainelCardsRanking(ipdId, dadosProcessados);
 
-            // 2. CONTAINER DO GRÁFICO (RECONSTRÓI O CANVAS APENAS NA TROCA DE MÊS / CARREGAMENTO INICIAL)
             const ctxCanvas = document.getElementById(`chart-ranking-canvas-${ipdId}`);
             if (!ctxCanvas) return;
 
@@ -849,7 +813,6 @@
                 return perfisDestacadosPorModulo[ipdId].has(pName) ? '#178392' : '#CBD5E1';
             });
 
-            // PLUGIN: DESENHA O VALOR DO IPD APÓS A BARRA
             const renderDataValuesPlugin = {
                 id: 'renderDataValuesPlugin',
                 afterDatasetsDraw(chart) {
@@ -894,7 +857,7 @@
                     indexAxis: 'y',
                     responsive: true,
                     maintainAspectRatio: false,
-                    animation: false, // DESATIVA QUALQUER ANIMAÇÃO DE ENTRADA AO CLICAR
+                    animation: false,
                     layout: {
                         padding: { top: 4, bottom: 4, right: 45 }
                     },
@@ -939,11 +902,9 @@
                 }
             });
 
-            // Guarda os dados processados no objeto do gráfico para reuso rápido
             mapRankingCharts[ipdId]._dadosProcessadosUltimo = dadosProcessados;
         }
 
-        // RENDERIZA OS CARDS LATERAIS
         function renderizarPainelCardsRanking(ipdId, dados) {
             const containerCards = document.getElementById(`lista-ranking-cards-${ipdId}`);
             if (!containerCards) return;
@@ -997,7 +958,6 @@
             });
         }
 
-        // ALTERNA O DESTAQUE INSTANTANEAMENTE (SEM REINICIAR O GRÁFICO OU O SCROLL)
         function alternarDestaquePerfilRanking(ipdId, perfilNome) {
             if (!perfisDestacadosPorModulo[ipdId]) {
                 perfisDestacadosPorModulo[ipdId] = new Set();
@@ -1016,7 +976,6 @@
 
             const labels = chart.data.labels;
 
-            // 1. Atualiza as cores dos datasets do Chart.js instantaneamente
             chart.data.datasets[0].backgroundColor = labels.map(pName => {
                 return conjunto.has(pName) ? '#1FA4B6' : '#E2E8F0';
             });
@@ -1025,14 +984,13 @@
                 return conjunto.has(pName) ? '#178392' : '#CBD5E1';
             });
 
-            // 2. Executa a atualização sem animação ou efeito de recarregamento
             chart.update('none');
 
-            // 3. Atualiza os cards laterais sem perder o scroll atual
             if (chart._dadosProcessadosUltimo) {
                 renderizarPainelCardsRanking(ipdId, chart._dadosProcessadosUltimo);
             }
         }
+
         // ANÁLISE CAUSAL BSTS
         async function executarCalculoCausal(ipdId) {
             const perfil = document.getElementById(`causal-perfil-${ipdId}`).value;
@@ -1065,27 +1023,58 @@
                 document.getElementById(`causal-pvalue-${ipdId}`).innerText = data.p_value;
                 document.getElementById(`causal-janela-${ipdId}`).innerText = `${data.periodo_pos[0]} a ${data.periodo_pos[1]}`;
 
+                // Filtragem dos registros dentro da janela pós-evento
                 const dadosPos = data.serie_temporal.filter(item => item.data >= data.periodo_pos[0] && item.data <= data.periodo_pos[1]);
                 
                 let pctVal = 0;
+                let acumuladoVal = data.efeito_acumulado_total;
+
                 if (dadosPos.length > 0) {
                     const somaObservada = dadosPos.reduce((acc, item) => acc + (item.ipd_observado || 0), 0);
                     const somaPrevista = dadosPos.reduce((acc, item) => acc + (item.ipd_sintetico_previsto || 0), 0);
                     
+                    // Fallback se a chave direta não existir no JSON
+                    if (acumuladoVal === undefined || acumuladoVal === null) {
+                        const ultimoRegistro = dadosPos[dadosPos.length - 1];
+                        if (ultimoRegistro && ultimoRegistro.efeito_acumulado !== undefined && ultimoRegistro.efeito_acumulado !== null) {
+                            acumuladoVal = ultimoRegistro.efeito_acumulado;
+                        } else {
+                            acumuladoVal = somaObservada - somaPrevista;
+                        }
+                    }
+
                     if (somaPrevista !== 0) {
                         pctVal = ((somaObservada - somaPrevista) / somaPrevista) * 100;
                     }
                 }
 
+                // 1. Renderiza Card de Efeito Médio (%)
                 const elTamanho = document.getElementById(`causal-tamanho-${ipdId}`);
-                if (pctVal > 0) {
-                    elTamanho.innerHTML = `<span class="text-emerald-600"><i class="fa-solid fa-arrow-trend-up mr-1"></i>+${pctVal.toFixed(2)}%</span>`;
-                } else if (pctVal < 0) {
-                    elTamanho.innerHTML = `<span class="text-rose-600"><i class="fa-solid fa-arrow-trend-down mr-1"></i>${pctVal.toFixed(2)}%</span>`;
-                } else {
-                    elTamanho.innerText = '0.00%';
+                if (elTamanho) {
+                    if (pctVal > 0) {
+                        elTamanho.innerHTML = `<span class="text-emerald-600 font-black"><i class="fa-solid fa-arrow-trend-up mr-1"></i>+${pctVal.toFixed(2)}%</span>`;
+                    } else if (pctVal < 0) {
+                        elTamanho.innerHTML = `<span class="text-rose-600 font-black"><i class="fa-solid fa-arrow-trend-down mr-1"></i>${pctVal.toFixed(2)}%</span>`;
+                    } else {
+                        elTamanho.innerText = '0.00%';
+                    }
                 }
 
+                // 2. Renderiza Card de Efeito Acumulado (pts)
+                const elAcumulado = document.getElementById(`causal-acumulado-${ipdId}`);
+                if (elAcumulado) {
+                    const numAcumulado = Number(acumuladoVal || 0);
+                    if (numAcumulado > 0) {
+                        // Mantenha apenas O ÍCONE OU o texto "+", não os dois juntos
+                        elAcumulado.innerHTML = `<span class="text-emerald-600 font-black"><i class="fa-solid fa-arrow-trend-up mr-1 text-base"></i>${numAcumulado.toFixed(2)} pts</span>`;
+                    } else if (numAcumulado < 0) {
+                        elAcumulado.innerHTML = `<span class="text-rose-600 font-black"><i class="fa-solid fa-arrow-trend-down mr-1 text-base"></i>${numAcumulado.toFixed(2)} pts</span>`;
+                    } else {
+                        elAcumulado.innerText = '0.00 pts';
+                    }
+                }
+
+                // Renderiza Badge de Significância
                 const badgeSig = document.getElementById(`causal-significativo-${ipdId}`);
                 if (data.estatisticamente_significativo) {
                     badgeSig.innerHTML = `<span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800"><i class="fa-solid fa-check-circle mr-1"></i> Impacto Relevante</span>`;
@@ -1093,6 +1082,7 @@
                     badgeSig.innerHTML = `<span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800"><i class="fa-solid fa-info-circle mr-1"></i> Sem Significância</span>`;
                 }
 
+                // Preparação das Séries para o Gráfico
                 const posInicio = data.periodo_pos[0];
                 const posFim = data.periodo_pos[1];
 
@@ -1110,7 +1100,19 @@
                     return null;
                 });
 
-                if (mapCausalCharts[ipdId]) mapCausalCharts[ipdId].destroy();
+                // Renderização segura do Canvas com verificação prévia de null
+                const canvasElement = document.getElementById(`chartCausalImpactCanvas-${ipdId}`);
+                if (!canvasElement) {
+                    console.error(`Elemento canvas chartCausalImpactCanvas-${ipdId} não encontrado no DOM.`);
+                    boxResultados.classList.remove('hidden');
+                    return;
+                }
+
+                const ctx = canvasElement.getContext('2d');
+
+                if (mapCausalCharts[ipdId]) {
+                    mapCausalCharts[ipdId].destroy();
+                }
 
                 const verticalLinePlugin = {
                     id: 'eventVerticalLine',
@@ -1122,34 +1124,33 @@
                                 const x = meta.data[eventIndex].x;
                                 const topY = chart.scales.y.top;
                                 const bottomY = chart.scales.y.bottom;
-                                const ctx = chart.ctx;
+                                const chartCtx = chart.ctx;
 
-                                ctx.save();
-                                ctx.beginPath();
-                                ctx.moveTo(x, topY);
-                                ctx.lineTo(x, bottomY);
-                                ctx.lineWidth = 1.5;
-                                ctx.setLineDash([4, 4]);
-                                ctx.strokeStyle = '#F43F5E';
-                                ctx.stroke();
+                                chartCtx.save();
+                                chartCtx.beginPath();
+                                chartCtx.moveTo(x, topY);
+                                chartCtx.lineTo(x, bottomY);
+                                chartCtx.lineWidth = 1.5;
+                                chartCtx.setLineDash([4, 4]);
+                                chartCtx.strokeStyle = '#F43F5E';
+                                chartCtx.stroke();
 
-                                ctx.fillStyle = '#F43F5E';
-                                ctx.font = 'bold 10px sans-serif';
-                                ctx.fillText(' Início Evento', x + 4, topY + 12);
-                                ctx.restore();
+                                chartCtx.fillStyle = '#F43F5E';
+                                chartCtx.font = 'bold 10px sans-serif';
+                                chartCtx.fillText(' Início Evento', x + 4, topY + 12);
+                                chartCtx.restore();
                             }
                         }
                     }
                 };
 
-                const ctx = document.getElementById(`chartCausalImpactCanvas-${ipdId}`).getContext('2d');
                 mapCausalCharts[ipdId] = new Chart(ctx, {
                     type: 'line',
                     data: {
                         labels: labels,
                         datasets: [
                             {
-                                label: `IPD Real (${data.perfil_alvo})`,
+                                label: `IPD Real (${data.perfil_alvo || perfil})`,
                                 data: observados,
                                 borderColor: '#1FA4B6',
                                 backgroundColor: '#1FA4B6',
@@ -1215,7 +1216,7 @@
             }
         }
 
-        // CARREGAMENTO DE RESUMOS
+        // CARREGAMENTO DE RESUMOS DE IA
         function inicializarSeletorMesesResumo(meses) {
             const select = document.getElementById('select-mes-resumo-ia');
             if (!select || meses.length === 0) return;
@@ -1375,7 +1376,7 @@
                         </div>
                     </div>
 
-                    <!-- 1º GRÁFICO DO MÓDULO: RANKING MENSAL DO IPD DASTE MÓDULO -->
+                    <!-- 1º GRÁFICO DO MÓDULO: RANKING MENSAL DO IPD -->
                     <div class="space-y-6">
                         <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
                             <div class="flex items-center gap-3">
@@ -1505,11 +1506,16 @@
                             <p id="causal-erro-msg-${ipdId}" class="text-amber-700">Detalhes da falha aqui.</p>
                         </div>
 
+                        <!-- AJUSTE ESTRUTURAL: CONTAINER DOS CARDS DE RESULTADOS DO CAUSAL IMPACT -->
                         <div id="causal-resultados-${ipdId}" class="hidden space-y-6">
-                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
                                 <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200/80">
-                                    <span class="text-[10px] text-slate-400 font-extrabold uppercase block">Tamanho do Impacto</span>
+                                    <span class="text-[10px] text-slate-400 font-extrabold uppercase block">Efeito Médio</span>
                                     <span id="causal-tamanho-${ipdId}" class="text-2xl font-black text-slate-900 mt-1 block">--</span>
+                                </div>
+                                <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200/80">
+                                    <span class="text-[10px] text-slate-400 font-extrabold uppercase block">Efeito Acumulado</span>
+                                    <span id="causal-acumulado-${ipdId}" class="text-2xl font-black text-slate-900 mt-1 block">--</span>
                                 </div>
                                 <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200/80">
                                     <span class="text-[10px] text-slate-400 font-extrabold uppercase block">P-Valor Calculado</span>
@@ -1602,123 +1608,115 @@
 
                     <hr class="border-slate-100" />
 
-                   <!-- 5. MÓDULO DE POSTAGENS: TOP 3 POSTS + EMBED COMPACTO + INSIGHTS LATERAIS -->
-    <div class="space-y-6">
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
-            <div>
-                <span class="text-xs font-black text-quaest-teal uppercase tracking-widest">Métricas de Conteúdo</span>
-                <h3 class="text-xl font-black text-slate-900 mt-1">Análise de Conteúdo & Top 3 Publicações</h3>
-            </div>
-            
-            <div class="flex flex-wrap items-center gap-2">
-                <select id="select-profile-postages-${ipdId}" class="bg-slate-100 text-slate-800 text-xs font-bold px-3 py-1.5 rounded-xl border border-slate-200 outline-none focus:border-quaest-teal cursor-pointer">
-                    ${optionsPerfilHtml}
-                </select>
-                <select id="select-mes-postages-${ipdId}" class="bg-slate-100 text-slate-800 text-xs font-bold px-3 py-1.5 rounded-xl border border-slate-200 outline-none focus:border-quaest-teal cursor-pointer">
-                </select>
-                <button onclick="carregarMetricasConteudo(${ipdId})" class="bg-quaest-teal hover:bg-quaest-tealDark text-white text-xs font-bold px-3.5 py-1.5 rounded-xl shadow-sm transition">
-                    <i class="fa-solid fa-magnifying-glass mr-1"></i> Filtrar
-                </button>
-            </div>
-        </div>
-
-        <!-- CARDS DE VISÃO GERAL MENSAL DO PERFIL -->
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div class="p-4 rounded-2xl bg-white border border-slate-200 border-l-4 border-l-quaest-teal shadow-sm">
-                <span class="text-[10px] text-slate-400 font-extrabold uppercase block">Média de Curtidas / Post</span>
-                <span id="val-media-likes-${ipdId}" class="text-xl font-black text-slate-900 mt-0.5 block">0</span>
-            </div>
-            <div class="p-4 rounded-2xl bg-white border border-slate-200 border-l-4 border-l-emerald-500 shadow-sm">
-                <span class="text-[10px] text-slate-400 font-extrabold uppercase block">Média de Comentários / Post</span>
-                <span id="val-media-comentarios-${ipdId}" class="text-xl font-black text-slate-900 mt-0.5 block">0</span>
-            </div>
-            <div class="p-4 rounded-2xl bg-white border border-slate-200 border-l-4 border-l-amber-500 shadow-sm">
-                <span class="text-[10px] text-slate-400 font-extrabold uppercase block">Total de Publicações no Mês</span>
-                <span id="val-total-posts-${ipdId}" class="text-xl font-black text-slate-900 mt-0.5 block">0</span>
-            </div>
-        </div>
-
-        <!-- PAINEL PRINCIPAL: SELETOR TOP 3 + POST (ESQUERDA) + INSIGHTS DEDICADOS (DIREITA) -->
-        <div class="p-6 rounded-3xl bg-slate-50 border border-slate-200 space-y-4">
-            
-            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200/80 pb-3">
-                <div class="flex items-center gap-2 font-black text-slate-900 text-sm">
-                    <i class="fa-solid fa-fire text-rose-500"></i> Top Publicações do Mês
-                </div>
-                
-                <!-- SELETOR EM ABAS DO TOP 1, 2 E 3 -->
-                <div id="container-abas-top-posts-${ipdId}" class="inline-flex p-1 bg-slate-200/60 rounded-xl border border-slate-200 text-xs font-bold gap-1">
-                    <button id="btn-top-1-${ipdId}" onclick="selecionarTopPostAba(${ipdId}, 0)" class="px-3 py-1 rounded-lg bg-white text-quaest-teal shadow-sm transition">1º Destaque</button>
-                    <button id="btn-top-2-${ipdId}" onclick="selecionarTopPostAba(${ipdId}, 1)" class="px-3 py-1 rounded-lg text-slate-600 hover:text-slate-900 transition">2º Destaque</button>
-                    <button id="btn-top-3-${ipdId}" onclick="selecionarTopPostAba(${ipdId}, 2)" class="px-3 py-1 rounded-lg text-slate-600 hover:text-slate-900 transition">3º Destaque</button>
-                </div>
-            </div>
-
-            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-                
-                <!-- COLUNA 1: EMBED E TEXTO DO POST SELECIONADO (7 COLUNAS) -->
-                <div class="lg:col-span-7 bg-white p-4 rounded-2xl border border-slate-200 space-y-3">
-                    <div class="flex items-center justify-between text-xs text-slate-500 border-b border-slate-100 pb-2">
-                        <span><strong>Data:</strong> <span id="top-post-data-${ipdId}">-</span></span>
-                        <a id="top-post-link-${ipdId}" href="#" target="_blank" class="text-quaest-teal font-bold hover:underline">
-                            Link Original <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
-                        </a>
-                    </div>
-
-                    <div class="grid grid-cols-1 sm:grid-cols-12 gap-4 items-center">
-                        <div class="sm:col-span-6 space-y-2">
-                            <div class="flex items-center gap-3 text-xs py-1 border-b border-slate-100">
-                                <span class="text-slate-800 font-extrabold"><i class="fa-solid fa-heart text-rose-500 mr-1"></i> <span id="top-post-likes-${ipdId}">0</span></span>
-                                <span class="text-slate-800 font-extrabold"><i class="fa-solid fa-comment text-emerald-500 mr-1"></i> <span id="top-post-comentarios-${ipdId}">0</span></span>
+                    <!-- 5. MÓDULO DE POSTAGENS: TOP 3 POSTS -->
+                    <div class="space-y-6">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+                            <div>
+                                <span class="text-xs font-black text-quaest-teal uppercase tracking-widest">Métricas de Conteúdo</span>
+                                <h3 class="text-xl font-black text-slate-900 mt-1">Análise de Conteúdo & Top 3 Publicações</h3>
                             </div>
-
-                            <div id="top-post-texto-${ipdId}" class="text-xs text-slate-600 leading-relaxed max-h-32 overflow-y-auto whitespace-pre-line bg-slate-50 p-2.5 rounded-xl border border-slate-100 ranking-scroll">
-                                Selecione um perfil e mês acima para carregar os conteúdos.
+                            
+                            <div class="flex flex-wrap items-center gap-2">
+                                <select id="select-profile-postages-${ipdId}" class="bg-slate-100 text-slate-800 text-xs font-bold px-3 py-1.5 rounded-xl border border-slate-200 outline-none focus:border-quaest-teal cursor-pointer">
+                                    ${optionsPerfilHtml}
+                                </select>
+                                <select id="select-mes-postages-${ipdId}" class="bg-slate-100 text-slate-800 text-xs font-bold px-3 py-1.5 rounded-xl border border-slate-200 outline-none focus:border-quaest-teal cursor-pointer">
+                                </select>
+                                <button onclick="carregarMetricasConteudo(${ipdId})" class="bg-quaest-teal hover:bg-quaest-tealDark text-white text-xs font-bold px-3.5 py-1.5 rounded-xl shadow-sm transition">
+                                    <i class="fa-solid fa-magnifying-glass mr-1"></i> Filtrar
+                                </button>
                             </div>
                         </div>
 
-                        <div class="sm:col-span-6 flex justify-center items-center h-48 bg-slate-50 p-2 rounded-xl border border-slate-200 overflow-hidden" id="embed-box-${ipdId}">
-                            <p class="text-xs text-slate-400 italic text-center">O player do post será exibido aqui...</p>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <div class="p-4 rounded-2xl bg-white border border-slate-200 border-l-4 border-l-quaest-teal shadow-sm">
+                                <span class="text-[10px] text-slate-400 font-extrabold uppercase block">Média de Curtidas / Post</span>
+                                <span id="val-media-likes-${ipdId}" class="text-xl font-black text-slate-900 mt-0.5 block">0</span>
+                            </div>
+                            <div class="p-4 rounded-2xl bg-white border border-slate-200 border-l-4 border-l-emerald-500 shadow-sm">
+                                <span class="text-[10px] text-slate-400 font-extrabold uppercase block">Média de Comentários / Post</span>
+                                <span id="val-media-comentarios-${ipdId}" class="text-xl font-black text-slate-900 mt-0.5 block">0</span>
+                            </div>
+                            <div class="p-4 rounded-2xl bg-white border border-slate-200 border-l-4 border-l-amber-500 shadow-sm">
+                                <span class="text-[10px] text-slate-400 font-extrabold uppercase block">Total de Publicações no Mês</span>
+                                <span id="val-total-posts-${ipdId}" class="text-xl font-black text-slate-900 mt-0.5 block">0</span>
+                            </div>
                         </div>
-                    </div>
-                </div>
 
-                <!-- COLUNA 2: INSIGHTS REATIVOS AO POST SELECIONADO (5 COLUNAS) -->
-                <div class="lg:col-span-5 space-y-3">
-                    <div class="text-xs font-black text-slate-400 uppercase tracking-wider flex items-center justify-between">
-                        <span><i class="fa-solid fa-lightbulb text-amber-500 mr-1"></i> Insights da Publicação</span>
-                        <span id="badge-posicao-post-${ipdId}" class="text-[10px] bg-quaest-tealLight text-quaest-teal px-2 py-0.5 rounded-md font-extrabold border border-quaest-teal/20">1º Mais Curtido</span>
-                    </div>
+                        <div class="p-6 rounded-3xl bg-slate-50 border border-slate-200 space-y-4">
+                            
+                            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200/80 pb-3">
+                                <div class="flex items-center gap-2 font-black text-slate-900 text-sm">
+                                    <i class="fa-solid fa-fire text-rose-500"></i> Top Publicações do Mês
+                                </div>
+                                
+                                <div id="container-abas-top-posts-${ipdId}" class="inline-flex p-1 bg-slate-200/60 rounded-xl border border-slate-200 text-xs font-bold gap-1">
+                                    <button id="btn-top-1-${ipdId}" onclick="selecionarTopPostAba(${ipdId}, 0)" class="px-3 py-1 rounded-lg bg-white text-quaest-teal shadow-sm transition">1º Destaque</button>
+                                    <button id="btn-top-2-${ipdId}" onclick="selecionarTopPostAba(${ipdId}, 1)" class="px-3 py-1 rounded-lg text-slate-600 hover:text-slate-900 transition">2º Destaque</button>
+                                    <button id="btn-top-3-${ipdId}" onclick="selecionarTopPostAba(${ipdId}, 2)" class="px-3 py-1 rounded-lg text-slate-600 hover:text-slate-900 transition">3º Destaque</button>
+                                </div>
+                            </div>
 
-                    <!-- CARD DE IMPACTO RELATIVO -->
-                    <div class="p-3.5 rounded-2xl bg-white border border-slate-200 space-y-1 shadow-sm">
-                        <span class="text-[10px] text-slate-400 font-bold uppercase block">Desempenho da Postagem vs. Média do Perfil</span>
-                        <div id="insight-performance-relativa-${ipdId}" class="text-sm font-black text-slate-800 flex items-center gap-1.5">
-                            <span class="text-slate-400 text-xs font-normal">Aguardando dados...</span>
+                            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                                
+                                <div class="lg:col-span-7 bg-white p-4 rounded-2xl border border-slate-200 space-y-3">
+                                    <div class="flex items-center justify-between text-xs text-slate-500 border-b border-slate-100 pb-2">
+                                        <span><strong>Data:</strong> <span id="top-post-data-${ipdId}">-</span></span>
+                                        <a id="top-post-link-${ipdId}" href="#" target="_blank" class="text-quaest-teal font-bold hover:underline">
+                                            Link Original <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+                                        </a>
+                                    </div>
+
+                                    <div class="grid grid-cols-1 sm:grid-cols-12 gap-4 items-center">
+                                        <div class="sm:col-span-6 space-y-2">
+                                            <div class="flex items-center gap-3 text-xs py-1 border-b border-slate-100">
+                                                <span class="text-slate-800 font-extrabold"><i class="fa-solid fa-heart text-rose-500 mr-1"></i> <span id="top-post-likes-${ipdId}">0</span></span>
+                                                <span class="text-slate-800 font-extrabold"><i class="fa-solid fa-comment text-emerald-500 mr-1"></i> <span id="top-post-comentarios-${ipdId}">0</span></span>
+                                            </div>
+
+                                            <div id="top-post-texto-${ipdId}" class="text-xs text-slate-600 leading-relaxed max-h-32 overflow-y-auto whitespace-pre-line bg-slate-50 p-2.5 rounded-xl border border-slate-100 ranking-scroll">
+                                                Selecione um perfil e mês acima para carregar os conteúdos.
+                                            </div>
+                                        </div>
+
+                                        <div class="sm:col-span-6 flex justify-center items-center h-48 bg-slate-50 p-2 rounded-xl border border-slate-200 overflow-hidden" id="embed-box-${ipdId}">
+                                            <p class="text-xs text-slate-400 italic text-center">O player do post será exibido aqui...</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="lg:col-span-5 space-y-3">
+                                    <div class="text-xs font-black text-slate-400 uppercase tracking-wider flex items-center justify-between">
+                                        <span><i class="fa-solid fa-lightbulb text-amber-500 mr-1"></i> Insights da Publicação</span>
+                                        <span id="badge-posicao-post-${ipdId}" class="text-[10px] bg-quaest-tealLight text-quaest-teal px-2 py-0.5 rounded-md font-extrabold border border-quaest-teal/20">1º Mais Curtido</span>
+                                    </div>
+
+                                    <div class="p-3.5 rounded-2xl bg-white border border-slate-200 space-y-1 shadow-sm">
+                                        <span class="text-[10px] text-slate-400 font-bold uppercase block">Desempenho da Postagem vs. Média do Perfil</span>
+                                        <div id="insight-performance-relativa-${ipdId}" class="text-sm font-black text-slate-800 flex items-center gap-1.5">
+                                            <span class="text-slate-400 text-xs font-normal">Aguardando dados...</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="p-3.5 rounded-2xl bg-white border border-slate-200 space-y-1 shadow-sm">
+                                        <span class="text-[10px] text-slate-400 font-bold uppercase block">Razão de Comentários / Curtidas</span>
+                                        <div id="insight-razao-engajamento-${ipdId}" class="text-sm font-black text-slate-800">
+                                            <span class="text-slate-400 text-xs font-normal">Aguardando dados...</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="p-3.5 rounded-2xl bg-white border border-slate-200 space-y-1 shadow-sm">
+                                        <span class="text-[10px] text-slate-400 font-bold uppercase block">Consistência de Publicação no Perfil</span>
+                                        <div id="insight-ritmo-postagens-${ipdId}" class="text-xs font-extrabold text-slate-700">
+                                            <span class="text-slate-400 text-xs font-normal">Aguardando dados...</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </div>
                         </div>
-                    </div>
 
-                    <!-- CARD DE ENGAJAMENTO E PROPORÇÃO -->
-                    <div class="p-3.5 rounded-2xl bg-white border border-slate-200 space-y-1 shadow-sm">
-                        <span class="text-[10px] text-slate-400 font-bold uppercase block">Razão de Comentários / Curtidas</span>
-                        <div id="insight-razao-engajamento-${ipdId}" class="text-sm font-black text-slate-800">
-                            <span class="text-slate-400 text-xs font-normal">Aguardando dados...</span>
-                        </div>
-                    </div>
-
-                    <!-- CARD DE CONSISTÊNCIA -->
-                    <div class="p-3.5 rounded-2xl bg-white border border-slate-200 space-y-1 shadow-sm">
-                        <span class="text-[10px] text-slate-400 font-bold uppercase block">Consistência de Publicação no Perfil</span>
-                        <div id="insight-ritmo-postagens-${ipdId}" class="text-xs font-extrabold text-slate-700">
-                            <span class="text-slate-400 text-xs font-normal">Aguardando dados...</span>
-                        </div>
-                    </div>
-                </div>
-
-            </div>
-        </div>
-
-    </div>       
+                    </div>       
                 `;
 
                 container.appendChild(ipdSection);
@@ -1816,7 +1814,6 @@
                 }
             });
 
-            // INICIALIZA O RANKING DE BARRAS COMO PRIMEIRO GRÁFICO DO MÓDULO
             inicializarRankingIpdModulo(ipdObj, ipdId);
 
             atualizarGraficoHistorico(ipdId);

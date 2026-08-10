@@ -10,6 +10,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 import numpy as np
 import pandas as pd
+from .models import Conteudo
 # Carrega as variáveis do arquivo .env
 load_dotenv()
 
@@ -108,7 +109,7 @@ def extrair_insumo_mes(projeto_id, mes_referencia=None):
 def gerar_resumo_executivo_stream(insumo_texto, nome_cliente, mes_referencia):
     # Alterado para um modelo válido do OpenRouter (ex: gpt-4o-mini ou llama-3.1-80b-instruct:free)
     llm = ChatOpenAI(
-        model="openai/gpt-4o-mini",
+        model="openrouter/free",
         openai_api_key=OPENROUTER_API_KEY,
         openai_api_base="https://openrouter.ai/api/v1",
         streaming=True,
@@ -155,7 +156,6 @@ from django.shortcuts import get_object_or_404
 
 # Ajuste estes imports conforme a estrutura do seu projeto.
 # from seu_app.models import ProjetoCliente, ProjetoIPD, IPD
-
 
 class CausalImpactCompat(_CausalImpact):
     """
@@ -879,54 +879,6 @@ def processar_analise_causal_ipd(
             if not np.isfinite(p_val):
                 p_val = 1.0
 
-        resultado = {
-            "sucesso": True,
-            "projeto_id": projeto.id,
-            "cliente": str(
-                getattr(
-                    projeto,
-                    "cliente",
-                    "Cliente",
-                )
-            ),
-            "perfil_alvo": perfil_alvo,
-            "periodo_pre": [
-                pre_period_ts[0].strftime(
-                    "%Y-%m-%d"
-                ),
-                pre_period_ts[1].strftime(
-                    "%Y-%m-%d"
-                ),
-            ],
-            "periodo_pos": [
-                post_period_ts[0].strftime(
-                    "%Y-%m-%d"
-                ),
-                post_period_ts[1].strftime(
-                    "%Y-%m-%d"
-                ),
-            ],
-            "quantidade_observacoes_pre": (
-                quantidade_pre
-            ),
-            "quantidade_observacoes_pos": (
-                quantidade_pos
-            ),
-            "p_value": round(p_val, 4),
-            "estatisticamente_significativo": bool(
-                p_val < 0.05
-            ),
-            "relatorio_textual": report_text,
-            "controles_utilizados": [
-                str(coluna)
-                for coluna in df_causal_input.columns[1:]
-            ],
-            "controles_removidos_por_serem_constantes": (
-                controles_removidos
-            ),
-            "serie_temporal": [],
-        }
-
         if (
             not hasattr(ci, "inferences")
             or ci.inferences is None
@@ -955,6 +907,58 @@ def processar_analise_causal_ipd(
                 f"{sorted(colunas_faltantes)}"
             )
 
+        # --- EXTRAÇÃO DO EFEITO ACUMULADO TOTAL ---
+        efeito_acumulado_total = None
+
+        if "post_cum_effects" in df_inferences.columns:
+            val_cum = df_inferences["post_cum_effects"].dropna()
+            if not val_cum.empty:
+                efeito_acumulado_total = numero_json(val_cum.iloc[-1])
+
+        if efeito_acumulado_total is None and hasattr(ci, "summary_data") and ci.summary_data is not None:
+            try:
+                if "cum_effect" in ci.summary_data.index:
+                    efeito_acumulado_total = numero_json(ci.summary_data.loc["cum_effect", "average"])
+                elif "abs_effect" in ci.summary_data.index:
+                    efeito_acumulado_total = numero_json(ci.summary_data.loc["abs_effect", "cumulative"])
+            except Exception:
+                pass
+
+        # --- MONTAGEM DO DICIONÁRIO RESULTADO ---
+        resultado = {
+            "sucesso": True,
+            "projeto_id": projeto.id,
+            "cliente": str(
+                getattr(
+                    projeto,
+                    "cliente",
+                    "Cliente",
+                )
+            ),
+            "perfil_alvo": perfil_alvo,
+            "periodo_pre": [
+                pre_period_ts[0].strftime("%Y-%m-%d"),
+                pre_period_ts[1].strftime("%Y-%m-%d"),
+            ],
+            "periodo_pos": [
+                post_period_ts[0].strftime("%Y-%m-%d"),
+                post_period_ts[1].strftime("%Y-%m-%d"),
+            ],
+            "quantidade_observacoes_pre": quantidade_pre,
+            "quantidade_observacoes_pos": quantidade_pos,
+            "p_value": round(p_val, 4),
+            "estatisticamente_significativo": bool(p_val < 0.05),
+            "efeito_acumulado_total": efeito_acumulado_total,
+            "relatorio_textual": report_text,
+            "controles_utilizados": [
+                str(coluna)
+                for coluna in df_causal_input.columns[1:]
+            ],
+            "controles_removidos_por_serem_constantes": controles_removidos,
+            "serie_temporal": [],
+        }
+
+        # --- PREENCHIMENTO DA SÉRIE TEMPORAL ---
         for idx, row in df_inferences.iterrows():
             valor_observado = None
             data_idx = None
@@ -1007,28 +1011,29 @@ def processar_analise_causal_ipd(
                     continue
 
             resultado["serie_temporal"].append({
-                "data": data_idx.strftime(
-                    "%Y-%m-%d"
-                ),
-                "ipd_observado": numero_json(
-                    valor_observado
-                ),
-                "ipd_sintetico_previsto": numero_json(
-                    row.get("preds")
-                ),
-                "limite_inferior": numero_json(
-                    row.get("preds_lower")
-                ),
-                "limite_superior": numero_json(
-                    row.get("preds_upper")
-                ),
-                "efeito_pontual": numero_json(
-                    row.get("point_effects")
-                ),
-                "efeito_acumulado": numero_json(
-                    row.get("post_cum_effects")
-                ),
+                "data": data_idx.strftime("%Y-%m-%d"),
+                "ipd_observado": numero_json(valor_observado),
+                "ipd_sintetico_previsto": numero_json(row.get("preds")),
+                "limite_inferior": numero_json(row.get("preds_lower")),
+                "limite_superior": numero_json(row.get("preds_upper")),
+                "efeito_pontual": numero_json(row.get("point_effects")),
+                "efeito_acumulado": numero_json(row.get("post_cum_effects")),
             })
+
+        # Fallback de segurança: calcula via soma dos pontos se continuar None
+        if resultado["efeito_acumulado_total"] is None and len(resultado["serie_temporal"]) > 0:
+            pos_inicio_str = post_period_ts[0].strftime("%Y-%m-%d")
+            pos_fim_str = post_period_ts[1].strftime("%Y-%m-%d")
+            
+            pontos_pos = [
+                item for item in resultado["serie_temporal"] 
+                if pos_inicio_str <= item["data"] <= pos_fim_str
+            ]
+            
+            if pontos_pos:
+                soma_obs = sum(item["ipd_observado"] or 0 for item in pontos_pos)
+                soma_prev = sum(item["ipd_sintetico_previsto"] or 0 for item in pontos_pos)
+                resultado["efeito_acumulado_total"] = round(soma_obs - soma_prev, 2)
 
         return resultado
 
@@ -1044,3 +1049,5 @@ def processar_analise_causal_ipd(
                 f"{type(e).__name__} - {str(e)}"
             ),
         }
+
+
