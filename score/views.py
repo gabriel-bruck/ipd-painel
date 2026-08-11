@@ -279,4 +279,110 @@ class MediaMetricasConteudoView(APIView):
             "media_comentarios": round(metricas['media_comentarios'] or 0, 2),
             "top_posts": top_posts_data
         }, status=status.HTTP_200_OK)
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from django.db.models import F, Sum, Count, FloatField, ExpressionWrapper
+from django.db.models.functions import Coalesce
+from .models import Conteudo
 
+class TemasEngajamentoView(APIView):
+    def get(self, request):
+        projeto_id = request.query_params.get('projeto_ipd_id') or request.query_params.get('projeto_ipd')
+        mes = request.query_params.get('mes')
+        ano = request.query_params.get('ano')
+
+        if not all([projeto_id, mes, ano]):
+            return Response(
+                {"error": "Os parâmetros 'projeto_ipd_id', 'mes' e 'ano' são obrigatórios."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            mes = int(mes)
+            ano = int(ano)
+            projeto_id = int(projeto_id)
+        except ValueError:
+            return Response(
+                {"error": "Os parâmetros devem ser numéricos."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        queryset = Conteudo.objects.filter(
+            projeto_ipd__id=projeto_id,
+            data__year=ano,
+            data__month=mes
+        )
+
+        interacao_expr = F('curtidas') + F('comentarios')
+
+        # Totais globais do mês/projeto para cálculo de porcentagem geral
+        totais_globais = queryset.aggregate(
+            total_interacoes_mes=Sum(interacao_expr),
+            total_posts_mes=Count('id_post')
+        )
+        grand_interacoes = totais_globais['total_interacoes_mes'] or 0
+        grand_posts = totais_globais['total_posts_mes'] or 0
+
+        # Totais agrupados por perfil para porcentagem dentro de cada perfil
+        totais_por_perfil = {
+            p['profile']: {
+                'total_interacoes': p['total_interacoes'] or 0,
+                'total_posts': p['total_posts'] or 0
+            }
+            for p in queryset.values('profile').annotate(
+                total_interacoes=Sum(interacao_expr),
+                total_posts=Count('id_post')
+            )
+        }
+
+        # 1. Agrupamento Geral
+        raw_geral = queryset.values('categoria_tema').annotate(
+            total_posts=Count('id_post'),
+            total_interacoes=Coalesce(Sum(interacao_expr), 0)
+        ).order_by('-total_interacoes')
+
+        temas_geral = []
+        for item in raw_geral:
+            t_inter = item['total_interacoes']
+            t_posts = item['total_posts']
+            temas_geral.append({
+                'categoria_tema': item['categoria_tema'],
+                'total_posts': t_posts,
+                'total_interacoes': t_inter,
+                'share_interacoes': round((t_inter / grand_interacoes * 100), 2) if grand_interacoes > 0 else 0.0,
+                'share_posts': round((t_posts / grand_posts * 100), 2) if grand_posts > 0 else 0.0,
+                'interacao_por_post': round(t_inter / t_posts, 2) if t_posts > 0 else 0.0
+            })
+
+        # 2. Agrupamento Por Perfil
+        raw_perfil = queryset.values('profile', 'categoria_tema').annotate(
+            total_posts=Count('id_post'),
+            total_interacoes=Coalesce(Sum(interacao_expr), 0)
+        ).order_by('profile', '-total_interacoes')
+
+        temas_por_perfil = []
+        for item in raw_perfil:
+            prof = item['profile']
+            t_inter = item['total_interacoes']
+            t_posts = item['total_posts']
+            prof_totals = totais_por_perfil.get(prof, {'total_interacoes': 0, 'total_posts': 0})
+            
+            p_inter_tot = prof_totals['total_interacoes']
+            p_posts_tot = prof_totals['total_posts']
+
+            temas_por_perfil.append({
+                'profile': prof,
+                'categoria_tema': item['categoria_tema'],
+                'total_posts': t_posts,
+                'total_interacoes': t_inter,
+                'share_interacoes_perfil': round((t_inter / p_inter_tot * 100), 2) if p_inter_tot > 0 else 0.0,
+                'share_posts_perfil': round((t_posts / p_posts_tot * 100), 2) if p_posts_tot > 0 else 0.0,
+                'interacao_por_post': round(t_inter / t_posts, 2) if t_posts > 0 else 0.0
+            })
+
+        return Response({
+            "filtros": {"projeto_ipd_id": projeto_id, "mes": mes, "ano": ano},
+            "temas_geral": temas_geral,
+            "temas_por_perfil": temas_por_perfil
+        }, status=status.HTTP_200_OK)

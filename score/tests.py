@@ -2,33 +2,57 @@ import json
 import re
 import numpy as np
 import pandas as pd
-import nltk
-from nltk.corpus import stopwords
 from pydantic import BaseModel, Field
-from sklearn.feature_extraction.text import TfidfVectorizer
+from sentence_transformers import SentenceTransformer
 from sklearn.cluster import KMeans
 from sklearn.metrics.pairwise import euclidean_distances
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import JsonOutputParser
 
-try:
-    pt_stop_words = stopwords.words('portuguese')
-except LookupError:
-    nltk.download('stopwords')
-    pt_stop_words = stopwords.words('portuguese')
+# Inicializa o modelo de embeddings (salva em cache local automaticamente)
+modelo_embedding = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
+
+# Lista fixa de categorias permitidas
+CATEGORIAS_PADRAO = [
+    "Política",
+    "Economia",
+    "Segurança Pública",
+    "Brasil",
+    "Mundo",
+    "Saúde",
+    "Educação",
+    "Meio Ambiente",
+    "Cidadania",
+    "Cultura",
+    "Entretenimento",
+    "Música",
+    "Variedades / Fama",
+    "Tecnologia",
+    "Games",
+    "Ciência",
+    "Futebol",
+    "Outros Esportes",
+    "Automobilismo",
+    "Fitness",
+    "Finanças e Carreira",
+    "Gastronomia",
+    "Turismo e Viagens",
+    "Moda e Beleza",
+    "Outros"
+]
 
 
 class Categoria(BaseModel):
     cluster_id: int = Field(description="ID do grupo")
-    nome_categoria: str = Field(description="Nome equilibrado, neutro e sem nomes de clientes ou canais")
-    descricao: str = Field(description="Resumo executivo do tema em 1 frase")
+    nome_categoria: str = Field(description="Nome EXATO escolhido estritamente da lista de categorias permitidas")
+    descricao: str = Field(description="Resumo do tema em 1 frase")
 
 class ResultadoCategorias(BaseModel):
     categorias: list[Categoria]
 
 
-def encontrar_k_otimo_cotovelo(X, k_min=5, k_max=20):
+def encontrar_k_otimo_cotovelo(X, k_min=5, k_max=25):
     n_amostras = X.shape[0]
     k_min = min(k_min, n_amostras)
     k_max = min(k_max, max(1, n_amostras - 1))
@@ -66,18 +90,21 @@ def classificar_tabela_input(
     df_input: pd.DataFrame,
     coluna_id: str = 'id_post',
     coluna_texto: str = 'post',
+    coluna_perfil: str = None,
     openrouter_api_key: str = '',
-    descricao_cliente: str = '',
-    descricao_projeto: str = ''
+    categorias_permitidas: list[str] = None,
+    max_retries: int = 5
 ) -> pd.DataFrame:
-    """Recebe o DataFrame do input, aplica TF-IDF + Elbow + K-Means + IA
+    """Classifica a tabela cruzando texto e perfil via Embeddings Semânticos + K-Means + IA."""
+    if categorias_permitidas is None:
+        categorias_permitidas = CATEGORIAS_PADRAO
 
-    considerando a descrição do cliente e do projeto para priorizar temas úteis.
-    """
     if coluna_id not in df_input.columns or coluna_texto not in df_input.columns:
         raise KeyError(f"As colunas '{coluna_id}' e/ou '{coluna_texto}' não existem na tabela de entrada.")
 
-    # 1. Isola posts válidos para cálculo sem alterar a estrutura do input
+    has_perfil = coluna_perfil and coluna_perfil in df_input.columns
+
+    # 1. Isola posts válidos
     df_validos = df_input[
         df_input[coluna_id].notna() & 
         df_input[coluna_texto].notna() & 
@@ -88,16 +115,12 @@ def classificar_tabela_input(
     if not textos:
         raise ValueError("Nenhum post válido encontrado para processamento.")
 
-    # 2. Vetorização TF-IDF
-    vectorizer = TfidfVectorizer(
-        max_features=400,
-        stop_words=pt_stop_words,
-        ngram_range=(1, 2)
-    )
-    X = vectorizer.fit_transform(textos)
+    # 2. Vetorização por Embeddings Semânticos
+    print("🧠 Gerando embeddings semânticos...")
+    X = modelo_embedding.encode(textos, batch_size=64, show_progress_bar=True)
 
-    # 3. Definição do K ótimo via Método do Cotovelo
-    k_otimo = encontrar_k_otimo_cotovelo(X, k_min=5, k_max=20)
+    # 3. Definição do K ótimo via Cotovelo
+    k_otimo = encontrar_k_otimo_cotovelo(X, k_min=5, k_max=25)
 
     # 4. K-Means
     km_final = KMeans(n_clusters=k_otimo, random_state=42, n_init=5)
@@ -106,21 +129,31 @@ def classificar_tabela_input(
 
     df_validos['cluster_id'] = labels
 
-    # 5. Amostras centrais por centroide
+    # 5. Amostras centrais por centroide (com perfil se disponível)
     grupos_amostras = {}
     for cid in range(k_otimo):
         indices_cluster = np.where(labels == cid)[0]
         if len(indices_cluster) == 0:
             continue
 
-        X_cluster = X[indices_cluster].toarray()
+        X_cluster = X[indices_cluster]
         distancias = euclidean_distances(X_cluster, [centroides[cid]]).flatten()
         indices_ordenados = indices_cluster[np.argsort(distancias)]
 
-        top_3_indices = indices_ordenados[:10]
-        grupos_amostras[cid] = [textos[idx] for idx in top_3_indices]
+        top_indices = indices_ordenados[:20]
+        
+        amostras_grupo = []
+        for idx in top_indices:
+            texto_item = textos[idx]
+            if has_perfil:
+                perfil_val = str(df_validos.iloc[idx][coluna_perfil]).strip()
+                amostras_grupo.append(f"[{perfil_val}] {texto_item}")
+            else:
+                amostras_grupo.append(texto_item)
+                
+        grupos_amostras[cid] = amostras_grupo
 
-    # 6. Rotulagem das classes via IA com Contexto do Projeto e Cliente
+    # 6. Rotulagem das classes via IA com Prompt Objetivo e Loop de Retry
     llm = ChatOpenAI(
         model="openrouter/free",
         openai_api_key=openrouter_api_key,
@@ -133,32 +166,41 @@ def classificar_tabela_input(
 
     prompt = ChatPromptTemplate.from_messages([
         ("system",
-         "Você é um analista de dados e taxonomista sênior.\n"
-         "Sua tarefa é analisar amostras de textos de cada grupo e dar um NOME DE CATEGORIA EQUILIBRADO e acionável.\n\n"
-         "CONTEXTO DA ANÁLISE:\n"
-         "- Descrição do Cliente: {descricao_cliente}\n"
-         "- Objetivo do Projeto: {descricao_projeto}\n\n"
-         "REGRAS DE NOMENCLATURA:\n"
-         "1. Crie nomes de categorias que sejam diretamente úteis para os objetivos do projeto e o negócio do cliente.\n"
-         "2. NUNCA inclua nomes próprios de clientes, empresas, marcas, veículos de comunicação ou redes sociais (ex: JAMAIS use 'CazéTV', 'Globo', 'YouTube').\n"
-         "3. Mantenha um nível intermediário de abstração (2 a 4 palavras).\n"
-         "4. A CATEGORIA DEVE SER ÚNICA, SEM DOIS TEMAS EM UMA MESMA CATEGORIA.\n"
-         "Sua resposta deve ser ESTRITAMENTE um objeto JSON válido.\n\n"
-         "Nome das classes deve ser em português Brasileiro, neutro e sem termos de marcas ou clientes.\n"
+         "Classifique grupos de postagens (com [Perfil] e texto) em EXATAMENTE UMA categoria da lista permitida.\n\n"
+         "CATEGORIAS PERMITIDAS:\n"
+         "{lista_categorias}\n\n"
+         "REGRAS:\n"
+         "1. O campo 'nome_categoria' deve usar EXATAMENTE uma das opções da lista acima.\n"
+         "2. PROIBIDO criar novos nomes de categoria ou alterar a grafia original.\n"
+         "3. Escolha 'Outros' apenas se o grupo não possuir um tema claro e predominante.\n"
+         "4. Retorne APENAS um objeto JSON válido no formato solicitado.\n\n"
          "{format_instructions}"),
-        ("human", "Crie nomes de categorias úteis e neutros para estes grupos:\n{dados_grupos}")
+        ("human", "Classifique os seguintes grupos de posts:\n{dados_grupos}")
     ])
 
-    resposta_raw = (prompt | llm).invoke({
-        "format_instructions": parser.get_format_instructions(),
-        "dados_grupos": json.dumps(grupos_amostras, ensure_ascii=False),
-        "descricao_cliente": descricao_cliente if descricao_cliente else "Não informado",
-        "descricao_projeto": descricao_projeto if descricao_projeto else "Não informado"
-    }).content
+    lista_formatada = "\n".join([f"- {cat}" for cat in categorias_permitidas])
 
-    match = re.search(r'\{.*\}', str(resposta_raw), re.DOTALL)
-    texto_json_limpo = match.group(0) if match else str(resposta_raw)
-    resultado_llm = parser.parse(texto_json_limpo)
+    resultado_llm = None
+    for tentativa in range(1, max_retries + 1):
+        try:
+            print(f"🚀 Enviando requisição para a LLM (Tentativa {tentativa}/{max_retries})...")
+            
+            resposta_raw = (prompt | llm).invoke({
+                "format_instructions": parser.get_format_instructions(),
+                "dados_grupos": json.dumps(grupos_amostras, ensure_ascii=False),
+                "lista_categorias": lista_formatada
+            }).content
+
+            match = re.search(r'\{.*\}', str(resposta_raw), re.DOTALL)
+            texto_json_limpo = match.group(0) if match else str(resposta_raw)
+            
+            resultado_llm = parser.parse(texto_json_limpo)
+            print(f"✅ Processamento concluído com sucesso na tentativa {tentativa}.")
+            break
+        except Exception as e:
+            print(f"⚠️ Tentativa {tentativa}/{max_retries} falhou ao gerar JSON válido: {e}")
+            if tentativa == max_retries:
+                raise RuntimeError("Falha ao obter um JSON válido da IA após atingir o limite de tentativas.") from e
 
     lista_categorias = resultado_llm.get('categorias', []) if isinstance(resultado_llm, dict) else (resultado_llm if isinstance(resultado_llm, list) else [])
 
@@ -187,9 +229,9 @@ df_resultado = classificar_tabela_input(
     df_input=df_input,
     coluna_id="id_post",
     coluna_texto="texto",
+    coluna_perfil="profile",
     openrouter_api_key="",
-    descricao_cliente="Empresa do setor bancário focada em serviços digitais.",
-    descricao_projeto="Projeto monitoramento do Indice popularidade digital das marcas streaming e televisão."
+    max_retries=5
 )
 
 df_resultado.to_excel("planilha_categorizada.xlsx", index=False)

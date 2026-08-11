@@ -70,6 +70,7 @@ class IPDResource(resources.ModelResource):
             'interesse',
             'ipd',
             'data',
+         
         )
 
     def before_import_row(self, row, **kwargs):
@@ -163,6 +164,7 @@ class ConteudoResource(resources.ModelResource):
             'curtidas',
             'comentarios',
             'data',
+            'categoria_tema',
         )
 
     def before_import(self, dataset, **kwargs):

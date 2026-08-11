@@ -59,7 +59,7 @@ class Conteudo(models.Model):
     curtidas = models.IntegerField(default=0)
     comentarios = models.IntegerField(default=0)
     link_post = models.CharField(max_length=1000, blank=True, null=True, db_index=True)
-    
+    categoria_tema = models.CharField(max_length=255, default='Outros', db_index=True)
     # Relacionamentos
     projeto_ipd = models.ManyToManyField(ProjetoIPD, blank=True)
 

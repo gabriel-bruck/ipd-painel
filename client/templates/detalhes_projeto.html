@@ -43,6 +43,9 @@
             50% { opacity: 0; }
         }
         .animate-cursor { animation: pulse-cursor 0.8s infinite; }
+        .ranking-scroll::-webkit-scrollbar { width: 4px; }
+        .ranking-scroll::-webkit-scrollbar-track { background: #f1f5f9; }
+        .ranking-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
     </style>
 </head>
 <body class="bg-slate-50 text-quaest-textDark font-sans antialiased selection:bg-quaest-teal selection:text-white">
@@ -68,7 +71,7 @@
 
     <main class="pt-20 pb-24 space-y-16">
         
-        <!-- SEÇÃO HERO (DESIGN EXECUTIVO CLARO - QUAEST) -->
+        <!-- SEÇÃO HERO -->
         <section id="contexto-projeto" class="max-w-6xl mx-auto px-6 pt-6 pb-2">
             <div class="relative overflow-hidden rounded-3xl bg-white border border-quaest-tealBorder p-8 md:p-12 shadow-sm space-y-8">
                 
@@ -76,7 +79,6 @@
                 <div class="absolute -top-24 -right-24 w-80 h-80 bg-quaest-tealLight rounded-full blur-3xl pointer-events-none"></div>
 
                 <div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-                    
                     <div class="space-y-4 max-w-3xl">
                         <div class="inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-quaest-tealLight text-quaest-teal border border-quaest-teal/30 text-xs font-black uppercase tracking-widest">
                             <span class="relative flex h-2 w-2">
@@ -109,7 +111,6 @@
                             <i class="fa-solid fa-circle-check text-[10px]"></i> Dados Consolidados
                         </div>
                     </div>
-
                 </div>
 
                 <div class="relative z-10 grid grid-cols-2 md:grid-cols-4 gap-4 pt-6 border-t border-slate-100 text-xs">
@@ -157,12 +158,10 @@
             </div>
         </section>
 
-        <!-- SEÇÃO PRIMEIRO PLANO: O QUE É O IPD -->
+        <!-- SEÇÃO METODOLOGIA IPD -->
         <section id="explicacao-ipd" class="max-w-6xl mx-auto px-6 space-y-8">
             <div class="p-8 md:p-12 rounded-3xl bg-quaest-tealLight/60 border border-quaest-tealBorder space-y-10 shadow-sm relative overflow-hidden">
-                
                 <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-                    
                     <div class="lg:col-span-7 space-y-6">
                         <div class="flex items-center gap-3">
                             <svg class="h-11 w-auto text-slate-900" viewBox="0 0 210 80" fill="currentColor">
@@ -174,11 +173,8 @@
                                 <circle cx="33" cy="32" r="4" />
                                 <path d="M 33 32 L 40 20" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" />
                                 <circle cx="40" cy="20" r="4" />
-
                                 <text x="48" y="55" font-family="sans-serif" font-weight="900" font-size="42" letter-spacing="-2">ipd</text>
-
                                 <line x1="112" y1="18" x2="112" y2="60" stroke="#94A3B8" stroke-width="1.5"/>
-
                                 <text x="122" y="30" font-family="sans-serif" font-weight="500" font-size="11" fill="#475569">Índice de</text>
                                 <text x="122" y="44" font-family="sans-serif" font-weight="800" font-size="12" fill="#0F172A">Popularidade</text>
                                 <text x="122" y="58" font-family="sans-serif" font-weight="800" font-size="12" fill="#0F172A">Digital</text>
@@ -212,82 +208,62 @@
                             <i class="fa-solid fa-circle-info text-quaest-teal text-sm"></i>
                             <span>O IPD é um <strong>índice relacional</strong> e só pode ser comparado dentro do mesmo universo de análise.</span>
                         </div>
-
                     </div>
 
                     <div class="lg:col-span-5 flex items-center justify-center p-2">
                         <div class="relative max-w-sm w-full">
                             <img src="{% static 'images/plataformas-ipd.png' %}" 
                                  onerror="this.onerror=null; this.src='/static/images/plataformas-ipd.png';"
-                                 alt="Plataformas Monitoradas pelo IPD: Facebook, Instagram, X, TikTok, Wikipedia, Google, YouTube" 
+                                 alt="Plataformas Monitoradas pelo IPD" 
                                  class="w-full h-auto object-contain drop-shadow-xl hover:scale-105 transition duration-300">
                         </div>
                     </div>
-
                 </div>
 
                 <div class="space-y-4 pt-6 border-t border-quaest-tealBorder">
                     <h3 class="text-xs font-extrabold uppercase text-slate-500 tracking-wider">As 6 Dimensões Analíticas do IPD:</h3>
-
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
                         <div class="p-4 rounded-2xl bg-white border border-quaest-tealBorder space-y-1.5 shadow-sm">
                             <div class="flex items-center gap-2">
                                 <span class="w-6 h-6 rounded-lg bg-quaest-tealLight text-quaest-teal font-black flex items-center justify-center text-xs">1</span>
                                 <strong class="text-slate-900 font-extrabold text-sm">Presença Digital</strong>
                             </div>
-                            <p class="text-slate-600 leading-relaxed">
-                                Possui perfil ativo e público (dados abertos) no Facebook, Instagram, YouTube, TikTok ou X (Twitter).
-                            </p>
+                            <p class="text-slate-600 leading-relaxed">Possui perfil ativo e público no Facebook, Instagram, YouTube, TikTok ou X.</p>
                         </div>
-
                         <div class="p-4 rounded-2xl bg-white border border-quaest-tealBorder space-y-1.5 shadow-sm">
                             <div class="flex items-center gap-2">
                                 <span class="w-6 h-6 rounded-lg bg-quaest-tealLight text-quaest-teal font-black flex items-center justify-center text-xs">2</span>
                                 <strong class="text-slate-900 font-extrabold text-sm">Fama</strong>
                             </div>
-                            <p class="text-slate-600 leading-relaxed">
-                                Visibilidade de conteúdo, seguidores e alcance no digital.
-                            </p>
+                            <p class="text-slate-600 leading-relaxed">Visibilidade de conteúdo, seguidores e alcance no digital.</p>
                         </div>
-
                         <div class="p-4 rounded-2xl bg-white border border-quaest-tealBorder space-y-1.5 shadow-sm">
                             <div class="flex items-center gap-2">
                                 <span class="w-6 h-6 rounded-lg bg-quaest-tealLight text-quaest-teal font-black flex items-center justify-center text-xs">3</span>
                                 <strong class="text-slate-900 font-extrabold text-sm">Engajamento</strong>
                             </div>
-                            <p class="text-slate-600 leading-relaxed">
-                                Interações, comentários e curtidas geradas.
-                            </p>
+                            <p class="text-slate-600 leading-relaxed">Interações, comentários e curtidas geradas.</p>
                         </div>
-
                         <div class="p-4 rounded-2xl bg-white border border-quaest-tealBorder space-y-1.5 shadow-sm">
                             <div class="flex items-center gap-2">
                                 <span class="w-6 h-6 rounded-lg bg-quaest-tealLight text-quaest-teal font-black flex items-center justify-center text-xs">4</span>
                                 <strong class="text-slate-900 font-extrabold text-sm">Mobilização</strong>
                             </div>
-                            <p class="text-slate-600 leading-relaxed">
-                                Compartilhamentos, reposts e menções espontâneas.
-                            </p>
+                            <p class="text-slate-600 leading-relaxed">Compartilhamentos, reposts e menções espontâneas.</p>
                         </div>
-
                         <div class="p-4 rounded-2xl bg-white border border-quaest-tealBorder space-y-1.5 shadow-sm">
                             <div class="flex items-center gap-2">
                                 <span class="w-6 h-6 rounded-lg bg-quaest-tealLight text-quaest-teal font-black flex items-center justify-center text-xs">5</span>
                                 <strong class="text-slate-900 font-extrabold text-sm">Valência</strong>
                             </div>
-                            <p class="text-slate-600 leading-relaxed">
-                                Razão entre reações positivas versus reações negativas.
-                            </p>
+                            <p class="text-slate-600 leading-relaxed">Razão entre reações positivas versus reações negativas.</p>
                         </div>
-
                         <div class="p-4 rounded-2xl bg-white border border-quaest-tealBorder space-y-1.5 shadow-sm">
                             <div class="flex items-center gap-2">
                                 <span class="w-6 h-6 rounded-lg bg-quaest-tealLight text-quaest-teal font-black flex items-center justify-center text-xs">6</span>
                                 <strong class="text-slate-900 font-extrabold text-sm">Interesse</strong>
                             </div>
-                            <p class="text-slate-600 leading-relaxed">
-                                Acessos, volume e aumento recente nas buscas ativas do público.
-                            </p>
+                            <p class="text-slate-600 leading-relaxed">Acessos, volume e aumento recente nas buscas ativas do público.</p>
                         </div>
                     </div>
                 </div>
@@ -368,6 +344,8 @@
         let stateIPDs = {};
         let mapCausalCharts = {};
         let mapRankingCharts = {};
+        let mapTemasCharts = {};
+        let stateTemasMetricas = {};
 
         // FORMATAÇÃO E NORMALIZAÇÃO DE DATA
         function formatarMesExtenso(dataStr) {
@@ -528,6 +506,264 @@
                         Abrir Publicação Externa <i class="fa-solid fa-arrow-up-right-from-square ml-1"></i>
                     </a>`;
             }
+        }
+
+        // FUNÇÃO PRINCIPAL: REQUISIÇÃO VIA API AO ALTERAR MÊS DE ANÁLISE TEMÁTICA
+        async function carregarTemasEngajamento(ipdId) {
+            const selectMes = document.getElementById(`select-mes-temas-${ipdId}`);
+            if (!selectMes || !selectMes.value) return;
+
+            const mesAnoFormatado = formatarDataParaAnoMes(selectMes.value);
+            const partes = mesAnoFormatado.split('-');
+            if (partes.length < 2) return;
+
+            const ano = partes[0];
+            const mes = parseInt(partes[1], 10);
+
+            const url = `/api/temas/?projeto_ipd_id=${ipdId}&mes=${mes}&ano=${ano}`;
+
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+
+                if (!response.ok) return;
+
+                // Armazena no estado do IPD para atualizações instantâneas de filtro local
+                stateIPDs[ipdId].dadosTemas = data;
+
+                if (!stateTemasMetricas[ipdId]) {
+                    stateTemasMetricas[ipdId] = {
+                        metricaGeral: 'interacoes',
+                        metricaPerfil: 'interacoes',
+                        perfisComparativo: new Set()
+                    };
+                }
+
+                popularSeletorPerfisTemas(ipdId, data.temas_por_perfil || []);
+
+                renderizarGraficoGeralTemas(ipdId);
+                renderizarGraficoPerfilTemas(ipdId);
+                renderizarComparativoPerfis(ipdId);
+
+            } catch (err) {
+                console.error("Erro ao carregar dados temáticos da API:", err);
+            }
+        }
+
+        function popularSeletorPerfisTemas(ipdId, listaPerfil) {
+            const perfisUnicos = [...new Set(listaPerfil.map(item => item.profile))].filter(Boolean);
+            const selectPerfil = document.getElementById(`select-perfil-temas-${ipdId}`);
+            const containerComp = document.getElementById(`container-comp-profiles-${ipdId}`);
+
+            if (selectPerfil) {
+                const perfilAtual = selectPerfil.value;
+                selectPerfil.innerHTML = '';
+                perfisUnicos.forEach(p => selectPerfil.appendChild(new Option(p, p)));
+                if (perfisUnicos.includes(perfilAtual)) {
+                    selectPerfil.value = perfilAtual;
+                }
+            }
+
+            if (containerComp) {
+                containerComp.innerHTML = '';
+                const conjuntoComp = stateTemasMetricas[ipdId].perfisComparativo;
+
+                if (conjuntoComp.size === 0 && perfisUnicos.length > 0) {
+                    perfisUnicos.slice(0, 2).forEach(p => conjuntoComp.add(p));
+                }
+
+                perfisUnicos.forEach((profileName) => {
+                    const isAtivo = conjuntoComp.has(profileName);
+                    const btn = document.createElement('button');
+                    btn.className = `px-2.5 py-1 rounded-lg text-xs font-bold border transition flex items-center gap-1.5 ${
+                        isAtivo ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                    }`;
+                    btn.innerHTML = `<i class="fa-solid fa-${isAtivo ? 'check' : 'plus'} text-[10px]"></i> ${profileName}`;
+
+                    btn.onclick = () => {
+                        if (conjuntoComp.has(profileName)) {
+                            if (conjuntoComp.size > 1) {
+                                conjuntoComp.delete(profileName);
+                            }
+                        } else {
+                            conjuntoComp.add(profileName);
+                        }
+                        popularSeletorPerfisTemas(ipdId, listaPerfil);
+                        renderizarComparativoPerfis(ipdId);
+                    };
+
+                    containerComp.appendChild(btn);
+                });
+            }
+        }
+
+        function alternarMetricaRosca(ipdId, escopo, metrica) {
+            if (!stateTemasMetricas[ipdId]) return;
+
+            if (escopo === 'geral') {
+                stateTemasMetricas[ipdId].metricaGeral = metrica;
+                document.getElementById(`btn-metrica-geral-int-${ipdId}`).className = `px-2 py-0.5 rounded-md transition ${metrica === 'interacoes' ? 'bg-white text-quaest-teal shadow-sm font-bold' : 'text-slate-600 hover:text-slate-900'}`;
+                document.getElementById(`btn-metrica-geral-post-${ipdId}`).className = `px-2 py-0.5 rounded-md transition ${metrica === 'posts' ? 'bg-white text-quaest-teal shadow-sm font-bold' : 'text-slate-600 hover:text-slate-900'}`;
+                renderizarGraficoGeralTemas(ipdId);
+            } else {
+                stateTemasMetricas[ipdId].metricaPerfil = metrica;
+                document.getElementById(`btn-metrica-perfil-int-${ipdId}`).className = `px-2 py-0.5 rounded-md transition ${metrica === 'interacoes' ? 'bg-white text-emerald-700 shadow-sm font-bold' : 'text-slate-600 hover:text-slate-900'}`;
+                document.getElementById(`btn-metrica-perfil-post-${ipdId}`).className = `px-2 py-0.5 rounded-md transition ${metrica === 'posts' ? 'bg-white text-emerald-700 shadow-sm font-bold' : 'text-slate-600 hover:text-slate-900'}`;
+                renderizarGraficoPerfilTemas(ipdId);
+            }
+        }
+
+        function renderizarGraficoGeralTemas(ipdId) {
+            const data = stateIPDs[ipdId]?.dadosTemas?.temas_geral || [];
+            const ctx = document.getElementById(`chart-pie-geral-${ipdId}`)?.getContext('2d');
+            const tblGeral = document.getElementById(`tbl-temas-geral-${ipdId}`);
+
+            if (!ctx) return;
+
+            const metrica = stateTemasMetricas[ipdId]?.metricaGeral || 'interacoes';
+            const labels = data.map(d => d.categoria_tema);
+            const valoresPct = data.map(d => metrica === 'interacoes' ? d.share_interacoes : d.share_posts);
+
+            if (mapTemasCharts[`pie_geral_${ipdId}`]) mapTemasCharts[`pie_geral_${ipdId}`].destroy();
+
+            mapTemasCharts[`pie_geral_${ipdId}`] = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: valoresPct,
+                        backgroundColor: paletaCores,
+                        borderWidth: 2,
+                        borderColor: '#ffffff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { callbacks: { label: (c) => ` ${c.label}: ${c.raw}%` } }
+                    },
+                    cutout: '65%'
+                }
+            });
+
+            if (tblGeral) {
+                tblGeral.innerHTML = data.map((item, idx) => `
+                    <tr class="hover:bg-white transition">
+                        <td class="py-1.5 font-bold text-slate-800 flex items-center gap-1.5 truncate">
+                            <span class="w-2 h-2 rounded-full shrink-0" style="background-color: ${paletaCores[idx % paletaCores.length]}"></span>
+                            ${item.categoria_tema}
+                        </td>
+                        <td class="py-1.5 text-right font-black text-quaest-teal">${valoresPct[idx]}%</td>
+                    </tr>
+                `).join('');
+            }
+        }
+
+        function renderizarGraficoPerfilTemas(ipdId) {
+            const selectPerfil = document.getElementById(`select-perfil-temas-${ipdId}`);
+            if (!selectPerfil) return;
+
+            const perfilSelecionado = selectPerfil.value;
+            const todosPerfis = stateIPDs[ipdId]?.dadosTemas?.temas_por_perfil || [];
+            const dadosPerfil = todosPerfis.filter(item => item.profile === perfilSelecionado);
+
+            const ctx = document.getElementById(`chart-pie-perfil-${ipdId}`)?.getContext('2d');
+            const tblPerfil = document.getElementById(`tbl-temas-perfil-${ipdId}`);
+
+            if (!ctx) return;
+
+            const metrica = stateTemasMetricas[ipdId]?.metricaPerfil || 'interacoes';
+            const labels = dadosPerfil.map(d => d.categoria_tema);
+            const valoresPct = dadosPerfil.map(d => metrica === 'interacoes' ? d.share_interacoes_perfil : d.share_posts_perfil);
+
+            if (mapTemasCharts[`pie_perfil_${ipdId}`]) mapTemasCharts[`pie_perfil_${ipdId}`].destroy();
+
+            mapTemasCharts[`pie_perfil_${ipdId}`] = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: valoresPct,
+                        backgroundColor: paletaCores,
+                        borderWidth: 2,
+                        borderColor: '#ffffff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { callbacks: { label: (c) => ` ${c.label}: ${c.raw}%` } }
+                    },
+                    cutout: '65%'
+                }
+            });
+
+            if (tblPerfil) {
+                tblPerfil.innerHTML = dadosPerfil.map((item, idx) => `
+                    <tr class="hover:bg-white transition">
+                        <td class="py-1.5 font-bold text-slate-800 flex items-center gap-1.5 truncate">
+                            <span class="w-2 h-2 rounded-full shrink-0" style="background-color: ${paletaCores[idx % paletaCores.length]}"></span>
+                            ${item.categoria_tema}
+                        </td>
+                        <td class="py-1.5 text-right font-black text-slate-900">${valoresPct[idx]}%</td>
+                    </tr>
+                `).join('');
+            }
+        }
+
+        function renderizarComparativoPerfis(ipdId) {
+            const selecionados = Array.from(stateTemasMetricas[ipdId]?.perfisComparativo || []);
+            const todosPerfis = stateIPDs[ipdId]?.dadosTemas?.temas_por_perfil || [];
+
+            const ctx = document.getElementById(`chart-bar-comparativo-${ipdId}`)?.getContext('2d');
+            if (!ctx || selecionados.length === 0) return;
+
+            const temasUnicos = [...new Set(todosPerfis.map(item => item.categoria_tema))];
+
+            const datasets = selecionados.map((pName, idx) => {
+                const cor = paletaCores[idx % paletaCores.length];
+                const dadosPerfilTema = temasUnicos.map(tema => {
+                    const achou = todosPerfis.find(p => p.profile === pName && p.categoria_tema === tema);
+                    return achou ? achou.interacao_por_post : 0;
+                });
+
+                return {
+                    label: pName,
+                    data: dadosPerfilTema,
+                    backgroundColor: cor,
+                    borderRadius: 6
+                };
+            });
+
+            if (mapTemasCharts[`bar_comp_${ipdId}`]) mapTemasCharts[`bar_comp_${ipdId}`].destroy();
+
+            mapTemasCharts[`bar_comp_${ipdId}`] = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: temasUnicos,
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'top', labels: { font: { weight: 'bold', size: 11 } } },
+                        tooltip: { 
+                            callbacks: {
+                                label: (c) => ` ${c.dataset.label}: ${c.raw.toLocaleString('pt-BR')} int/post`
+                            }
+                        }
+                    },
+                    scales: {
+                        x: { grid: { display: false }, ticks: { font: { weight: 'bold', size: 10 } } },
+                        y: { grid: { color: '#E2E8F0' }, ticks: { font: { weight: 'bold', size: 10 } } }
+                    }
+                }
+            });
         }
 
         // CARREGA MÉTRICAS DE CONTEÚDO
@@ -1023,7 +1259,6 @@
                 document.getElementById(`causal-pvalue-${ipdId}`).innerText = data.p_value;
                 document.getElementById(`causal-janela-${ipdId}`).innerText = `${data.periodo_pos[0]} a ${data.periodo_pos[1]}`;
 
-                // Filtragem dos registros dentro da janela pós-evento
                 const dadosPos = data.serie_temporal.filter(item => item.data >= data.periodo_pos[0] && item.data <= data.periodo_pos[1]);
                 
                 let pctVal = 0;
@@ -1033,7 +1268,6 @@
                     const somaObservada = dadosPos.reduce((acc, item) => acc + (item.ipd_observado || 0), 0);
                     const somaPrevista = dadosPos.reduce((acc, item) => acc + (item.ipd_sintetico_previsto || 0), 0);
                     
-                    // Fallback se a chave direta não existir no JSON
                     if (acumuladoVal === undefined || acumuladoVal === null) {
                         const ultimoRegistro = dadosPos[dadosPos.length - 1];
                         if (ultimoRegistro && ultimoRegistro.efeito_acumulado !== undefined && ultimoRegistro.efeito_acumulado !== null) {
@@ -1048,7 +1282,6 @@
                     }
                 }
 
-                // 1. Renderiza Card de Efeito Médio (%)
                 const elTamanho = document.getElementById(`causal-tamanho-${ipdId}`);
                 if (elTamanho) {
                     if (pctVal > 0) {
@@ -1060,12 +1293,10 @@
                     }
                 }
 
-                // 2. Renderiza Card de Efeito Acumulado (pts)
                 const elAcumulado = document.getElementById(`causal-acumulado-${ipdId}`);
                 if (elAcumulado) {
                     const numAcumulado = Number(acumuladoVal || 0);
                     if (numAcumulado > 0) {
-                        // Mantenha apenas O ÍCONE OU o texto "+", não os dois juntos
                         elAcumulado.innerHTML = `<span class="text-emerald-600 font-black"><i class="fa-solid fa-arrow-trend-up mr-1 text-base"></i>${numAcumulado.toFixed(2)} pts</span>`;
                     } else if (numAcumulado < 0) {
                         elAcumulado.innerHTML = `<span class="text-rose-600 font-black"><i class="fa-solid fa-arrow-trend-down mr-1 text-base"></i>${numAcumulado.toFixed(2)} pts</span>`;
@@ -1074,7 +1305,6 @@
                     }
                 }
 
-                // Renderiza Badge de Significância
                 const badgeSig = document.getElementById(`causal-significativo-${ipdId}`);
                 if (data.estatisticamente_significativo) {
                     badgeSig.innerHTML = `<span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800"><i class="fa-solid fa-check-circle mr-1"></i> Impacto Relevante</span>`;
@@ -1082,7 +1312,6 @@
                     badgeSig.innerHTML = `<span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800"><i class="fa-solid fa-info-circle mr-1"></i> Sem Significância</span>`;
                 }
 
-                // Preparação das Séries para o Gráfico
                 const posInicio = data.periodo_pos[0];
                 const posFim = data.periodo_pos[1];
 
@@ -1100,10 +1329,9 @@
                     return null;
                 });
 
-                // Renderização segura do Canvas com verificação prévia de null
                 const canvasElement = document.getElementById(`chartCausalImpactCanvas-${ipdId}`);
                 if (!canvasElement) {
-                    console.error(`Elemento canvas chartCausalImpactCanvas-${ipdId} não encontrado no DOM.`);
+                    console.error(`Elemento canvas chartCausalImpactCanvas-${ipdId} não encontrado.`);
                     boxResultados.classList.remove('hidden');
                     return;
                 }
@@ -1506,7 +1734,6 @@
                             <p id="causal-erro-msg-${ipdId}" class="text-amber-700">Detalhes da falha aqui.</p>
                         </div>
 
-                        <!-- AJUSTE ESTRUTURAL: CONTAINER DOS CARDS DE RESULTADOS DO CAUSAL IMPACT -->
                         <div id="causal-resultados-${ipdId}" class="hidden space-y-6">
                             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
                                 <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200/80">
@@ -1608,6 +1835,117 @@
 
                     <hr class="border-slate-100" />
 
+                    <!-- MÓDULO: ANÁLISE TEMÁTICA E COMPARATIVO MULTIPERFIL -->
+                    <div class="space-y-6">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+                            <div>
+                                <span class="text-xs font-black text-quaest-teal uppercase tracking-widest">Distribuição Temática & Engajamento</span>
+                                <h3 class="text-xl font-black text-slate-900 mt-1">Análise Temática e Comparativo de Perfis</h3>
+                                <p class="text-slate-500 text-xs mt-0.5">Participação percentual da pauta e comparativo de eficiência por tema.</p>
+                            </div>
+                            
+                            <div class="flex items-center gap-2">
+                                <label for="select-mes-temas-${ipdId}" class="text-xs font-bold text-slate-500">Mês de Análise:</label>
+                                <select id="select-mes-temas-${ipdId}" onchange="carregarTemasEngajamento(${ipdId})" class="bg-slate-100 text-slate-800 text-xs font-bold px-3 py-1.5 rounded-xl border border-slate-200 outline-none focus:border-quaest-teal cursor-pointer">
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- BLOCO 1: VISÃO GERAL E POR PERFIL COM ROSCAS E ALTERNÂNCIA DE MÉTRICA (%) -->
+                        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+                            
+                            <!-- ROSCA GERAL (%) -->
+                            <div class="lg:col-span-6 bg-slate-50 p-6 rounded-3xl border border-slate-200 flex flex-col justify-between space-y-4">
+                                <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200/80 pb-3">
+                                    <span class="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                                        <i class="fa-solid fa-chart-pie text-quaest-teal"></i> Share Temático Geral
+                                    </span>
+                                    
+                                    <div class="inline-flex p-0.5 bg-slate-200/70 rounded-lg text-[10px] font-bold">
+                                        <button id="btn-metrica-geral-int-${ipdId}" onclick="alternarMetricaRosca(${ipdId}, 'geral', 'interacoes')" class="px-2 py-0.5 rounded-md bg-white text-quaest-teal shadow-sm transition">Share Interação (%)</button>
+                                        <button id="btn-metrica-geral-post-${ipdId}" onclick="alternarMetricaRosca(${ipdId}, 'geral', 'posts')" class="px-2 py-0.5 rounded-md text-slate-600 hover:text-slate-900 transition">Share Posts (%)</button>
+                                    </div>
+                                </div>
+
+                                <div class="grid grid-cols-1 sm:grid-cols-12 gap-4 items-center">
+                                    <div class="sm:col-span-6 h-48 relative flex items-center justify-center">
+                                        <canvas id="chart-pie-geral-${ipdId}"></canvas>
+                                    </div>
+                                    <div class="sm:col-span-6 overflow-y-auto max-h-48 ranking-scroll">
+                                        <table class="w-full text-left text-xs">
+                                            <thead>
+                                                <tr class="text-slate-400 font-extrabold border-b border-slate-200 uppercase text-[9px]">
+                                                    <th class="pb-1">Tema</th>
+                                                    <th class="pb-1 text-right">Porcentagem (%)</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="tbl-temas-geral-${ipdId}" class="divide-y divide-slate-200/60 font-medium text-slate-700">
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- ROSCA POR PERFIL (%) -->
+                            <div class="lg:col-span-6 bg-slate-50 p-6 rounded-3xl border border-slate-200 flex flex-col justify-between space-y-4">
+                                <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200/80 pb-3">
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                                            <i class="fa-solid fa-user-chart text-emerald-600"></i> Perfil:
+                                        </span>
+                                        <select id="select-perfil-temas-${ipdId}" onchange="renderizarGraficoPerfilTemas(${ipdId})" class="bg-white text-slate-800 text-xs font-bold px-2 py-1 rounded-lg border border-slate-200 outline-none focus:border-quaest-teal cursor-pointer">
+                                        </select>
+                                    </div>
+
+                                    <div class="inline-flex p-0.5 bg-slate-200/70 rounded-lg text-[10px] font-bold">
+                                        <button id="btn-metrica-perfil-int-${ipdId}" onclick="alternarMetricaRosca(${ipdId}, 'perfil', 'interacoes')" class="px-2 py-0.5 rounded-md bg-white text-emerald-700 shadow-sm transition">Share Interação (%)</button>
+                                        <button id="btn-metrica-perfil-post-${ipdId}" onclick="alternarMetricaRosca(${ipdId}, 'perfil', 'posts')" class="px-2 py-0.5 rounded-md text-slate-600 hover:text-slate-900 transition">Share Posts (%)</button>
+                                    </div>
+                                </div>
+
+                                <div class="grid grid-cols-1 sm:grid-cols-12 gap-4 items-center">
+                                    <div class="sm:col-span-6 h-48 relative flex items-center justify-center">
+                                        <canvas id="chart-pie-perfil-${ipdId}"></canvas>
+                                    </div>
+                                    <div class="sm:col-span-6 overflow-y-auto max-h-48 ranking-scroll">
+                                        <table class="w-full text-left text-xs">
+                                            <thead>
+                                                <tr class="text-slate-400 font-extrabold border-b border-slate-200 uppercase text-[9px]">
+                                                    <th class="pb-1">Tema</th>
+                                                    <th class="pb-1 text-right">Porcentagem (%)</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="tbl-temas-perfil-${ipdId}" class="divide-y divide-slate-200/60 font-medium text-slate-700">
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <!-- BLOCO 2: COMPARATIVO MULTIPERFIL (MÉDIA DE INTERAÇÃO POR POST) -->
+                        <div class="bg-slate-50 p-6 rounded-3xl border border-slate-200 space-y-4">
+                            <div class="border-b border-slate-200/80 pb-3 space-y-2">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                                        <i class="fa-solid fa-code-compare text-indigo-600"></i> Eficiência Temática Comparativa (Média de Interações por Post)
+                                    </span>
+                                    <span class="text-[10px] font-bold text-slate-400">Adicione/remova perfis abaixo</span>
+                                </div>
+                                
+                                <div id="container-comp-profiles-${ipdId}" class="flex flex-wrap items-center gap-1.5 pt-1">
+                                </div>
+                            </div>
+
+                            <div class="h-64 w-full relative">
+                                <canvas id="chart-bar-comparativo-${ipdId}"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr class="border-slate-100" />
+
                     <!-- 5. MÓDULO DE POSTAGENS: TOP 3 POSTS -->
                     <div class="space-y-6">
                         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
@@ -1644,7 +1982,6 @@
                         </div>
 
                         <div class="p-6 rounded-3xl bg-slate-50 border border-slate-200 space-y-4">
-                            
                             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200/80 pb-3">
                                 <div class="flex items-center gap-2 font-black text-slate-900 text-sm">
                                     <i class="fa-solid fa-fire text-rose-500"></i> Top Publicações do Mês
@@ -1658,7 +1995,6 @@
                             </div>
 
                             <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-                                
                                 <div class="lg:col-span-7 bg-white p-4 rounded-2xl border border-slate-200 space-y-3">
                                     <div class="flex items-center justify-between text-xs text-slate-500 border-b border-slate-100 pb-2">
                                         <span><strong>Data:</strong> <span id="top-post-data-${ipdId}">-</span></span>
@@ -1744,33 +2080,45 @@
             const ref = stateIPDs[ipdId];
             const selectMesRadar = document.getElementById(`select-mes-radar-${ipdId}`);
             const selectMesPostages = document.getElementById(`select-mes-postages-${ipdId}`);
+            const selectMesTemas = document.getElementById(`select-mes-temas-${ipdId}`);
             
             if (selectMesRadar) selectMesRadar.innerHTML = '';
             if (selectMesPostages) selectMesPostages.innerHTML = '';
+            if (selectMesTemas) selectMesTemas.innerHTML = '';
             
             const mesesDisponiveis = ref.profilesDataMes.datas;
             if (mesesDisponiveis.length > 0) {
                 const mesesOrdenados = [...mesesDisponiveis].sort();
 
                 mesesOrdenados.forEach(m => {
+                    const textoData = formatarDataAnoCurto(m, true);
+
                     if (selectMesRadar) {
-                        const opt1 = document.createElement('option');
-                        opt1.value = m; 
-                        opt1.innerText = formatarDataAnoCurto(m, true);
-                        selectMesRadar.appendChild(opt1);
+                        const opt = document.createElement('option');
+                        opt.value = m; 
+                        opt.innerText = textoData;
+                        selectMesRadar.appendChild(opt);
                     }
 
                     if (selectMesPostages) {
-                        const opt2 = document.createElement('option');
-                        opt2.value = m; 
-                        opt2.innerText = formatarDataAnoCurto(m, true);
-                        selectMesPostages.appendChild(opt2);
+                        const opt = document.createElement('option');
+                        opt.value = m; 
+                        opt.innerText = textoData;
+                        selectMesPostages.appendChild(opt);
+                    }
+
+                    if (selectMesTemas) {
+                        const opt = document.createElement('option');
+                        opt.value = m; 
+                        opt.innerText = textoData;
+                        selectMesTemas.appendChild(opt);
                     }
                 });
 
                 const ultimoMesComDados = mesesOrdenados[mesesOrdenados.length - 1];
                 if (selectMesRadar) selectMesRadar.value = ultimoMesComDados;
                 if (selectMesPostages) selectMesPostages.value = ultimoMesComDados;
+                if (selectMesTemas) selectMesTemas.value = ultimoMesComDados;
 
                 ref.mesSelecionadoRadar = ultimoMesComDados;
             }
@@ -1819,6 +2167,8 @@
             atualizarGraficoHistorico(ipdId);
             montarBotoesRadar(ipdId);
             atualizarRadarPorMes(ipdId);
+
+            carregarTemasEngajamento(ipdId);
 
             const selectProfile = document.getElementById(`select-profile-postages-${ipdId}`);
             if (selectProfile && selectProfile.options.length > 1) {
