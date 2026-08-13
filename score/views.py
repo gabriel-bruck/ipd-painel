@@ -336,7 +336,7 @@ class TemasEngajamentoView(APIView):
             )
         }
 
-        # 1. Agrupamento Geral
+        # 1. Agrupamento Geral (Com média de interações por post do tema geral)
         raw_geral = queryset.values('categoria_tema').annotate(
             total_posts=Count('id_post'),
             total_interacoes=Coalesce(Sum(interacao_expr), 0)
@@ -355,7 +355,7 @@ class TemasEngajamentoView(APIView):
                 'interacao_por_post': round(t_inter / t_posts, 2) if t_posts > 0 else 0.0
             })
 
-        # 2. Agrupamento Por Perfil
+        # 2. Agrupamento Por Perfil (Com média de interações por post do tema por perfil)
         raw_perfil = queryset.values('profile', 'categoria_tema').annotate(
             total_posts=Count('id_post'),
             total_interacoes=Coalesce(Sum(interacao_expr), 0)
@@ -378,6 +378,7 @@ class TemasEngajamentoView(APIView):
                 'total_interacoes': t_inter,
                 'share_interacoes_perfil': round((t_inter / p_inter_tot * 100), 2) if p_inter_tot > 0 else 0.0,
                 'share_posts_perfil': round((t_posts / p_posts_tot * 100), 2) if p_posts_tot > 0 else 0.0,
+                # Desempenho médio por post do tema dentro do perfil específico
                 'interacao_por_post': round(t_inter / t_posts, 2) if t_posts > 0 else 0.0
             })
 

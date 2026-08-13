@@ -70,7 +70,6 @@ class IPDResource(resources.ModelResource):
             'interesse',
             'ipd',
             'data',
-         
         )
 
     def before_import_row(self, row, **kwargs):
@@ -153,8 +152,8 @@ class ConteudoResource(resources.ModelResource):
         skip_unchanged = False
         report_skipped = True
         ignore_unknown_fields = True
+        import_id_fields = ('id_post',)  # Chave primária de identificação da importação
         
-        # 'titulo' removido da lista de campos oficiais de importação
         fields = (
             'id_post',
             'projeto_ipd',
@@ -213,16 +212,10 @@ class ConteudoResource(resources.ModelResource):
         # Tratamento e Limpeza do Link/URL
         link_raw = row.get('link_post') or row.get('url') or row.get('link')
         if link_raw:
-            # Strip remove espaços, quebras de linha (\n, \r) e caracteres invisíveis
             link_limpo = str(link_raw).strip().replace('\n', '').replace('\r', '')
-            
-            # Garante que o link comece com protocolo http/https
             if link_limpo and not link_limpo.startswith(('http://', 'https://')):
                 link_limpo = f"https://{link_limpo}"
-                
             row['link_post'] = link_limpo
-        # Se id_post não for informado, gera Hash MD5 usando apenas profile, data, link e inicio do texto
-      
 
     def get_instance(self, instance_loader, row):
         id_post_val = str(row.get('id_post') or '').strip()
@@ -240,6 +233,32 @@ class ConteudoResource(resources.ModelResource):
                     return instance_link
 
         return None
+
+    def save_m2m(self, obj, data, using_historical_record, dry_run):
+        """
+        Sobrescreve a sincronização M2M padrão.
+        Em vez de substituir as relações do projeto_ipd, ele adiciona (acumula) novos projetos.
+        """
+        super().save_m2m(obj, data, using_historical_record, dry_run)
+
+        # Se for apenas pré-visualização (dry_run), não executa gravações reais no banco
+        if dry_run:
+            return
+
+        raw_ipd = data.get('projeto_ipd')
+        if raw_ipd:
+            raw_values = [v.strip() for v in str(raw_ipd).replace(';', ',').split(',') if v.strip()]
+            pks = [int(v) for v in raw_values if v.isdigit()]
+            names = [v for v in raw_values if not v.isdigit()]
+
+            # Busca os novos projetos informados na linha da planilha
+            qs_pk = ProjetoIPD.objects.filter(pk__in=pks) if pks else ProjetoIPD.objects.none()
+            qs_name = ProjetoIPD.objects.filter(nome__in=names) if names else ProjetoIPD.objects.none()
+            novos_projetos = (qs_pk | qs_name).distinct()
+
+            if novos_projetos.exists():
+                # ADICIONA os novos projetos ao registro existente mantendo os anteriores
+                obj.projeto_ipd.add(*novos_projetos)
 
     def after_import_row(self, row, row_result, **kwargs):
         super().after_import_row(row, row_result, **kwargs)
