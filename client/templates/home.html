@@ -1,0 +1,467 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-BR" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quaest Digital | Plataforma de Inteligência IPD</title>
+    
+    <!-- Google Fonts (Inter) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        quaest: {
+                            teal: '#1FA4B6',
+                            tealDark: '#178392',
+                            tealLight: '#F0F9FA',
+                            tealBorder: '#D1EEF2',
+                            textDark: '#0F172A',
+                            textMuted: '#64748B'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        
+        @keyframes pulse-slow {
+            0%, 100% { opacity: 0.25; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.05); }
+        }
+        .animate-pulse-glow { animation: pulse-slow 6s infinite ease-in-out; }
+    </style>
+</head>
+<body class="bg-slate-50 text-quaest-textDark font-sans antialiased selection:bg-quaest-teal selection:text-white">
+
+    <!-- HEADER / NAVBAR FIXA -->
+   <!-- HEADER / NAVBAR FIXA -->
+<header class="fixed top-0 inset-x-0 bg-white/90 backdrop-blur-md border-b border-slate-200/80 z-40 shadow-sm">
+    <div class="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+        
+        <!-- LOGO DA PLATAFORMA -->
+        <a href="{% url 'home' %}" class="flex items-center gap-3">
+            <span class="font-black text-2xl tracking-tight bg-gradient-to-r from-quaest-teal to-quaest-tealDark bg-clip-text text-transparent">Quaest<span class="text-slate-900">.Digital</span></span>
+            <span class="text-[11px] font-extrabold text-slate-400 uppercase tracking-widest border-l border-slate-200 pl-3 hidden sm:inline-block">Suite Analítica</span>
+        </a>
+
+        <!-- NAVEGAÇÃO DESKTOP -->
+        <nav class="hidden lg:flex items-center gap-8 text-xs font-extrabold uppercase tracking-wider text-slate-600">
+            <a href="#recursos" class="hover:text-quaest-teal transition">Módulos do Relatório</a>
+            <a href="#metodologia" class="hover:text-quaest-teal transition">Algoritmo IPD</a>
+            <a href="#atendimento" class="hover:text-quaest-teal transition">Atendimento</a>
+            {% if user.is_authenticated %}
+                <a href="{% url 'meus_projetos' %}" class="text-quaest-teal hover:text-quaest-tealDark font-black transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-folder-open text-xs"></i> Meus Projetos
+                </a>
+            {% endif %}
+        </nav>
+
+        <!-- AÇÕES DA NAVBAR (AVATAR E LOGOUT OU BOTÃO DE LOGIN) -->
+        <div class="flex items-center gap-3">
+            {% if user.is_authenticated %}
+                <!-- WIDGET DO USUÁRIO LOGADO -->
+                <div class="flex items-center gap-3 bg-slate-100 p-1.5 pr-2 rounded-2xl border border-slate-200">
+                    <div class="w-8 h-8 rounded-xl bg-quaest-teal text-white flex items-center justify-center font-black text-xs uppercase shadow-sm shrink-0">
+                        {{ user.first_name|default:user.username|slice:":1" }}
+                    </div>
+                    <div class="hidden sm:flex flex-col text-left">
+                        <span class="text-xs font-black text-slate-900 leading-tight">
+                            {{ user.first_name|default:user.username }}
+                        </span>
+                        <span class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Cliente Conectado</span>
+                    </div>
+
+                    <!-- FORMULÁRIO DE LOGOUT -->
+                    <form action="{% url 'logout' %}" method="POST" class="ml-1">
+                        {% csrf_token %}
+                        <button type="submit" title="Sair do Sistema" class="p-1.5 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer flex items-center justify-center">
+                            <i class="fa-solid fa-power-off text-xs"></i>
+                        </button>
+                    </form>
+                </div>
+            {% else %}
+                <!-- BOTÃO PARA ABRIR MODAL DE LOGIN (DESLOGADO) -->
+                <button onclick="abrirModalLogin()" class="px-5 py-2.5 rounded-xl font-extrabold text-xs bg-quaest-teal hover:bg-quaest-tealDark text-white shadow-md shadow-teal-500/20 transition flex items-center gap-2 cursor-pointer">
+                    <i class="fa-solid fa-lock text-xs"></i>
+                    <span>Área do Cliente</span>
+                </button>
+            {% endif %}
+
+            <!-- BOTÃO HAMBÚRGUER (MOBILE) -->
+            <button onclick="toggleMenuMobile()" class="lg:hidden p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition cursor-pointer" title="Abrir Menu">
+                <i id="icone-menu-mobile" class="fa-solid fa-bars text-lg"></i>
+            </button>
+        </div>
+
+    </div>
+
+    <!-- PAINEL SUSPENSO DO MENU HAMBÚRGUER (MOBILE) -->
+    <div id="menu-mobile" class="hidden lg:hidden bg-white border-b border-slate-200 px-6 py-6 space-y-4 shadow-xl">
+        <nav class="flex flex-col space-y-3 text-sm font-extrabold uppercase tracking-wider text-slate-700">
+            <a href="#recursos" onclick="toggleMenuMobile()" class="p-2.5 rounded-xl hover:bg-slate-50 hover:text-quaest-teal transition flex items-center gap-3">
+                <i class="fa-solid fa-layer-group text-quaest-teal text-base w-5"></i> Módulos do Relatório
+            </a>
+            <a href="#metodologia" onclick="toggleMenuMobile()" class="p-2.5 rounded-xl hover:bg-slate-50 hover:text-quaest-teal transition flex items-center gap-3">
+                <i class="fa-solid fa-microchip text-quaest-teal text-base w-5"></i> Algoritmo IPD
+            </a>
+            <a href="#atendimento" onclick="toggleMenuMobile()" class="p-2.5 rounded-xl hover:bg-slate-50 hover:text-quaest-teal transition flex items-center gap-3">
+                <i class="fa-solid fa-headset text-quaest-teal text-base w-5"></i> Atendimento
+            </a>
+            
+            {% if user.is_authenticated %}
+                <div class="pt-2 border-t border-slate-100">
+                    <a href="{% url 'meus_projetos' %}" class="p-3 rounded-2xl bg-quaest-tealLight text-quaest-tealDark font-black border border-quaest-teal/30 flex items-center gap-3 shadow-sm">
+                        <i class="fa-solid fa-folder-open text-base"></i> Meus Projetos
+                    </a>
+                </div>
+            {% endif %}
+        </nav>
+    </div>
+</header>
+
+    <main class="pt-20">
+        
+        <!-- SEÇÃO HERO (VERSÃO CLARA COM FOCO NO PAINEL) -->
+        <section class="relative bg-gradient-to-b from-white via-slate-50 to-slate-100/70 text-slate-900 min-h-[90vh] flex items-center pt-12 pb-20 overflow-hidden border-b border-slate-200/80">
+            <!-- Glows Suaves de Fundo em Tons Teal -->
+            <div class="absolute -top-32 left-1/2 -translate-x-1/2 w-[700px] h-[500px] bg-quaest-teal/10 rounded-full blur-[120px] pointer-events-none animate-pulse-glow"></div>
+
+            <div class="max-w-7xl mx-auto px-6 relative z-10 space-y-12 text-center">
+                
+                <div class="space-y-6 max-w-4xl mx-auto">
+                    <div class="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-quaest-tealLight text-quaest-tealDark border border-quaest-teal/30 text-xs font-black uppercase tracking-widest shadow-sm">
+                        <i class="fa-solid fa-chart-pie text-xs"></i>
+                        <span>Relatório Digital de Performance</span>
+                    </div>
+
+                    <h1 class="text-4xl md:text-6xl font-black tracking-tight leading-tight text-slate-900">
+                        Transforme dados de redes em <span class="bg-gradient-to-r from-quaest-teal via-quaest-tealDark to-slate-900 bg-clip-text text-transparent">Decisões Estratégicas</span>
+                    </h1>
+
+                    <p class="text-base md:text-lg text-slate-600 font-medium leading-relaxed max-w-2xl mx-auto">
+                        Acompanhe reputação, engajamento e métricas causais de marcas e figuras públicas através do nosso Relatório Executivo com Inteligência Artificial integrada.
+                    </p>
+
+                    <div class="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2">
+                        {% if user.is_authenticated %}
+                            <a href="{% url 'meus_projetos' %}" class="w-full sm:w-auto px-8 py-4 rounded-2xl bg-quaest-teal hover:bg-quaest-tealDark text-white font-black text-xs uppercase tracking-wider shadow-xl shadow-teal-500/20 transition flex items-center justify-center gap-3">
+                                <i class="fa-solid fa-folder-open text-sm"></i>
+                                <span>Ver Meus Projetos</span>
+                            </a>
+                        {% else %}
+                            <button onclick="abrirModalLogin()" class="w-full sm:w-auto px-8 py-4 rounded-2xl bg-quaest-teal hover:bg-quaest-tealDark text-white font-black text-xs uppercase tracking-wider shadow-xl shadow-teal-500/20 transition flex items-center justify-center gap-3 cursor-pointer">
+                                <i class="fa-solid fa-gauge-high"></i>
+                                <span>Acessar Meu Relatório</span>
+                            </button>
+                        {% endif %}
+                        <a href="#recursos" class="w-full sm:w-auto px-8 py-4 rounded-2xl bg-white hover:bg-slate-50 text-slate-700 font-extrabold text-xs uppercase tracking-wider border border-slate-300 shadow-sm transition flex items-center justify-center gap-2">
+                            <span>Ver Recursos do Painel</span>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- PREVIEW SIMULADO DO DASHBOARD / RELATÓRIO (TEMA CLARO) -->
+                <div class="relative max-w-5xl mx-auto pt-6">
+                    <div class="rounded-3xl bg-white/90 border border-slate-200/90 p-4 shadow-2xl shadow-teal-950/5 backdrop-blur-xl">
+                        <!-- Topo Simulado do Dashboard -->
+                        <div class="flex items-center justify-between pb-4 border-b border-slate-100 px-2 text-xs">
+                            <div class="flex items-center gap-2">
+                                <span class="w-3 h-3 rounded-full bg-rose-400"></span>
+                                <span class="w-3 h-3 rounded-full bg-amber-400"></span>
+                                <span class="w-3 h-3 rounded-full bg-emerald-400"></span>
+                                <span class="text-slate-400 font-bold ml-2 hidden sm:inline-block">relatorio-executivo.quaest.digital</span>
+                            </div>
+                            <span class="text-quaest-teal font-extrabold bg-quaest-tealLight px-3 py-1 rounded-full border border-quaest-teal/20 text-[10px] uppercase">Painel Ativo</span>
+                        </div>
+
+                        <!-- Grid Simulado de Gráficos do Relatório -->
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 text-left">
+                            <div class="p-5 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2">
+                                <span class="text-[10px] text-slate-400 font-black uppercase">Média IPD Geral</span>
+                                <div class="text-2xl font-black text-quaest-teal">84.50 <span class="text-xs text-emerald-600 font-bold ml-1">+3.2 pts</span></div>
+                                <div class="h-1.5 w-full bg-slate-200 rounded-full overflow-hidden">
+                                    <div class="h-full bg-quaest-teal w-[84%]"></div>
+                                </div>
+                            </div>
+
+                            <div class="p-5 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2">
+                                <span class="text-[10px] text-slate-400 font-black uppercase">Impacto Causal (BSTS)</span>
+                                <div class="text-2xl font-black text-slate-900">+18.4% <span class="text-xs text-emerald-600 font-bold ml-1">Significativo</span></div>
+                                <div class="text-[10px] text-slate-500 font-medium">Contrafactual vs. Observado</div>
+                            </div>
+
+                            <div class="p-5 rounded-2xl bg-quaest-tealLight/50 border border-quaest-tealBorder space-y-2">
+                                <span class="text-[10px] text-quaest-tealDark font-black uppercase">Síntese de IA</span>
+                                <div class="text-xs text-slate-700 font-medium line-clamp-2">"Liderança mantida no Instagram com pico de engajamento no tema Mobilização..."</div>
+                                <span class="text-[10px] text-quaest-teal font-bold block pt-1">Atualizado há 1 hora</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- MÓDULOS INTEGRADOS DO RELATÓRIO -->
+        <section id="recursos" class="max-w-7xl mx-auto px-6 py-20 space-y-16">
+            <div class="text-center space-y-4 max-w-3xl mx-auto">
+                <span class="text-xs font-black text-quaest-teal uppercase tracking-widest">Análise Completa</span>
+                <h2 class="text-3xl md:text-5xl font-black text-slate-900">O que você encontra no Relatório</h2>
+                <p class="text-slate-600 text-sm md:text-base leading-relaxed">
+                    A plataforma estrutura volumes massivos de dados digitais em 5 seções analíticas de fácil interpretação.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                
+                <!-- CARD 1 -->
+                <div class="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm hover:shadow-md hover:border-quaest-teal/50 transition-all space-y-4">
+                    <div class="w-12 h-12 rounded-2xl bg-quaest-tealLight border border-quaest-tealBorder flex items-center justify-center text-quaest-teal text-xl font-black shadow-sm">
+                        <i class="fa-solid fa-trophy"></i>
+                    </div>
+                    <h3 class="text-xl font-black text-slate-900">Ranking de Popularidade</h3>
+                    <p class="text-slate-600 text-xs leading-relaxed">
+                        Classificação mensal de perfis e concorrentes com destaques de liderança, maiores subidas de posição e saltos de pontuação.
+                    </p>
+                </div>
+
+                <!-- CARD 2 -->
+                <div class="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm hover:shadow-md hover:border-quaest-teal/50 transition-all space-y-4">
+                    <div class="w-12 h-12 rounded-2xl bg-quaest-tealLight border border-quaest-tealBorder flex items-center justify-center text-quaest-teal text-xs font-black shadow-sm">
+                        <i class="fa-solid fa-chart-line"></i>
+                    </div>
+                    <h3 class="text-xl font-black text-slate-900">Séries Temporais Interativas</h3>
+                    <p class="text-slate-600 text-xs leading-relaxed">
+                        Acompanhe a evolução semanal ou mensal do IPD. Ao clicar em qualquer ponto, consulte a variação exata de todas as 6 dimensões.
+                    </p>
+                </div>
+
+                <!-- CARD 3 -->
+                <div class="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm hover:shadow-md hover:border-quaest-teal/50 transition-all space-y-4">
+                    <div class="w-12 h-12 rounded-2xl bg-quaest-tealLight border border-quaest-tealBorder flex items-center justify-center text-quaest-teal text-xs font-black shadow-sm">
+                        <i class="fa-solid fa-microchip"></i>
+                    </div>
+                    <h3 class="text-xl font-black text-slate-900">Impacto Causal (BSTS)</h3>
+                    <p class="text-slate-600 text-xs leading-relaxed">
+                        Modelagem estatística por Controle Sintético para medir com precisão científica o ganho ou perda de IPD gerado por um evento específico.
+                    </p>
+                </div>
+
+                <!-- CARD 4 -->
+                <div class="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm hover:shadow-md hover:border-quaest-teal/50 transition-all space-y-4">
+                    <div class="w-12 h-12 rounded-2xl bg-quaest-tealLight border border-quaest-tealBorder flex items-center justify-center text-quaest-teal text-xs font-black shadow-sm">
+                        <i class="fa-solid fa-circle-nodes"></i>
+                    </div>
+                    <h3 class="text-xl font-black text-slate-900">Radar Multidimensão</h3>
+                    <p class="text-slate-600 text-xs leading-relaxed">
+                        Gráficos teia comparativos por perfil para diagnosticar o equilíbrio entre Fama, Engajamento, Mobilização, Valência e Interesse.
+                    </p>
+                </div>
+
+                <!-- CARD 5 -->
+                <div class="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm hover:shadow-md hover:border-quaest-teal/50 transition-all space-y-4">
+                    <div class="w-12 h-12 rounded-2xl bg-quaest-tealLight border border-quaest-tealBorder flex items-center justify-center text-quaest-teal text-xs font-black shadow-sm">
+                        <i class="fa-solid fa-table-cells"></i>
+                    </div>
+                    <h3 class="text-xl font-black text-slate-900">Matriz de Eficiência Temática</h3>
+                    <p class="text-slate-600 text-xs leading-relaxed">
+                        Cruze o volume de postagens contra o engajamento gerado por tema e descubra os tópicos "Carro-Chefe" e os de "Baixo Retorno".
+                    </p>
+                </div>
+
+                <!-- CARD 6 -->
+                <div class="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm hover:shadow-md hover:border-quaest-teal/50 transition-all space-y-4">
+                    <div class="w-12 h-12 rounded-2xl bg-quaest-tealLight border border-quaest-tealBorder flex items-center justify-center text-quaest-teal text-xs font-black shadow-sm">
+                        <i class="fa-solid fa-file-export"></i>
+                    </div>
+                    <h3 class="text-xl font-black text-slate-900">Exportação Completa (PNG / CSV)</h3>
+                    <p class="text-slate-600 text-xs leading-relaxed">
+                        Baixe gráficos em alta resolução (PNG) e dados brutos em planilha (CSV) com um único clique para incluir em suas apresentações.
+                    </p>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- SEÇÃO ALGORITMO IPD E PLATAFORMAS -->
+        <section id="metodologia" class="bg-slate-100/80 py-20 border-y border-slate-200">
+            <div class="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+                <div class="lg:col-span-6 space-y-6">
+                    <span class="text-xs font-black text-quaest-teal uppercase tracking-widest">Consolidação Científica</span>
+                    <h2 class="text-3xl md:text-4xl font-black text-slate-900">O Algoritmo por trás do Relatório</h2>
+                    <p class="text-slate-600 text-sm leading-relaxed">
+                        O Índice de Popularidade Digital (IPD) foi projetado para evitar distorções de alcance geradas por automação ou métricas de vaidade.
+                    </p>
+
+                    <div class="space-y-3 pt-2">
+                        <div class="flex items-center gap-3 text-xs text-slate-700 font-bold">
+                            <i class="fa-solid fa-circle-check text-quaest-teal"></i>
+                            <span>175 Variáveis analisadas simultaneamente</span>
+                        </div>
+                        <div class="flex items-center gap-3 text-xs text-slate-700 font-bold">
+                            <i class="fa-solid fa-circle-check text-quaest-teal"></i>
+                            <span>Monitoramento em 7 redes (Instagram, Facebook, YouTube, TikTok, X, etc.)</span>
+                        </div>
+                        <div class="flex items-center gap-3 text-xs text-slate-700 font-bold">
+                            <i class="fa-solid fa-circle-check text-quaest-teal"></i>
+                            <span>Auditoria contra bots e engajamento artificial</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="lg:col-span-6 flex justify-center">
+                    <div class="p-8 rounded-3xl bg-white border border-slate-200 max-w-md w-full space-y-6 shadow-xl">
+                        <div class="text-xs font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 pb-3">Escala Padrão por KPI</div>
+                        <div class="flex items-baseline justify-between">
+                            <span class="text-4xl font-black text-quaest-teal">1.00 a 4.00</span>
+                            <span class="text-xs text-slate-500 font-extrabold">Por Dimensão</span>
+                        </div>
+                        <p class="text-xs text-slate-600 leading-relaxed">
+                            A nota final consolida o equilíbrio entre presença contínua, volume de menções e reações positivas da comunidade.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SEÇÃO ATENDIMENTO E SUPORTE -->
+        <section id="atendimento" class="max-w-7xl mx-auto px-6 py-20 text-center space-y-8">
+            <div class="max-w-2xl mx-auto space-y-3">
+                <span class="text-xs font-black text-quaest-teal uppercase tracking-widest">Atendimento Comercial</span>
+                <h2 class="text-3xl font-black text-slate-900">Precisa de Acesso ao Relatório do seu Projeto?</h2>
+                <p class="text-slate-600 text-xs md:text-sm">
+                    Caso sua marca ou equipe ainda não possua credenciais cadastradas no sistema IPD, entre em contato com o nosso time de inteligência.
+                </p>
+            </div>
+
+            <div class="inline-flex flex-col sm:flex-row items-center gap-4 bg-white p-4 rounded-3xl border border-slate-200 shadow-lg">
+                <div class="flex items-center gap-3 px-4">
+                    <i class="fa-solid fa-envelope text-quaest-teal text-lg"></i>
+                    <span class="text-xs font-extrabold text-slate-800">comercial@quaest.com.br</span>
+                </div>
+                {% if user.is_authenticated %}
+                    <a href="{% url 'meus_projetos' %}" class="px-6 py-3 rounded-2xl bg-quaest-teal hover:bg-quaest-tealDark text-white font-extrabold text-xs shadow-md shadow-teal-500/20 transition">
+                        Acessar Meus Projetos
+                    </a>
+                {% else %}
+                    <button onclick="abrirModalLogin()" class="px-6 py-3 rounded-2xl bg-quaest-teal hover:bg-quaest-tealDark text-white font-extrabold text-xs shadow-md shadow-teal-500/20 transition cursor-pointer">
+                        Entrar com minhas credenciais
+                    </button>
+                {% endif %}
+            </div>
+        </section>
+
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="bg-white py-10 border-t border-slate-200 text-xs text-slate-500">
+        <div class="max-w-7xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div class="flex items-center gap-2">
+                <span class="font-black text-lg text-quaest-teal">Quaest<span class="text-slate-900">.Digital</span></span>
+                <span class="text-slate-300">|</span>
+                <span>Plataforma de Inteligência de Dados</span>
+            </div>
+            <p>© 2026 Quaest Pesquisa e Consultoria. Todos os direitos reservados.</p>
+        </div>
+    </footer>
+
+    <!-- MODAL DE LOGIN (VERSÃO COM MENSAGEM DE ERRO INTERNA) -->
+    <div id="modal-login" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-3xl p-8 max-w-md w-full space-y-6 shadow-2xl relative border border-slate-200 text-slate-900">
+            <!-- Botão de Fechar -->
+            <button onclick="fecharModalLogin()" class="absolute top-6 right-6 text-slate-400 hover:text-slate-700 cursor-pointer">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+
+            <div class="space-y-2">
+                <span class="font-black text-xl text-quaest-teal block">Quaest.Digital</span>
+                <h3 class="text-2xl font-black text-slate-900">Acessar Relatório</h3>
+                <p class="text-xs text-slate-500">Informe seu usuário e senha para abrir o painel executivo IPD.</p>
+            </div>
+
+            <!-- MENSAGEM DE ERRO EXIBIDA DENTRO DO MODAL SE O LOGIN FALHAR -->
+            {% if messages %}
+                {% for message in messages %}
+                    {% if message.tags == 'error' %}
+                    <div class="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold flex items-start gap-2.5">
+                        <i class="fa-solid fa-triangle-exclamation text-rose-600 text-sm shrink-0 mt-0.5"></i>
+                        <span>{{ message }}</span>
+                    </div>
+                    {% endif %}
+                {% endfor %}
+            {% endif %}
+
+            <!-- FORMULÁRIO DE LOGIN APONTANDO PARA A VIEW -->
+            <form action="{% url 'login' %}" method="POST" class="space-y-4">
+                {% csrf_token %}
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Usuário / E-mail</label>
+                    <input type="text" name="username" required placeholder="seu.usuario ou email@empresa.com" class="w-full bg-slate-50 text-slate-900 text-xs font-bold px-4 py-3 rounded-xl border border-slate-200 focus:border-quaest-teal outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 uppercase mb-1">Senha</label>
+                    <input type="password" name="password" required placeholder="••••••••" class="w-full bg-slate-50 text-slate-900 text-xs font-bold px-4 py-3 rounded-xl border border-slate-200 focus:border-quaest-teal outline-none">
+                </div>
+
+                <button type="submit" class="w-full py-3.5 rounded-xl bg-quaest-teal hover:bg-quaest-tealDark text-white font-black text-xs uppercase tracking-wider shadow-lg shadow-teal-500/20 transition cursor-pointer">
+                    Entrar na Plataforma
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT DOS MODAIS E MENU MOBILE -->
+    <script>
+        function abrirModalLogin() {
+            document.getElementById('modal-login').classList.remove('hidden');
+        }
+
+        function fecharModalLogin() {
+            document.getElementById('modal-login').classList.add('hidden');
+        }
+
+        // LÓGICA DO MENU HAMBURGUER RESPONSIVO
+        function toggleMenuMobile() {
+            const menu = document.getElementById('menu-mobile');
+            const icone = document.getElementById('icone-menu-mobile');
+            
+            const isHidden = menu.classList.contains('hidden');
+            if (isHidden) {
+                menu.classList.remove('hidden');
+                icone.className = 'fa-solid fa-xmark text-lg';
+            } else {
+                menu.classList.add('hidden');
+                icone.className = 'fa-solid fa-bars text-lg';
+            }
+        }
+
+        // VERIFICA SE HOUVE ERRO DE AUTENTICAÇÃO E REABRE O MODAL
+        document.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            
+            if (urlParams.has('login_error')) {
+                abrirModalLogin();
+                
+                const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+                window.history.replaceState({ path: cleanUrl }, '', cleanUrl);
+            }
+        });
+    </script>
+</body>
+</html>
