@@ -39,6 +39,7 @@ urlpatterns = [
 
     path('api/conteudo/medias/', score_views.MediaMetricasConteudoView.as_view(), name='media-metricas-conteudo'),
     path('api/temas/', score_views.TemasEngajamentoView.as_view(), name='temas'),
-
+    path('api/ipd/previsao-semanal/', score_views.PrevisaoRankingSemanalView.as_view(), name='ipd-previsao'),
+    path("api/explicacao-ranking/", score_views.ExplicacaoRankingIAView.as_view(), name="explicacao-ranking"),
 
 ]

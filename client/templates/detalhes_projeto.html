@@ -71,23 +71,61 @@
         <div id="scroll-progress" class="h-full bg-gradient-to-r from-quaest-teal to-quaest-tealDark w-0 transition-all duration-150"></div>
     </div>
 
-    <!-- HEADER FLUTUANTE DA QUAEST -->
-    <header class="fixed top-1.5 inset-x-0 bg-white/95 backdrop-blur-md border-b border-slate-200/80 z-40 shadow-sm">
-        <div class="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-            <div class="flex items-center gap-3">
-                <span class="font-black text-2xl tracking-tight bg-gradient-to-r from-quaest-teal to-quaest-tealDark bg-clip-text text-transparent">Quaest</span>
-                <span class="text-[11px] font-extrabold text-slate-400 uppercase tracking-widest border-l border-slate-200 pl-3">Executive Digital Report</span>
+    <!-- HEADER / NAVBAR -->
+    <header class="bg-white/95 backdrop-blur-md border-b border-slate-200/80 sticky top-0 z-40 shadow-sm">
+        <div class="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between gap-4">
+            
+            <div class="flex items-center gap-6">
+                <a href="{% url 'home' %}" class="flex items-center gap-3">
+                    <span class="font-black text-2xl tracking-tight bg-gradient-to-r from-quaest-teal to-quaest-tealDark bg-clip-text text-transparent">Quaest<span class="text-slate-900">.Digital</span></span>
+                    <span class="text-[11px] font-extrabold text-slate-400 uppercase tracking-widest border-l border-slate-200 pl-3 hidden xl:inline-block">Executive Digital Report</span>
+                </a>
+
+                <nav class="hidden lg:flex items-center gap-1 border-l border-slate-200 pl-6 text-xs font-bold text-slate-600">
+                    <a href="#resumo-executivo-ia" class="px-3 py-1.5 rounded-lg hover:bg-quaest-tealLight hover:text-quaest-teal transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-wand-magic-sparkles text-[11px]"></i> Resumo
+                    </a>
+                    <a href="#explicacao-ipd" class="px-3 py-1.5 rounded-lg hover:bg-quaest-tealLight hover:text-quaest-teal transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-book-bookmark text-[11px]"></i> Metodologia
+                    </a>
+                    <a href="#secao-abas-ipd" class="px-3 py-1.5 rounded-lg hover:bg-quaest-tealLight hover:text-quaest-teal transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-chart-line text-[11px]"></i> Módulos IPD
+                    </a>
+                </nav>
             </div>
 
-            <a href="#" class="text-xs font-extrabold bg-quaest-teal text-white hover:bg-quaest-tealDark px-4 py-2 rounded-xl transition flex items-center gap-2 shadow-md shadow-teal-500/20">
-                <i class="fa-solid fa-arrow-left text-[11px]"></i> Voltar ao Painel
-            </a>
+            <div class="flex items-center gap-3 sm:gap-4">
+                <a href="/projetos/" class="text-xs font-extrabold bg-quaest-teal text-white hover:bg-quaest-tealDark px-4 py-2.5 rounded-xl transition flex items-center gap-2 shadow-md shadow-teal-500/20 shrink-0">
+                    <i class="fa-solid fa-arrow-left text-[11px]"></i> <span class="hidden sm:inline">Voltar aos Projetos</span>
+                </a>
+
+                <div class="flex items-center gap-3 bg-slate-100 p-1.5 pr-3 rounded-2xl border border-slate-200">
+                    <div class="w-8 h-8 rounded-xl bg-quaest-teal text-white flex items-center justify-center font-black text-xs uppercase shadow-sm shrink-0">
+                        {{ user.first_name|default:user.username|slice:":1" }}
+                    </div>
+                    <div class="hidden sm:flex flex-col text-left">
+                        <span class="text-xs font-black text-slate-900 leading-tight">
+                            {{ user.first_name|default:user.username }}
+                        </span>
+                        <span class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Acesso Concedido</span>
+                    </div>
+
+                    <form action="{% url 'logout' %}" method="POST" class="ml-1 sm:ml-2">
+                        {% csrf_token %}
+                        <button type="submit" title="Sair do Sistema" class="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer">
+                            <i class="fa-solid fa-power-off text-xs"></i>
+                        </button>
+                    </form>
+                </div>
+
+            </div>
+
         </div>
     </header>
 
     <main class="pt-20 pb-24 space-y-16">
         
-        <!-- SEÇÃO HERO REFORMULADA -->
+        <!-- SEÇÃO HERO -->
         <section id="contexto-projeto" class="max-w-6xl mx-auto px-6 pt-6 pb-2">
             <div class="relative overflow-hidden rounded-3xl bg-white border border-slate-200 p-8 md:p-14 shadow-lg space-y-10">
                 
@@ -132,9 +170,7 @@
 
                 <div class="relative z-10 grid grid-cols-2 md:grid-cols-4 gap-4 pt-8 border-t border-slate-200 text-xs">
                     <div class="flex items-center gap-4 p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 shadow-sm">
-                        <div class="w-10 h-10 rounded-full bg-quaest-teal text-white flex items-center justify-center font-black text-sm shrink-0 shadow-md shadow-teal-500/20">
-                            01
-                        </div>
+                        <div class="w-10 h-10 rounded-full bg-quaest-teal text-white flex items-center justify-center font-black text-sm shrink-0 shadow-md shadow-teal-500/20">01</div>
                         <div>
                             <span class="block text-[10px] text-slate-400 font-extrabold uppercase">Estrutura</span>
                             <strong class="font-black text-slate-900 text-xs">Visão Integrada</strong>
@@ -142,9 +178,7 @@
                     </div>
 
                     <div class="flex items-center gap-4 p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 shadow-sm">
-                        <div class="w-10 h-10 rounded-full bg-quaest-teal text-white flex items-center justify-center font-black text-sm shrink-0 shadow-md shadow-teal-500/20">
-                            02
-                        </div>
+                        <div class="w-10 h-10 rounded-full bg-quaest-teal text-white flex items-center justify-center font-black text-sm shrink-0 shadow-md shadow-teal-500/20">02</div>
                         <div>
                             <span class="block text-[10px] text-slate-400 font-extrabold uppercase">Análise</span>
                             <strong class="font-black text-slate-900 text-xs">Algoritmo IPD</strong>
@@ -152,9 +186,7 @@
                     </div>
 
                     <div class="flex items-center gap-4 p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 shadow-sm">
-                        <div class="w-10 h-10 rounded-full bg-quaest-teal text-white flex items-center justify-center font-black text-sm shrink-0 shadow-md shadow-teal-500/20">
-                            03
-                        </div>
+                        <div class="w-10 h-10 rounded-full bg-quaest-teal text-white flex items-center justify-center font-black text-sm shrink-0 shadow-md shadow-teal-500/20">03</div>
                         <div>
                             <span class="block text-[10px] text-slate-400 font-extrabold uppercase">Escopo</span>
                             <strong class="font-black text-slate-900 text-xs">Multiplataforma</strong>
@@ -162,9 +194,7 @@
                     </div>
 
                     <div class="flex items-center gap-4 p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 shadow-sm">
-                        <div class="w-10 h-10 rounded-full bg-quaest-teal text-white flex items-center justify-center font-black text-sm shrink-0 shadow-md shadow-teal-500/20">
-                            04
-                        </div>
+                        <div class="w-10 h-10 rounded-full bg-quaest-teal text-white flex items-center justify-center font-black text-sm shrink-0 shadow-md shadow-teal-500/20">04</div>
                         <div>
                             <span class="block text-[10px] text-slate-400 font-extrabold uppercase">Auditoria</span>
                             <strong class="font-black text-slate-900 text-xs">Engajamento Real</strong>
@@ -333,13 +363,11 @@
         <!-- SEÇÃO DE ABAS MÚLTIPLAS DOS MÓDULOS IPD -->
         <section id="secao-abas-ipd" class="max-w-6xl mx-auto px-6 space-y-6">
             
-            <!-- BARRA NAVEGADORA DE ABAS (Exibida dinamicamente se houver mais de 1 IPD) -->
             <div id="container-navegacao-abas" class="hidden flex items-center gap-2 overflow-x-auto pb-2 border-b border-slate-200">
                 <span class="text-xs font-black text-slate-400 uppercase tracking-widest mr-2 shrink-0">Selecione o Módulo:</span>
                 <div id="lista-botoes-abas" class="flex items-center gap-2"></div>
             </div>
 
-            <!-- CONTAINER ONDE OS CONTEÚDOS DOS IPDS SERÃO EXIBIDOS -->
             <div id="container-relatorios-ipd" class="space-y-12">
                 <div class="text-center py-12 text-slate-400 text-sm">
                     <i class="fa-solid fa-spinner animate-spin mr-2"></i> Mapeando e processando os relatórios dos IPDs...
@@ -363,9 +391,11 @@
         <div class="h-1.5 w-full bg-gradient-to-r from-quaest-teal via-quaest-tealDark to-slate-900 absolute bottom-0 left-0"></div>
     </footer>
 
-    <!-- LÓGICA JAVASCRIPT INTEGRADA COM SISTEMA DE ABAS -->
+    <!-- LÓGICA JAVASCRIPT INTEGRADA -->
     <script>
-        const PROJETO_ID = "{{ projeto.id|default:'1' }}"; 
+        let mapPrevisaoCharts = {};
+        let statePrevisaoPreditiva = {};
+        const PROJETO_ID = "{{ projeto.id|default:'1' }}";
 
         window.onscroll = function() {
             let winScroll = document.body.scrollTop || document.documentElement.scrollTop;
@@ -392,7 +422,119 @@
         let isStreamingActive = false;
         let currentAbortController = null;
 
-        // FUNÇÃO DE ALTERNÂNCIA DE ABAS ENTRE MÚLTIPLOS IPDS
+        /* =========================================================
+           FUNÇÕES GLOBAIS DE SELEÇÃO TOTAL E DESMARCAÇÃO DE PROFILES
+           ========================================================= */
+
+        // 1. EVOLUÇÃO HISTÓRICA DO IPD
+        function selecionarTodosHistorico(ipdId) {
+            const ref = stateIPDs[ipdId];
+            if (!ref) return;
+
+            let dataStruct = ref.periodoHistorico === 'diario' ? ref.profilesDataDiario :
+                             ref.periodoHistorico === 'semana' ? ref.profilesDataSemana : ref.profilesDataMes;
+
+            const profiles = (ref.ipdObj?.profiles_usados || Object.keys(dataStruct.profiles)).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+            
+            ref.lineChart.data.datasets = [];
+            profiles.forEach((profileName, idx) => {
+                const color = paletaCores[idx % paletaCores.length];
+                const pInfo = dataStruct.profiles[profileName];
+                const valores = pInfo ? dataStruct.datas.map(d => pInfo.registrosPorData[d] ? pInfo.registrosPorData[d].ipd : null) : [];
+                
+                ref.lineChart.data.datasets.push({
+                    label: profileName,
+                    data: valores,
+                    borderColor: color,
+                    backgroundColor: color + '15',
+                    tension: 0.2,
+                    borderWidth: 2,
+                    pointRadius: ref.periodoHistorico === 'diario' ? 0 : 4,
+                    pointHoverRadius: ref.periodoHistorico === 'diario' ? 6 : 7,
+                    pointHitRadius: 10
+                });
+            });
+
+            ref.lineChart.update();
+            montarBotoesHistorico(ipdId);
+        }
+
+        function desmarcarTodosHistorico(ipdId) {
+            const ref = stateIPDs[ipdId];
+            if (!ref || !ref.lineChart) return;
+
+            ref.lineChart.data.datasets = [];
+            ref.lineChart.update();
+            montarBotoesHistorico(ipdId);
+        }
+
+        // 2. RADAR MENSAL
+        function selecionarTodosRadar(ipdId) {
+            const ref = stateIPDs[ipdId];
+            if (!ref) return;
+
+            const profiles = (ref.ipdObj?.profiles_usados || Object.keys(ref.profilesDataMes.profiles)).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+            ref.profilesSelecionadosRadar = new Set(profiles);
+
+            montarBotoesRadar(ipdId);
+            atualizarRadarPorMes(ipdId);
+        }
+
+        function desmarcarTodosRadar(ipdId) {
+            const ref = stateIPDs[ipdId];
+            if (!ref) return;
+
+            ref.profilesSelecionadosRadar.clear();
+
+            montarBotoesRadar(ipdId);
+            atualizarRadarPorMes(ipdId);
+        }
+
+        // 3. MATRIZ DE EFICIÊNCIA TEMÁTICA COMPARATIVA
+        function selecionarTodosTemasComp(ipdId) {
+            const ref = stateIPDs[ipdId];
+            if (!ref || !stateTemasMetricas[ipdId]) return;
+
+            const todosPerfisIpd = (ref.ipdObj?.profiles_usados || []).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+            stateTemasMetricas[ipdId].perfisComparativo = new Set(todosPerfisIpd);
+
+            popularSeletorPerfisTemas(ipdId, ref.dadosTemas?.temas_por_perfil || []);
+            renderizarComparativoPerfis(ipdId);
+        }
+
+        function desmarcarTodosTemasComp(ipdId) {
+            const ref = stateIPDs[ipdId];
+            if (!ref || !stateTemasMetricas[ipdId]) return;
+
+            stateTemasMetricas[ipdId].perfisComparativo.clear();
+
+            popularSeletorPerfisTemas(ipdId, ref.dadosTemas?.temas_por_perfil || []);
+            renderizarComparativoPerfis(ipdId);
+        }
+
+        // 4. MÓDULO PREDITIVO (XGBOOST)
+        function selecionarTodosPrevisao(ipdId) {
+            const state = statePrevisaoPreditiva[ipdId];
+            if (!state || !state.dadosSemanais) return;
+
+            const todosPerfis = [...new Set(state.dadosSemanais.flatMap(s => (s.ranking_perfis || []).map(p => p.profile)))].sort((a,b) => a.localeCompare(b, 'pt-BR'));
+            state.perfisAtivos = new Set(todosPerfis);
+
+            montarBotoesFiltroPrevisao(ipdId, todosPerfis);
+            renderizarGraficoEStatsPrevisao(ipdId);
+        }
+
+        function desmarcarTodosPrevisao(ipdId) {
+            const state = statePrevisaoPreditiva[ipdId];
+            if (!state || !state.dadosSemanais) return;
+
+            const todosPerfis = [...new Set(state.dadosSemanais.flatMap(s => (s.ranking_perfis || []).map(p => p.profile)))].sort((a,b) => a.localeCompare(b, 'pt-BR'));
+            state.perfisAtivos.clear();
+
+            montarBotoesFiltroPrevisao(ipdId, todosPerfis);
+            renderizarGraficoEStatsPrevisao(ipdId);
+        }
+
         function selecionarAbaIpd(ipdIdAlvo) {
             listaIPDsGlobais.forEach((ipdObj, index) => {
                 const idAtual = ipdObj.ipd_id || index;
@@ -404,13 +546,13 @@
                         articleEl.classList.remove('hidden');
                         btnEl.className = "px-4 py-2 rounded-xl font-extrabold text-xs bg-quaest-teal text-white shadow-md shadow-teal-500/20 transition cursor-pointer flex items-center gap-2 shrink-0";
                         
-                        // Força redimensionamento correto dos gráficos visíveis
                         setTimeout(() => {
                             if (stateIPDs[idAtual]) {
                                 if (stateIPDs[idAtual].lineChart) stateIPDs[idAtual].lineChart.resize();
                                 if (stateIPDs[idAtual].radarChart) stateIPDs[idAtual].radarChart.resize();
                             }
                             if (mapCausalCharts[idAtual]) mapCausalCharts[idAtual].resize();
+                            if (mapPrevisaoCharts[idAtual]) mapPrevisaoCharts[idAtual].resize();
                         }, 50);
                     } else {
                         articleEl.classList.add('hidden');
@@ -454,65 +596,6 @@
             link.click();
         }
 
-        function exportarGraficoParaCSV(chartInstance, nomeArquivo) {
-            if (!chartInstance || !chartInstance.data) return;
-
-            const labels = chartInstance.data.labels || [];
-            const datasets = chartInstance.data.datasets || [];
-
-            let csv = [];
-            let header = ['"Data/Rótulo"'];
-            datasets.forEach(ds => {
-                header.push(`"${ds.label || 'Série'}"`);
-            });
-            csv.push(header.join(';'));
-
-            labels.forEach((lbl, idx) => {
-                let row = [`"${lbl}"`];
-                datasets.forEach(ds => {
-                    let val = ds.data[idx];
-                    if (val === null || val === undefined) val = '';
-                    row.push(`"${val}"`);
-                });
-                csv.push(row.join(';'));
-            });
-
-            const csvString = '\uFEFF' + csv.join('\n');
-            const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.setAttribute('download', `${nomeArquivo}.csv`);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        }
-
-        function exportarTabelaParaCSV(tableId, nomeArquivo) {
-            const table = document.getElementById(tableId);
-            if (!table) return;
-
-            let csv = [];
-            const rows = table.querySelectorAll('tr');
-
-            for (let i = 0; i < rows.length; i++) {
-                const row = [], cols = rows[i].querySelectorAll('td, th');
-                for (let j = 0; j < cols.length; j++) {
-                    let text = cols[j].innerText.replace(/(\r\n|\n|\r)/gm, ' ').replace(/\s+/g, ' ').trim();
-                    text = text.replace(/"/g, '""');
-                    row.push(`"${text}"`);
-                }
-                csv.push(row.join(';'));
-            }
-
-            const csvString = '\uFEFF' + csv.join('\n');
-            const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.setAttribute('download', `${nomeArquivo}.csv`);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        }
 
         function exportarRankingIpdPNG(ipdId) {
             const selectMes = document.getElementById(`select-mes-ranking-${ipdId}`);
@@ -568,27 +651,95 @@
             link.click();
         }
 
-        function exportarRankingIpdCSV(ipdId) {
-            const selectMes = document.getElementById(`select-mes-ranking-${ipdId}`);
-            const mesSel = selectMes ? selectMes.value : 'atual';
-            const dadosRanking = obterRankingModuloIpd(ipdId, mesSel);
-
-            if (!dadosRanking || dadosRanking.length === 0) return;
-
-            let csv = ['"Posicao";"Perfil/Marca";"Pontuacao IPD"'];
-            dadosRanking.forEach((item, index) => {
-                csv.push(`"${index + 1}º";"${item.profile}";"${item.score}"`);
-            });
-
-            const csvString = '\uFEFF' + csv.join('\n');
-            const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.setAttribute('download', `Ranking_IPD_${mesSel}.csv`);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+        /* =========================================================
+   FUNÇÃO AUXILIAR: FORMATAR NÚMEROS COM VÍRGULA PARA O EXCEL
+   ========================================================= */
+function formatarNumeroParaCSV(valor) {
+    if (valor === null || valor === undefined || valor === '') return '""';
+    
+    // Se for número ou string numérica válida
+    if (typeof valor === 'number' || (!isNaN(valor) && !isNaN(parseFloat(valor)))) {
+        const num = parseFloat(valor);
+        // Se for inteiro, retorna sem decimal
+        if (Number.isInteger(num)) {
+            return `"${num}"`;
         }
+        // Se for decimal, substitui o ponto por vírgula (Padrão PT-BR do Excel)
+        return `"${num.toString().replace('.', ',')}"`;
+    }
+    
+    // Para textos e nomes de perfis
+    return `"${valor}"`;
+}
+
+
+/* =========================================================
+   FUNÇÃO 1: EXPORTAR GRÁFICOS PARA CSV (SUBSTITUIR A SUA EXISTENTE)
+   ========================================================= */
+function exportarGraficoParaCSV(chartInstance, nomeArquivo) {
+    if (!chartInstance || !chartInstance.data) return;
+
+    const labels = chartInstance.data.labels || [];
+    const datasets = chartInstance.data.datasets || [];
+
+    // 'sep=;' força o Excel a separar as colunas por ponto e vírgula
+    let csv = ['sep=;'];
+    
+    let header = ['"Data/Rótulo"'];
+    datasets.forEach(ds => {
+        if (!ds.label.includes('_max') && !ds.label.includes('_min')) {
+            header.push(`"${ds.label || 'Série'}"`);
+        }
+    });
+    csv.push(header.join(';'));
+
+    labels.forEach((lbl, idx) => {
+        let row = [`"${lbl}"`];
+        datasets.forEach(ds => {
+            if (!ds.label.includes('_max') && !ds.label.includes('_min')) {
+                let val = ds.data[idx];
+                row.push(formatarNumeroParaCSV(val));
+            }
+        });
+        csv.push(row.join(';'));
+    });
+
+    const csvString = '\uFEFF' + csv.join('\r\n');
+    const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.setAttribute('download', `${nomeArquivo}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+
+/* =========================================================
+   FUNÇÃO 2: EXPORTAR RANKING IPD PARA CSV (SUBSTITUIR A SUA EXISTENTE)
+   ========================================================= */
+function exportarRankingIpdCSV(ipdId) {
+    const selectMes = document.getElementById(`select-mes-ranking-${ipdId}`);
+    const mesSel = selectMes ? selectMes.value : 'atual';
+    const dadosRanking = obterRankingModuloIpd(ipdId, mesSel);
+
+    if (!dadosRanking || dadosRanking.length === 0) return;
+
+    let csv = ['sep=;', '"Posicao";"Perfil/Marca";"Pontuacao IPD"'];
+    dadosRanking.forEach((item, index) => {
+        const scoreFormatado = formatarNumeroParaCSV(item.score);
+        csv.push(`"${index + 1}º";"${item.profile}";${scoreFormatado}`);
+    });
+
+    const csvString = '\uFEFF' + csv.join('\r\n');
+    const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.setAttribute('download', `Ranking_IPD_${mesSel}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
 
         function formatarMesExtenso(dataStr) {
             if (!dataStr) return 'N/A';
@@ -789,40 +940,49 @@
         }
 
         function popularSeletorPerfisTemas(ipdId, listaPerfil) {
-            const perfisUnicos = [...new Set(listaPerfil.map(item => item.profile))].filter(Boolean);
+            const todosPerfisIpd = (stateIPDs[ipdId]?.ipdObj?.profiles_usados || []).sort((a, b) => a.localeCompare(b, 'pt-BR'));
             const selectPerfil = document.getElementById(`select-perfil-temas-${ipdId}`);
             const containerComp = document.getElementById(`container-comp-profiles-${ipdId}`);
 
             if (selectPerfil) {
                 const perfilAtual = selectPerfil.value;
                 selectPerfil.innerHTML = '';
-                perfisUnicos.forEach(p => selectPerfil.appendChild(new Option(p, p)));
-                if (perfisUnicos.includes(perfilAtual)) {
+                todosPerfisIpd.forEach(p => selectPerfil.appendChild(new Option(p, p)));
+                if (todosPerfisIpd.includes(perfilAtual)) {
                     selectPerfil.value = perfilAtual;
                 }
             }
 
             if (containerComp) {
-                containerComp.innerHTML = '';
                 const conjuntoComp = stateTemasMetricas[ipdId].perfisComparativo;
 
-                if (conjuntoComp.size === 0 && perfisUnicos.length > 0) {
-                    perfisUnicos.slice(0, 2).forEach(p => conjuntoComp.add(p));
-                }
+                containerComp.innerHTML = `
+                    <div class="flex items-center justify-between w-full mb-1">
+                        <span class="text-xs font-bold text-slate-500">Perfis no Comparativo:</span>
+                        <div class="flex items-center gap-2">
+                            <button onclick="selecionarTodosTemasComp(${ipdId})" class="text-[11px] font-bold text-indigo-600 hover:underline flex items-center gap-1 cursor-pointer">
+                                <i class="fa-solid fa-check-double text-[10px]"></i> Selecionar Tudo
+                            </button>
+                            <span class="text-slate-300">|</span>
+                            <button onclick="desmarcarTodosTemasComp(${ipdId})" class="text-[11px] font-bold text-rose-500 hover:underline flex items-center gap-1 cursor-pointer">
+                                <i class="fa-solid fa-trash-can text-[10px]"></i> Remover Seleção
+                            </button>
+                        </div>
+                    </div>
+                    <div id="botoes-temas-comp-list-${ipdId}" class="flex flex-wrap items-center gap-1.5"></div>
+                `;
 
-                perfisUnicos.forEach((profileName) => {
+                const subContainer = document.getElementById(`botoes-temas-comp-list-${ipdId}`);
+
+                todosPerfisIpd.forEach((profileName) => {
                     const isAtivo = conjuntoComp.has(profileName);
                     const btn = document.createElement('button');
-                    btn.className = `px-2.5 py-1 rounded-lg text-xs font-bold border transition flex items-center gap-1.5 ${
-                        isAtivo ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-                    }`;
+                    btn.className = `${isAtivo ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'} px-2.5 py-1 rounded-lg text-xs font-bold border transition flex items-center gap-1.5 cursor-pointer`;
                     btn.innerHTML = `<i class="fa-solid fa-${isAtivo ? 'check' : 'plus'} text-[10px]"></i> ${profileName}`;
 
                     btn.onclick = () => {
                         if (conjuntoComp.has(profileName)) {
-                            if (conjuntoComp.size > 1) {
-                                conjuntoComp.delete(profileName);
-                            }
+                            conjuntoComp.delete(profileName);
                         } else {
                             conjuntoComp.add(profileName);
                         }
@@ -830,7 +990,7 @@
                         renderizarComparativoPerfis(ipdId);
                     };
 
-                    containerComp.appendChild(btn);
+                    subContainer.appendChild(btn);
                 });
             }
         }
@@ -1161,7 +1321,18 @@
             const todosPerfis = stateIPDs[ipdId]?.dadosTemas?.temas_por_perfil || [];
 
             const ctx = document.getElementById(`chart-bar-comparativo-${ipdId}`)?.getContext('2d');
-            if (!ctx || selecionados.length === 0) return;
+            if (!ctx) return;
+
+            if (mapTemasCharts[`bar_comp_${ipdId}`]) mapTemasCharts[`bar_comp_${ipdId}`].destroy();
+
+            if (selecionados.length === 0) {
+                mapTemasCharts[`bar_comp_${ipdId}`] = new Chart(ctx, {
+                    type: 'bar',
+                    data: { labels: [], datasets: [] },
+                    options: { responsive: true, maintainAspectRatio: false }
+                });
+                return;
+            }
 
             const temasUnicos = [...new Set(todosPerfis.map(item => item.categoria_tema))];
 
@@ -1179,8 +1350,6 @@
                     borderRadius: 6
                 };
             });
-
-            if (mapTemasCharts[`bar_comp_${ipdId}`]) mapTemasCharts[`bar_comp_${ipdId}`].destroy();
 
             mapTemasCharts[`bar_comp_${ipdId}`] = new Chart(ctx, {
                 type: 'bar',
@@ -1554,7 +1723,6 @@
                 : `<div class="text-xs text-slate-400 font-normal mt-1">Sem saltos de nota no mês</div>`;
 
             container.innerHTML = `
-                <!-- CARD 1: LÍDER DO MÊS -->
                 <div class="p-4 rounded-2xl bg-amber-50/60 border border-amber-200/80 flex items-center gap-3.5 shadow-sm">
                     <div class="w-10 h-10 rounded-xl bg-amber-100 text-amber-600 font-black flex items-center justify-center text-base shrink-0 shadow-sm">
                         <i class="fa-solid fa-crown"></i>
@@ -1565,7 +1733,6 @@
                     </div>
                 </div>
 
-                <!-- CARD 2: MAIOR SUBIDA DE POSIÇÃO -->
                 <div class="p-4 rounded-2xl bg-emerald-50/60 border border-emerald-200/80 flex items-center gap-3.5 shadow-sm">
                     <div class="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-600 font-black flex items-center justify-center text-base shrink-0 shadow-sm">
                         <i class="fa-solid fa-arrow-trend-up"></i>
@@ -1576,7 +1743,6 @@
                     </div>
                 </div>
 
-                <!-- CARD 3: MAIOR EVOLUÇÃO DE IPD -->
                 <div class="p-4 rounded-2xl bg-sky-50/60 border border-sky-200/80 flex items-center gap-3.5 shadow-sm">
                     <div class="w-10 h-10 rounded-xl bg-sky-100 text-quaest-teal font-black flex items-center justify-center text-base shrink-0 shadow-sm">
                         <i class="fa-solid fa-bolt"></i>
@@ -2010,7 +2176,6 @@
                 return;
             }
 
-            // EXIBE A BARRA DE ABAS APENAS SE HOUVER MAIS DE 1 IPD
             if (listaIPDsGlobais.length > 1) {
                 navAbasContainer.classList.remove('hidden');
             } else {
@@ -2021,9 +2186,9 @@
                 const ipdId = ipdObj.ipd_id || index;
                 const nomeIpd = ipdObj.ipd_nome || ipdObj.nome || ipdObj.titulo || `IPD #${ipdId}`;
                 const mediaGeral = ipdObj.ipd_media || '0.00';
-                const profiles = ipdObj.profiles_usados || [];
+                
+                const profiles = (ipdObj.profiles_usados || []).sort((a, b) => a.localeCompare(b, 'pt-BR'));
 
-                // CRIA O BOTÃO DA ABA NO TOPO
                 const btnAba = document.createElement('button');
                 btnAba.id = `btn-aba-ipd-${ipdId}`;
                 btnAba.onclick = () => selecionarAbaIpd(ipdId);
@@ -2072,7 +2237,7 @@
                         </div>
                     </div>
 
-                    <!-- 1º MÓDULO: RANKING MENSAL DO IPD COM DESTAQUES / HIGHLIGHTS -->
+                    <!-- 1º MÓDULO: RANKING MENSAL DO IPD -->
                     <div class="space-y-6">
                         <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
                             <div class="flex items-center gap-3">
@@ -2108,15 +2273,12 @@
                         </div>
 
                         <div id="box-ranking-${ipdId}" class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start transition-all">
-                            
-                            <!-- COLUNA DA ESQUERDA: CARDS DE DESTAQUES EXECUTIVOS (HIGHLIGHTS) -->
                             <div id="container-highlights-ranking-${ipdId}" class="lg:col-span-5 grid grid-cols-1 gap-3">
                                 <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-slate-400 italic text-center">
                                     Carregando destaques executivos...
                                 </div>
                             </div>
 
-                            <!-- COLUNA DA DIREITA: LISTA DE RANKING COMPLETA -->
                             <div class="lg:col-span-7 space-y-3 bg-slate-50/50 p-5 rounded-3xl border border-slate-200/80">
                                 <div class="flex items-center justify-between pb-2 border-b border-slate-200/80 text-xs font-black text-slate-400 uppercase tracking-wider">
                                     <span>Perfil / Marca</span>
@@ -2126,13 +2288,12 @@
                                     <p class="text-xs text-slate-400 italic text-center py-4">Carregando posições do ranking...</p>
                                 </div>
                             </div>
-
                         </div>
                     </div>
 
                     <hr class="border-slate-100" />
 
-                    <!-- 2º GRÁFICO DO MÓDULO: EVOLUÇÃO HISTÓRICA DO IPD -->
+                    <!-- 2º GRÁFICO: EVOLUÇÃO HISTÓRICA DO IPD -->
                     <div class="space-y-6">
                         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                             <div>
@@ -2149,8 +2310,9 @@
                                     </button>
                                 </div>
                                 <div class="inline-flex p-1 bg-slate-100 rounded-xl border border-slate-200 text-xs font-bold shrink-0">
-                                    <button id="btn-periodo-semana-${ipdId}" onclick="alterarPeriodoHistorico(${ipdId}, 'semana')" class="px-3 py-1.5 rounded-lg bg-white text-quaest-teal shadow-sm transition">Semanal</button>
-                                    <button id="btn-periodo-mes-${ipdId}" onclick="alterarPeriodoHistorico(${ipdId}, 'mes')" class="px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition">Mensal</button>
+                                    <button id="btn-periodo-diario-${ipdId}" onclick="alterarPeriodoHistorico(${ipdId}, 'diario')" class="px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition">Diário</button>
+                                    <button id="btn-periodo-semana-${ipdId}" onclick="alterarPeriodoHistorico(${ipdId}, 'semana')" class="px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition">Semanal</button>
+                                    <button id="btn-periodo-mes-${ipdId}" onclick="alterarPeriodoHistorico(${ipdId}, 'mes')" class="px-3 py-1.5 rounded-lg bg-white text-quaest-teal shadow-sm transition">Mensal</button>
                                 </div>
                                 <button onclick="toggleMinimizarCard('box-historico-${ipdId}', this)" title="Minimizar Seção" class="p-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 transition">
                                     <i class="fa-solid fa-chevron-up text-xs"></i>
@@ -2159,8 +2321,8 @@
                         </div>
 
                         <div id="box-historico-${ipdId}" class="space-y-4 transition-all">
-                            <div id="container-profiles-line-${ipdId}" class="flex flex-wrap items-center gap-2">
-                                <span class="text-xs font-bold text-slate-500 mr-2">Profiles:</span>
+                            <div id="container-profiles-line-${ipdId}" class="flex flex-col gap-1.5">
+                                <span class="text-xs font-bold text-slate-500">Profiles:</span>
                             </div>
 
                             <div class="p-6 rounded-2xl bg-slate-50 border border-slate-200 space-y-4">
@@ -2181,7 +2343,121 @@
                         </div>
                     </div>
 
-                    <!-- 3. MÓDULO DE ANÁLISE DE IMPACTO CAUSAL (BSTS) -->
+                    <!-- MÓDULO PREDITIVO: RANKING E PREVISÃO IPD (XGBOOST RELACIONAL) -->
+                    <div class="space-y-6">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-9 h-9 rounded-xl bg-purple-50 border border-purple-200 flex items-center justify-center text-purple-600 text-base font-black shrink-0">
+                                    <i class="fa-solid fa-crystal-ball"></i>
+                                </div>
+                                <div>
+                                    <span class="text-[10px] font-black text-purple-600 uppercase tracking-widest block">Inteligência Preditiva (ML)</span>
+                                    <h3 class="text-xl font-black text-slate-900">Previsão e Ranking Semanal do IPD (${nomeIpd})</h3>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <div class="flex items-center gap-1.5 bg-slate-50 p-1 rounded-xl border border-slate-200">
+                                    <button onclick="exportarGraficoParaPNG('chartPrevisaoCanvas-${ipdId}', 'Previsao_IPD_Futurista')" class="px-2.5 py-1 rounded-lg bg-white hover:bg-slate-100 text-slate-600 border border-slate-200 font-bold text-xs shadow-sm transition flex items-center gap-1">
+                                        <i class="fa-solid fa-download text-purple-600"></i> PNG
+                                    </button>
+                                    <button onclick="exportarGraficoParaCSV(mapPrevisaoCharts[${ipdId}], 'Previsao_IPD_Futurista')" class="px-2.5 py-1 rounded-lg bg-white hover:bg-slate-100 text-slate-600 border border-slate-200 font-bold text-xs shadow-sm transition flex items-center gap-1">
+                                        <i class="fa-solid fa-file-csv text-emerald-600"></i> CSV
+                                    </button>
+                                </div>
+
+                                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-50 text-purple-700 text-xs font-bold border border-purple-200 w-fit">
+                                    <i class="fa-solid fa-robot"></i> XGBoost Relacional
+                                </span>
+                                <button onclick="toggleMinimizarCard('box-previsao-${ipdId}', this)" title="Minimizar Seção" class="p-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 transition">
+                                    <i class="fa-solid fa-chevron-up text-xs"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div id="box-previsao-${ipdId}" class="space-y-6 transition-all">
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-slate-50/80 p-5 rounded-2xl border border-slate-200 items-end">
+                                <div class="sm:col-span-2">
+                                    <label for="previsao-semanas-${ipdId}" class="block text-xs font-bold text-slate-600 uppercase mb-1">Horizonte de Projeção (Semanas à Frente)</label>
+                                    <input type="number" id="previsao-semanas-${ipdId}" value="4" min="2" max="12" class="w-full bg-white text-slate-800 text-xs font-bold px-3 py-2 rounded-xl border border-slate-200 outline-none focus:border-purple-500">
+                                </div>
+
+                                <div>
+                                    <button type="button" onclick="executarPrevisaoIPD(${ipdId})" class="w-full bg-purple-600 hover:bg-purple-700 text-white text-xs font-black py-2.5 px-4 rounded-xl shadow-sm transition flex items-center justify-center gap-2 cursor-pointer">
+                                        <i class="fa-solid fa-wand-magic-sparkles"></i>
+                                        <span>Calcular Previsão do Grupo</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div id="previsao-loading-${ipdId}" class="hidden p-6 text-center text-slate-500 text-xs italic space-y-2">
+                                <i class="fa-solid fa-spinner animate-spin text-purple-600 text-xl"></i>
+                                <p>Treinando o XGBoost relacional para estimar o ranking de todos os perfis...</p>
+                            </div>
+
+                            <div id="previsao-erro-${ipdId}" class="hidden p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs space-y-1">
+                                <div class="flex items-center gap-2 font-black text-rose-900">
+                                    <i class="fa-solid fa-triangle-exclamation text-rose-600"></i> Não foi possível calcular a previsão
+                                </div>
+                                <p id="previsao-erro-msg-${ipdId}">Verifique se há histórico de medições suficiente.</p>
+                            </div>
+                            <div id="previsao-resultados-${ipdId}" class="hidden space-y-6">
+    <!-- STATS DE RESULTADOS -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div class="p-4 rounded-2xl bg-white border border-purple-200 bg-purple-50/30 shadow-sm space-y-1">
+            <span class="text-[10px] text-purple-600 font-extrabold uppercase block">Líder Previsto no Final do Período</span>
+            <div id="previsao-ult-ipd-${ipdId}" class="text-2xl font-black text-purple-700">--</div>
+            <span id="previsao-ult-data-${ipdId}" class="text-[10px] text-slate-500 font-mono">--</span>
+        </div>
+
+        <div class="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-1">
+            <span class="text-[10px] text-slate-400 font-extrabold uppercase block">Universo Avaliado</span>
+            <div class="text-2xl font-black text-slate-900">${profiles.length} Perfis</div>
+            <span class="text-[10px] text-slate-500">Classificação relacional automatizada</span>
+        </div>
+    </div>
+
+    <!-- BOTÃO DE IA QUE SÓ APARECE APÓS CARREGAR O GRÁFICO -->
+    <div id="box-btn-explicacao-ia-${ipdId}" class="flex items-center justify-end">
+        <button id="btn-explicar-ia-${ipdId}" onclick="solicitarExplicacaoIARanking(${ipdId})" class="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-extrabold text-xs px-5 py-2.5 rounded-xl shadow-md shadow-purple-500/20 transition flex items-center gap-2 cursor-pointer">
+            <i class="fa-solid fa-wand-magic-sparkles text-amber-300"></i>
+            <span>Gerar Explicação da Tendência via IA</span>
+        </button>
+    </div>
+
+    <!-- CARD RECEPTOR DA EXPLICAÇÃO TEXTUAL DA IA -->
+    <div id="box-texto-explicacao-ia-${ipdId}" class="hidden p-6 rounded-3xl bg-purple-50/60 border border-purple-200 space-y-4 shadow-sm">
+        <div class="flex items-center justify-between border-b border-purple-200/80 pb-3">
+            <div class="flex items-center gap-2 text-purple-900 font-black text-xs uppercase tracking-wider">
+                <i class="fa-solid fa-robot text-purple-600 text-sm"></i>
+                <span>Análise de Tendência</span>
+            </div>
+            <span class="text-[10px] font-bold bg-purple-200 text-purple-800 px-2.5 py-0.5 rounded-md">OpenRouter + GPT-4o</span>
+        </div>
+        <div id="conteudo-explicacao-ia-${ipdId}" class="text-xs text-slate-700 space-y-3 leading-relaxed">
+            <!-- Texto injetado dinamicamente -->
+        </div>
+    </div>
+
+    <div id="container-profiles-previsao-${ipdId}" class="flex flex-col gap-1.5">
+        <span class="text-xs font-bold text-slate-500">Exibir no Gráfico Futurista:</span>
+    </div>
+<!-- ( ... seu código acima ... ) -->
+    <div class="p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
+        <div class="flex items-center justify-between">
+            <h4 class="text-xs font-black text-slate-900 uppercase tracking-wider">Tendência e Evolução de Ranking por Perfil</h4>
+        </div>
+        <div class="h-80 w-full">
+            <canvas id="chartPrevisaoCanvas-${ipdId}"></canvas>
+        </div>
+    </div>
+</div> <!-- Fecha o previsao-resultados-${ipdId} -->
+
+</div> <!-- ADICIONE ESTA DIV: Fecha o box-previsao-${ipdId} -->
+</div> <!-- ADICIONE ESTA DIV: Fecha o wrapper do Módulo Preditivo -->
+
+
+<!-- 3. MÓDULO DE ANÁLISE DE IMPACTO CAUSAL (BSTS) -->
+
                     <div class="space-y-6 pt-4 border-t border-slate-100">
                         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                             <div class="flex items-center gap-3">
@@ -2318,8 +2594,8 @@
                         </div>
 
                         <div id="box-radar-${ipdId}" class="space-y-6 transition-all">
-                            <div id="container-profiles-radar-${ipdId}" class="flex flex-wrap items-center gap-2">
-                                <span class="text-xs font-bold text-slate-500 mr-2">Adicionar/Remover no Radar:</span>
+                            <div id="container-profiles-radar-${ipdId}" class="flex flex-col gap-1.5">
+                                <span class="text-xs font-bold text-slate-500">Adicionar/Remover no Radar:</span>
                             </div>
 
                             <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
@@ -2389,7 +2665,6 @@
                         </div>
 
                         <div id="box-temas-${ipdId}" class="space-y-6 transition-all">
-                            <!-- BLOCO 1: MATRIZ DE QUADRANTES GERAL E POR PERFIL -->
                             <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
                                 
                                 <!-- MATRIZ GERAL -->
@@ -2461,7 +2736,7 @@
 
                             </div>
 
-                            <!-- BLOCO 2: COMPARATIVO MULTIPERFIL (MÉDIA DE INTERAÇÃO POR POST) -->
+                            <!-- COMPARATIVO MULTIPERFIL -->
                             <div class="bg-slate-50 p-6 rounded-3xl border border-slate-200 space-y-4">
                                 <div class="border-b border-slate-200/80 pb-3 space-y-2">
                                     <div class="flex items-center justify-between">
@@ -2474,7 +2749,7 @@
                                         </div>
                                     </div>
                                     
-                                    <div id="container-comp-profiles-${ipdId}" class="flex flex-wrap items-center gap-1.5 pt-1">
+                                    <div id="container-comp-profiles-${ipdId}" class="flex flex-col gap-1.5 pt-1">
                                     </div>
                                 </div>
 
@@ -2607,16 +2882,18 @@
         }
 
         function inicializarStateIPD(ipdObj, ipdId) {
+            const rawDiarias = ipdObj.medias_diarias || ipdObj.diario || [];
             const rawSemanais = ipdObj.medias_semanais || [];
             const rawMensais = ipdObj.medias_mensais || [];
 
             stateIPDs[ipdId] = {
                 ipdObj: ipdObj,
-                periodoHistorico: 'semana',
+                periodoHistorico: 'mes',
                 mesSelecionadoRadar: null,
                 profilesSelecionadosRadar: new Set(),
                 slidesCarrosselData: [],
                 slideIndexAtual: 0,
+                profilesDataDiario: processarMapeamentoPeriodo(rawDiarias, 'diario'),
                 profilesDataSemana: processarMapeamentoPeriodo(rawSemanais, 'semana'),
                 profilesDataMes: processarMapeamentoPeriodo(rawMensais, 'mes'),
                 lineChart: null,
@@ -2744,10 +3021,13 @@
         function processarMapeamentoPeriodo(listaMedicoes, tipoPeriodo) {
             const map = {};
             const conjuntoDatas = new Set();
-            const campoData = tipoPeriodo === 'semana' ? 'semana' : 'mes';
+            let campoData = 'mes';
+            if (tipoPeriodo === 'semana') campoData = 'semana';
+            else if (tipoPeriodo === 'diario') campoData = 'data' in (listaMedicoes[0] || {}) ? 'data' : 'dia';
 
             listaMedicoes.forEach(m => {
-                if (m[campoData]) conjuntoDatas.add(m[campoData]);
+                const key = m[campoData] || m.data || m.dia || m.semana || m.mes;
+                if (key) conjuntoDatas.add(key);
             });
 
             const datasOrdenadas = Array.from(conjuntoDatas).sort();
@@ -2760,13 +3040,15 @@
                     map[p] = { registrosPorData: {} };
                 }
 
-                map[p].registrosPorData[m[campoData]] = {
-                    ipd: parseFloat(m.media_ipd || 0),
-                    fama: parseFloat(m.media_fama || 0),
-                    engaj: parseFloat(m.media_engaj || 0),
-                    mob: parseFloat(m.media_mob || 0),
-                    valencia: parseFloat(m.media_valencia || 0),
-                    interesse: parseFloat(m.media_interesse || 0)
+                const keyData = m[campoData] || m.data || m.dia || m.semana || m.mes;
+
+                map[p].registrosPorData[keyData] = {
+                    ipd: parseFloat(m.media_ipd || m.ipd || 0),
+                    fama: parseFloat(m.media_fama || m.fama || 0),
+                    engaj: parseFloat(m.media_engaj || m.engaj || 0),
+                    mob: parseFloat(m.media_mob || m.mob || 0),
+                    valencia: parseFloat(m.media_valencia || m.valencia || 0),
+                    interesse: parseFloat(m.media_interesse || m.interesse || 0)
                 };
             });
 
@@ -2777,8 +3059,13 @@
             const ref = stateIPDs[ipdId];
             ref.periodoHistorico = novoPeriodo;
 
-            document.getElementById(`btn-periodo-semana-${ipdId}`).className = `px-3 py-1.5 rounded-lg transition ${novoPeriodo === 'semana' ? 'bg-white text-quaest-teal shadow-sm font-bold' : 'text-slate-600 hover:text-slate-900'}`;
-            document.getElementById(`btn-periodo-mes-${ipdId}`).className = `px-3 py-1.5 rounded-lg transition ${novoPeriodo === 'mes' ? 'bg-white text-quaest-teal shadow-sm font-bold' : 'text-slate-600 hover:text-slate-900'}`;
+            const btnDiario = document.getElementById(`btn-periodo-diario-${ipdId}`);
+            const btnSemana = document.getElementById(`btn-periodo-semana-${ipdId}`);
+            const btnMes = document.getElementById(`btn-periodo-mes-${ipdId}`);
+
+            if (btnDiario) btnDiario.className = `px-3 py-1.5 rounded-lg transition ${novoPeriodo === 'diario' ? 'bg-white text-quaest-teal shadow-sm font-bold' : 'text-slate-600 hover:text-slate-900'}`;
+            if (btnSemana) btnSemana.className = `px-3 py-1.5 rounded-lg transition ${novoPeriodo === 'semana' ? 'bg-white text-quaest-teal shadow-sm font-bold' : 'text-slate-600 hover:text-slate-900'}`;
+            if (btnMes) btnMes.className = `px-3 py-1.5 rounded-lg transition ${novoPeriodo === 'mes' ? 'bg-white text-quaest-teal shadow-sm font-bold' : 'text-slate-600 hover:text-slate-900'}`;
 
             pontoSelecionadoGlobal[ipdId] = null;
             fecharBoxDiagnostico(ipdId);
@@ -2786,17 +3073,93 @@
             atualizarGraficoHistorico(ipdId);
         }
 
+        function montarBotoesHistorico(ipdId) {
+            const ref = stateIPDs[ipdId];
+            let dataStruct = ref.periodoHistorico === 'diario' ? ref.profilesDataDiario :
+                             ref.periodoHistorico === 'semana' ? ref.profilesDataSemana : ref.profilesDataMes;
+
+            const container = document.getElementById(`container-profiles-line-${ipdId}`);
+            if (!container) return;
+
+            const profiles = (ref.ipdObj?.profiles_usados || Object.keys(dataStruct.profiles)).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+            const ativos = new Set(ref.lineChart.data.datasets.map(d => d.label));
+
+            container.innerHTML = `
+                <div class="flex items-center justify-between w-full mb-1">
+                    <span class="text-xs font-bold text-slate-500">Profiles:</span>
+                    <div class="flex items-center gap-2">
+                        <button onclick="selecionarTodosHistorico(${ipdId})" class="text-[11px] font-bold text-quaest-teal hover:underline flex items-center gap-1 cursor-pointer">
+                            <i class="fa-solid fa-check-double text-[10px]"></i> Selecionar Tudo
+                        </button>
+                        <span class="text-slate-300">|</span>
+                        <button onclick="desmarcarTodosHistorico(${ipdId})" class="text-[11px] font-bold text-rose-500 hover:underline flex items-center gap-1 cursor-pointer">
+                            <i class="fa-solid fa-trash-can text-[10px]"></i> Remover Seleção
+                        </button>
+                    </div>
+                </div>
+                <div id="botoes-line-list-${ipdId}" class="flex flex-wrap items-center gap-1.5"></div>
+            `;
+
+            const subContainer = document.getElementById(`botoes-line-list-${ipdId}`);
+
+            profiles.forEach((profileName, idx) => {
+                const isAtivo = ativos.has(profileName);
+                const color = paletaCores[idx % paletaCores.length];
+
+                const btn = document.createElement('button');
+                btn.className = `${isAtivo ? 'bg-quaest-teal text-white border-quaest-teal' : 'bg-white text-slate-600 border-slate-300'} px-3 py-1 rounded-lg text-xs font-bold border shadow-sm transition flex items-center gap-1.5 cursor-pointer`;
+                btn.innerHTML = `<i class="fa-solid fa-${isAtivo ? 'check' : 'plus'} text-[10px]"></i> ${profileName}`;
+
+                btn.onclick = () => {
+                    const dsIdx = ref.lineChart.data.datasets.findIndex(d => d.label === profileName);
+                    if (dsIdx !== -1) {
+                        ref.lineChart.data.datasets.splice(dsIdx, 1);
+                    } else {
+                        const pInfo = dataStruct.profiles[profileName];
+                        const valores = pInfo ? dataStruct.datas.map(d => pInfo.registrosPorData[d] ? pInfo.registrosPorData[d].ipd : null) : [];
+                        ref.lineChart.data.datasets.push({
+                            label: profileName,
+                            data: valores,
+                            borderColor: color,
+                            backgroundColor: color + '15',
+                            tension: 0.2,
+                            borderWidth: 2,
+                            pointRadius: ref.periodoHistorico === 'diario' ? 0 : 4,
+                            pointHoverRadius: ref.periodoHistorico === 'diario' ? 6 : 7,
+                            pointHitRadius: 10
+                        });
+                    }
+                    ref.lineChart.update();
+                    montarBotoesHistorico(ipdId);
+                };
+
+                subContainer.appendChild(btn);
+            });
+        }
+
         function atualizarGraficoHistorico(ipdId) {
             const ref = stateIPDs[ipdId];
-            const dataStruct = ref.periodoHistorico === 'semana' ? ref.profilesDataSemana : ref.profilesDataMes;
+            let dataStruct;
+            if (ref.periodoHistorico === 'diario') {
+                dataStruct = ref.profilesDataDiario;
+            } else if (ref.periodoHistorico === 'semana') {
+                dataStruct = ref.profilesDataSemana;
+            } else {
+                dataStruct = ref.profilesDataMes;
+            }
+
+            const isDiario = ref.periodoHistorico === 'diario';
+            const raioPonto = isDiario ? 0 : 4;
+            const raioHover = isDiario ? 6 : 7;
 
             ref.lineChart.data.labels = dataStruct.datas.map(d => formatarDataAnoCurto(d, ref.periodoHistorico === 'mes'));
 
-            const container = document.getElementById(`container-profiles-line-${ipdId}`);
-            container.innerHTML = '<span class="text-xs font-bold text-slate-500 mr-2">Profiles:</span>';
-            ref.lineChart.data.datasets = [];
+            if (ref.lineChart.options.scales.x) {
+                ref.lineChart.options.scales.x.ticks.maxTicksLimit = isDiario ? 10 : 14;
+            }
 
-            const profiles = Object.keys(dataStruct.profiles);
+            ref.lineChart.data.datasets = [];
+            const profiles = (ref.ipdObj?.profiles_usados || Object.keys(dataStruct.profiles)).sort((a, b) => a.localeCompare(b, 'pt-BR'));
             let colorIdx = 0;
 
             profiles.forEach((profileName, idx) => {
@@ -2804,60 +3167,25 @@
                 const color = paletaCores[colorIdx % paletaCores.length];
                 colorIdx++;
 
-                const btn = document.createElement('button');
-                btn.className = `btn-line-${ipdId} ${isAtivo ? 'bg-quaest-teal text-white border-quaest-teal' : 'bg-white text-slate-600 border-slate-300'} px-3 py-1.5 rounded-lg text-xs font-bold border shadow-sm transition flex items-center gap-1.5`;
-                btn.innerHTML = `<i class="fa-solid fa-${isAtivo ? 'check' : 'plus'} text-[10px]"></i> ${profileName}`;
-
-                btn.onclick = () => {
-                    const dsIdx = ref.lineChart.data.datasets.findIndex(d => d.label === profileName);
-                    if (dsIdx !== -1) {
-                        ref.lineChart.data.datasets.splice(dsIdx, 1);
-                        btn.className = `btn-line-${ipdId} bg-white text-slate-600 border-slate-300 px-3 py-1.5 rounded-lg text-xs font-bold border shadow-sm transition flex items-center gap-1.5`;
-                        btn.querySelector('i').className = 'fa-solid fa-plus text-[10px]';
-                    } else {
-                        const pInfo = dataStruct.profiles[profileName];
-                        const valores = dataStruct.datas.map(d => pInfo.registrosPorData[d] ? pInfo.registrosPorData[d].ipd : null);
-                        ref.lineChart.data.datasets.push({
-                            label: profileName,
-                            data: valores,
-                            borderColor: color,
-                            backgroundColor: color + '15',
-                            tension: 0.3,
-                            borderWidth: 2.5,
-                            pointRadius: 4,
-                            pointHoverRadius: 7
-                        });
-                        btn.className = `btn-line-${ipdId} bg-quaest-teal text-white border-quaest-teal px-3 py-1.5 rounded-lg text-xs font-bold border shadow-sm transition flex items-center gap-1.5`;
-                        btn.querySelector('i').className = 'fa-solid fa-check text-[10px]';
-                    }
-                    
-                    ref.lineChart.update();
-
-                    const box = document.getElementById(`box-diagnostico-ponto-${ipdId}`);
-                    if (box && !box.classList.contains('hidden') && pontoSelecionadoGlobal[ipdId] !== null && pontoSelecionadoGlobal[ipdId] !== undefined) {
-                        explicarAntesDepoisPonto(ipdId, pontoSelecionadoGlobal[ipdId]);
-                    }
-                };
-
-                container.appendChild(btn);
-
                 if (isAtivo) {
                     const pInfo = dataStruct.profiles[profileName];
-                    const valores = dataStruct.datas.map(d => pInfo.registrosPorData[d] ? pInfo.registrosPorData[d].ipd : null);
+                    const valores = pInfo ? dataStruct.datas.map(d => pInfo.registrosPorData[d] ? pInfo.registrosPorData[d].ipd : null) : [];
                     ref.lineChart.data.datasets.push({
                         label: profileName,
                         data: valores,
                         borderColor: color,
                         backgroundColor: color + '15',
-                        tension: 0.3,
-                        borderWidth: 2.5,
-                        pointRadius: 4,
-                        pointHoverRadius: 7
+                        tension: 0.2,
+                        borderWidth: 2,
+                        pointRadius: raioPonto,
+                        pointHoverRadius: raioHover,
+                        pointHitRadius: 10
                     });
                 }
             });
 
             ref.lineChart.update();
+            montarBotoesHistorico(ipdId);
 
             const box = document.getElementById(`box-diagnostico-ponto-${ipdId}`);
             if (box && !box.classList.contains('hidden') && pontoSelecionadoGlobal[ipdId] !== null && pontoSelecionadoGlobal[ipdId] !== undefined) {
@@ -2868,33 +3196,45 @@
         function montarBotoesRadar(ipdId) {
             const ref = stateIPDs[ipdId];
             const container = document.getElementById(`container-profiles-radar-${ipdId}`);
-            container.innerHTML = '<span class="text-xs font-bold text-slate-500 mr-2">Adicionar/Remover no Radar:</span>';
+            if (!container) return;
 
-            const profiles = Object.keys(ref.profilesDataMes.profiles);
-            ref.profilesSelecionadosRadar.clear();
+            container.innerHTML = `
+                <div class="flex items-center justify-between w-full mb-1">
+                    <span class="text-xs font-bold text-slate-500">Adicionar/Remover no Radar:</span>
+                    <div class="flex items-center gap-2">
+                        <button onclick="selecionarTodosRadar(${ipdId})" class="text-[11px] font-bold text-quaest-teal hover:underline flex items-center gap-1 cursor-pointer">
+                            <i class="fa-solid fa-check-double text-[10px]"></i> Selecionar Tudo
+                        </button>
+                        <span class="text-slate-300">|</span>
+                        <button onclick="desmarcarTodosRadar(${ipdId})" class="text-[11px] font-bold text-rose-500 hover:underline flex items-center gap-1 cursor-pointer">
+                            <i class="fa-solid fa-trash-can text-[10px]"></i> Remover Seleção
+                        </button>
+                    </div>
+                </div>
+                <div id="botoes-radar-list-${ipdId}" class="flex flex-wrap items-center gap-1.5"></div>
+            `;
 
-            profiles.forEach((profileName, idx) => {
-                const isAtivo = idx < 2;
-                if (isAtivo) ref.profilesSelecionadosRadar.add(profileName);
+            const subContainer = document.getElementById(`botoes-radar-list-${ipdId}`);
+            const profiles = (ref.ipdObj?.profiles_usados || Object.keys(ref.profilesDataMes.profiles)).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+
+            profiles.forEach((profileName) => {
+                const isAtivo = ref.profilesSelecionadosRadar.has(profileName);
 
                 const btn = document.createElement('button');
-                btn.className = `btn-radar-${ipdId} ${isAtivo ? 'bg-quaest-teal text-white border-quaest-teal' : 'bg-white text-slate-600 border-slate-300'} px-3 py-1.5 rounded-lg text-xs font-bold border shadow-sm transition flex items-center gap-1.5`;
+                btn.className = `${isAtivo ? 'bg-quaest-teal text-white border-quaest-teal' : 'bg-white text-slate-600 border-slate-300'} px-3 py-1 rounded-lg text-xs font-bold border shadow-sm transition flex items-center gap-1.5 cursor-pointer`;
                 btn.innerHTML = `<i class="fa-solid fa-${isAtivo ? 'check' : 'plus'} text-[10px]"></i> ${profileName}`;
 
                 btn.onclick = () => {
                     if (ref.profilesSelecionadosRadar.has(profileName)) {
                         ref.profilesSelecionadosRadar.delete(profileName);
-                        btn.className = `btn-radar-${ipdId} bg-white text-slate-600 border-slate-300 px-3 py-1.5 rounded-lg text-xs font-bold border shadow-sm transition flex items-center gap-1.5`;
-                        btn.querySelector('i').className = 'fa-solid fa-plus text-[10px]';
                     } else {
                         ref.profilesSelecionadosRadar.add(profileName);
-                        btn.className = `btn-radar-${ipdId} bg-quaest-teal text-white border-quaest-teal px-3 py-1.5 rounded-lg text-xs font-bold border shadow-sm transition flex items-center gap-1.5`;
-                        btn.querySelector('i').className = 'fa-solid fa-check text-[10px]';
                     }
+                    montarBotoesRadar(ipdId);
                     atualizarRadarPorMes(ipdId);
                 };
 
-                container.appendChild(btn);
+                subContainer.appendChild(btn);
             });
         }
 
@@ -2925,7 +3265,7 @@
             ref.slidesCarrosselData = [];
 
             const profilesMap = ref.profilesDataMes.profiles;
-            const selecionados = Array.from(ref.profilesSelecionadosRadar);
+            const selecionados = Array.from(ref.profilesSelecionadosRadar).sort((a, b) => a.localeCompare(b, 'pt-BR'));
 
             let colorIdx = 0;
 
@@ -2966,6 +3306,408 @@
             renderizarSlideCard(ipdId);
         }
 
+        async function executarPrevisaoIPD(ipdId) {
+            const semanasInput = document.getElementById(`previsao-semanas-${ipdId}`);
+            const semanasFrente = semanasInput ? semanasInput.value : 4;
+
+            const boxLoading = document.getElementById(`previsao-loading-${ipdId}`);
+            const boxErro = document.getElementById(`previsao-erro-${ipdId}`);
+            const boxResultados = document.getElementById(`previsao-resultados-${ipdId}`);
+
+            boxLoading.classList.remove('hidden');
+            boxErro.classList.add('hidden');
+            boxResultados.classList.add('hidden');
+
+            const url = `/api/ipd/previsao-semanal/?projeto_id=${ipdId}&semanas_frente=${semanasFrente}`;
+
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+
+                boxLoading.classList.add('hidden');
+
+                if (!response.ok || data.error) {
+                    document.getElementById(`previsao-erro-msg-${ipdId}`).innerText = data.error || 'Falha ao processar previsão do modelo.';
+                    boxErro.classList.remove('hidden');
+                    return;
+                }
+
+                const semanasList = data.previsoes_semanais || [];
+                if (semanasList.length === 0) {
+                    document.getElementById(`previsao-erro-msg-${ipdId}`).innerText = 'Sem projeções no período.';
+                    boxErro.classList.remove('hidden');
+                    return;
+                }
+
+                statePrevisaoPreditiva[ipdId] = {
+                    dadosSemanais: semanasList,
+                    perfisDisponiveis: data.meta?.total_perfis_avaliados || 0,
+                    perfisAtivos: new Set()
+                };
+
+                const todosPerfis = [...new Set(semanasList.flatMap(s => (s.ranking_perfis || []).map(p => p.profile)))].sort((a,b) => a.localeCompare(b, 'pt-BR'));
+
+                todosPerfis.slice(0, 3).forEach(p => statePrevisaoPreditiva[ipdId].perfisAtivos.add(p));
+
+                montarBotoesFiltroPrevisao(ipdId, todosPerfis);
+                renderizarGraficoEStatsPrevisao(ipdId);
+
+                boxResultados.classList.remove('hidden');
+
+            } catch (err) {
+                boxLoading.classList.add('hidden');
+                document.getElementById(`previsao-erro-msg-${ipdId}`).innerText = "Erro na requisição: " + err.message;
+                boxErro.classList.remove('hidden');
+            }
+        }
+
+        function montarBotoesFiltroPrevisao(ipdId, perfis) {
+            const container = document.getElementById(`container-profiles-previsao-${ipdId}`);
+            if (!container) return;
+
+            container.innerHTML = `
+                <div class="flex items-center justify-between w-full mb-1">
+                    <span class="text-xs font-bold text-slate-500">Exibir no Gráfico Futurista:</span>
+                    <div class="flex items-center gap-2">
+                        <button onclick="selecionarTodosPrevisao(${ipdId})" class="text-[11px] font-bold text-purple-600 hover:underline flex items-center gap-1 cursor-pointer">
+                            <i class="fa-solid fa-check-double text-[10px]"></i> Selecionar Tudo
+                        </button>
+                        <span class="text-slate-300">|</span>
+                        <button onclick="desmarcarTodosPrevisao(${ipdId})" class="text-[11px] font-bold text-rose-500 hover:underline flex items-center gap-1 cursor-pointer">
+                            <i class="fa-solid fa-trash-can text-[10px]"></i> Remover Seleção
+                        </button>
+                    </div>
+                </div>
+                <div id="botoes-previsao-list-${ipdId}" class="flex flex-wrap items-center gap-1.5"></div>
+            `;
+
+            const subContainer = document.getElementById(`botoes-previsao-list-${ipdId}`);
+            const perfisAtivos = statePrevisaoPreditiva[ipdId].perfisAtivos;
+
+            perfis.forEach((profileName) => {
+                const isAtivo = perfisAtivos.has(profileName);
+
+                const btn = document.createElement('button');
+                btn.className = `${isAtivo ? 'bg-purple-600 text-white border-purple-600' : 'bg-white text-slate-600 border-slate-300'} px-3 py-1.5 rounded-lg text-xs font-bold border shadow-sm transition flex items-center gap-1.5 cursor-pointer`;
+                btn.innerHTML = `<i class="fa-solid fa-${isAtivo ? 'check' : 'plus'} text-[10px]"></i> ${profileName}`;
+
+                btn.onclick = () => {
+                    if (perfisAtivos.has(profileName)) {
+                        perfisAtivos.delete(profileName);
+                    } else {
+                        perfisAtivos.add(profileName);
+                    }
+                    montarBotoesFiltroPrevisao(ipdId, perfis);
+                    renderizarGraficoEStatsPrevisao(ipdId);
+                };
+
+                subContainer.appendChild(btn);
+            });
+        }function renderizarGraficoEStatsPrevisao(ipdId) {
+    const state = statePrevisaoPreditiva[ipdId];
+    if (!state || !state.dadosSemanais) return;
+
+    const refIPD = stateIPDs[ipdId];
+    if (!refIPD || !refIPD.profilesDataSemana) return;
+
+    const datasHistoricoReais = refIPD.profilesDataSemana.datas || [];
+    const ultimasDatasReais = datasHistoricoReais.slice(-6);
+
+    const semanasProjetadas = state.dadosSemanais || [];
+    const datasProjetadas = semanasProjetadas.map(s => s.data_inicio_semana);
+
+    const eixoXDatas = [...ultimasDatasReais, ...datasProjetadas];
+    const eixoXLabels = eixoXDatas.map(d => formatarDataAnoCurto(d));
+
+    const perfisAtivos = Array.from(state.perfisAtivos);
+
+    const canvas = document.getElementById(`chartPrevisaoCanvas-${ipdId}`);
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    if (mapPrevisaoCharts[ipdId]) mapPrevisaoCharts[ipdId].destroy();
+
+    const datasets = [];
+
+    perfisAtivos.forEach((profileName, idx) => {
+        const color = paletaCores[idx % paletaCores.length];
+        const pInfoHist = refIPD.profilesDataSemana.profiles[profileName];
+
+        const serieHistorica = ultimasDatasReais.map(d => {
+            if (pInfoHist && pInfoHist.registrosPorData[d]) {
+                return pInfoHist.registrosPorData[d].ipd;
+            }
+            return null;
+        });
+
+        const serieHistoricaFull = [...serieHistorica, ...Array(semanasProjetadas.length).fill(null)];
+
+        datasets.push({
+            label: `${profileName} (Histórico)`,
+            data: serieHistoricaFull,
+            borderColor: color,
+            backgroundColor: color,
+            borderWidth: 2.5,
+            pointRadius: 3,
+            pointHoverRadius: 6,
+            tension: 0.15,
+            spanGaps: false
+        });
+
+        const ultimoValorReal = serieHistorica[serieHistorica.length - 1];
+
+        const serieProjetadaValues = semanasProjetadas.map(s => {
+            const item = (s.ranking_perfis || []).find(p => p.profile === profileName);
+            return item ? item.ipd_previsto : null;
+        });
+
+        const serieMinimaValues = semanasProjetadas.map(s => {
+            const item = (s.ranking_perfis || []).find(p => p.profile === profileName);
+            return item ? item.ipd_minimo_provavel : null;
+        });
+
+        const serieMaximaValues = semanasProjetadas.map(s => {
+            const item = (s.ranking_perfis || []).find(p => p.profile === profileName);
+            return item ? item.ipd_maximo_provavel : null;
+        });
+
+        const serieProjetadaFull = [
+            ...Array(ultimasDatasReais.length - 1).fill(null),
+            ultimoValorReal,
+            ...serieProjetadaValues
+        ];
+
+        const serieMinFull = [
+            ...Array(ultimasDatasReais.length - 1).fill(null),
+            ultimoValorReal,
+            ...serieMinimaValues
+        ];
+
+        const serieMaxFull = [
+            ...Array(ultimasDatasReais.length - 1).fill(null),
+            ultimoValorReal,
+            ...serieMaximaValues
+        ];
+
+        const idxDatasetMax = datasets.length;
+        datasets.push({
+            label: `${profileName}_max`,
+            data: serieMaxFull,
+            borderColor: 'transparent',
+            backgroundColor: 'transparent',
+            pointRadius: 0,
+            fill: false,
+            tension: 0.15
+        });
+
+        datasets.push({
+            label: `${profileName}_min`,
+            data: serieMinFull,
+            borderColor: 'transparent',
+            backgroundColor: color + '25',
+            pointRadius: 0,
+            fill: idxDatasetMax,
+            tension: 0.15
+        });
+
+        datasets.push({
+            label: `${profileName} (Projeção)`,
+            data: serieProjetadaFull,
+            borderColor: color,
+            backgroundColor: color,
+            borderDash: [6, 6],
+            borderWidth: 2.5,
+            pointRadius: 4,
+            pointStyle: 'circle',
+            pointHoverRadius: 7,
+            tension: 0.15,
+            spanGaps: false
+        });
+    });
+
+    mapPrevisaoCharts[ipdId] = new Chart(ctx, {
+        type: 'line',
+        data: { labels: eixoXLabels, datasets: datasets },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: {
+                        filter: (item) => !item.text.includes('_max') && !item.text.includes('_min') && !item.text.includes('(Projeção)'),
+                        generateLabels: () => {
+                            return perfisAtivos.map((pName, idx) => ({
+                                text: pName,
+                                fillStyle: paletaCores[idx % paletaCores.length],
+                                strokeStyle: paletaCores[idx % paletaCores.length],
+                                datasetIndex: idx * 4
+                            }));
+                        },
+                        font: { weight: 'bold', size: 11, family: 'Inter' }
+                    }
+                },
+                tooltip: {
+                    padding: 12,
+                    cornerRadius: 10,
+                    callbacks: {
+                        label: (c) => {
+                            if (c.raw === null || c.raw === undefined) return null;
+
+                            const labelName = c.dataset.label;
+                            if (labelName.includes('_max') || labelName.includes('_min')) return null;
+
+                            const isProjecao = labelName.includes('(Projeção)');
+                            const idxProj = c.dataIndex - ultimasDatasReais.length;
+
+                            if (isProjecao && idxProj >= 0) {
+                                const semanaObj = semanasProjetadas[idxProj];
+                                if (semanaObj) {
+                                    const profileClean = labelName.replace(' (Projeção)', '');
+                                    const itemP = (semanaObj.ranking_perfis || []).find(p => p.profile === profileClean);
+                                    if (itemP) {
+                                        return [
+                                            ` 🔮 ${profileClean}: ${itemP.ipd_previsto} pts (${itemP.posicao}º no Ranking)`,
+                                            `    Margem Estimada: ${itemP.ipd_minimo_provavel} a ${itemP.ipd_maximo_provavel} pts (±${itemP.margem_erro_estimada})`
+                                        ];
+                                    }
+                                }
+                            } else if (!isProjecao) {
+                                const profileClean = labelName.replace(' (Histórico)', '');
+                                return ` 📊 ${profileClean} (IPD Real): ${c.raw.toFixed(2)} pts`;
+                            }
+                            return null;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: { 
+                    grid: { color: '#E2E8F0' }, 
+                    ticks: { font: { weight: 'bold', size: 10, family: 'Inter' } } 
+                },
+                y: { 
+                    min: 0, 
+                    max: 100, 
+                    grid: { color: '#E2E8F0' }, 
+                    ticks: { font: { weight: 'bold', size: 10, family: 'Inter' } } 
+                }
+            }
+        }
+    });
+
+    // REVELA O BOTÃO DE GERAR EXPLICAÇÃO DA IA APÓS O DESENHO DO GRÁFICO
+    const boxBtn = document.getElementById(`box-btn-explicacao-ia-${ipdId}`);
+    if (boxBtn) boxBtn.classList.remove('hidden');
+
+    const ultSemana = semanasProjetadas[semanasProjetadas.length - 1];
+    if (ultSemana) {
+        document.getElementById(`previsao-ult-ipd-${ipdId}`).innerText = `${ultSemana.lider_previsto || '--'}`;
+        document.getElementById(`previsao-ult-data-${ipdId}`).innerText = `${ultSemana.rotulo_semana} (${ultSemana.intervalo_datas})`;
+    }
+}
+        async function solicitarExplicacaoIARanking(ipdId) {
+    const state = statePrevisaoPreditiva[ipdId];
+    if (!state || !state.dadosSemanais || state.dadosSemanais.length === 0) {
+        alert("Calcule a previsão do gráfico primeiro antes de gerar a explicação.");
+        return;
+    }
+
+    const btn = document.getElementById(`btn-explicar-ia-${ipdId}`);
+    const boxTexto = document.getElementById(`box-texto-explicacao-ia-${ipdId}`);
+    const containerConteudo = document.getElementById(`conteudo-explicacao-ia-${ipdId}`);
+
+    // Feedback visual de carregamento no botão
+    btn.disabled = true;
+    btn.classList.add('opacity-70', 'cursor-not-allowed');
+    btn.innerHTML = `<i class="fa-solid fa-spinner animate-spin text-amber-300"></i> <span>Sintetizando Análise...</span>`;
+
+    boxTexto.classList.remove('hidden');
+    containerConteudo.innerHTML = `
+        <div class="flex items-center gap-2 text-slate-500 italic py-2">
+            <i class="fa-solid fa-circle-notch animate-spin text-purple-600"></i>
+            <span>Processando disputas de posições e empates pela margem de erro...</span>
+        </div>
+    `;
+
+    try {
+        // Faz o POST enviando a estrutura do ranking semanal
+        const response = await fetch('/api/explicacao-ranking/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken') // Função auxiliar CSRF do Django se necessário
+            },
+            body: JSON.stringify({
+                previsoes_semanais: state.dadosSemanais
+            })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok || data.error) {
+            containerConteudo.innerHTML = `
+                <p class="text-rose-600 font-bold">
+                    <i class="fa-solid fa-triangle-exclamation mr-1"></i>
+                    ${data.error || 'Erro ao gerar explicação automatizada.'}
+                </p>
+            `;
+            return;
+        }
+
+        // Renderiza o resumo executivo e a lista de tópicos
+        let htmlFinal = `<p class="font-extrabold text-slate-900 leading-relaxed">${data.resumo_executivo}</p>`;
+
+        if (data.pontos_chaves && data.pontos_chaves.length > 0) {
+            htmlFinal += `<ul class="space-y-1.5 pt-1">`;
+            data.pontos_chaves.forEach(ponto => {
+                htmlFinal += `
+                    <li class="flex items-start gap-2">
+                        <span class="w-1.5 h-1.5 rounded-full bg-purple-600 mt-1.5 shrink-0"></span>
+                        <span>${ponto}</span>
+                    </li>
+                `;
+            });
+            htmlFinal += `</ul>`;
+        }
+
+        containerConteudo.innerHTML = htmlFinal;
+
+    } catch (err) {
+        console.error("Erro na requisição da IA:", err);
+        containerConteudo.innerHTML = `
+            <p class="text-rose-600 font-bold">
+                <i class="fa-solid fa-triangle-exclamation mr-1"></i>
+                Falha na conexão com o serviço de explicação de ranking.
+            </p>
+        `;
+    } finally {
+        // Restaura o botão
+        btn.disabled = false;
+        btn.classList.remove('opacity-70', 'cursor-not-allowed');
+        btn.innerHTML = `
+            <i class="fa-solid fa-rotate-right text-amber-300"></i>
+            <span>Atualizar Explicação da IA</span>
+        `;
+    }
+}
+
+// Função auxiliar para obter o Cookie CSRF do Django
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
         function renderizarSlideCard(ipdId) {
             const ref = stateIPDs[ipdId];
             const mesFormatado = formatarDataAnoCurto(ref.mesSelecionadoRadar, true);
@@ -3020,7 +3762,15 @@
             const ref = stateIPDs[ipdId];
             if (!ref || !ref.lineChart) return;
 
-            const dataStruct = ref.periodoHistorico === 'semana' ? ref.profilesDataSemana : ref.profilesDataMes;
+            let dataStruct;
+            if (ref.periodoHistorico === 'diario') {
+                dataStruct = ref.profilesDataDiario;
+            } else if (ref.periodoHistorico === 'semana') {
+                dataStruct = ref.profilesDataSemana;
+            } else {
+                dataStruct = ref.profilesDataMes;
+            }
+
             const dataAtual = dataStruct.datas[pontoIndex];
             if (!dataAtual) return;
 
