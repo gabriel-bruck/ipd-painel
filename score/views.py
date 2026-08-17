@@ -313,8 +313,9 @@ class MediaMetricasConteudoView(APIView):
         }, status=status.HTTP_200_OK)
 
 
+# =========================================
 # ==============================================================================
-# 5. API VIEW: TEMAS E ENGAJAMENTO
+# 5. API VIEW: TEMAS E ENGAJAMENTO (REFATORADA)
 # ==============================================================================
 class TemasEngajamentoView(APIView):
     permission_classes = [IsAuthenticated]
@@ -342,7 +343,6 @@ class TemasEngajamentoView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Validação de Permissão buscando o ProjetoCliente via ProjetoIPD
         projeto_ipd = get_object_or_404(ProjetoIPD, pk=projeto_ipd_id)
         projetos_cliente = projeto_ipd.projetos_cliente.all()
 
@@ -361,16 +361,21 @@ class TemasEngajamentoView(APIView):
 
         interacao_expr = F('curtidas') + F('comentarios')
 
+        # Totais e Médias Globais do Período
         totais_globais = queryset.aggregate(
             total_interacoes_mes=Sum(interacao_expr), total_posts_mes=Count('id_post')
         )
         grand_interacoes = totais_globais['total_interacoes_mes'] or 0
         grand_posts = totais_globais['total_posts_mes'] or 0
+        
+        # Média de corte geral
+        media_geral_interacoes = round(grand_interacoes / grand_posts, 2) if grand_posts > 0 else 0.0
 
         totais_por_perfil = {
             p['profile']: {
                 'total_interacoes': p['total_interacoes'] or 0,
                 'total_posts': p['total_posts'] or 0,
+                'media_perfil': round((p['total_interacoes'] or 0) / p['total_posts'], 2) if p['total_posts'] > 0 else 0.0
             }
             for p in queryset.values('profile').annotate(
                 total_interacoes=Sum(interacao_expr), total_posts=Count('id_post')
@@ -384,27 +389,34 @@ class TemasEngajamentoView(APIView):
                 total_posts=Count('id_post'),
                 total_interacoes=Coalesce(Sum(interacao_expr), 0),
             )
-            .order_by('-total_interacoes')
         )
 
         temas_geral = []
         for item in raw_geral:
             t_inter = item['total_interacoes']
             t_posts = item['total_posts']
+            media_tema = round(t_inter / t_posts, 2) if t_posts > 0 else 0.0
+            
+            # Lógica de Eficiência em relação à Média Geral
+            if media_tema > (media_geral_interacoes * 1.02):
+                eficiencia = "Alta Eficiência"
+            elif media_tema < (media_geral_interacoes * 0.98):
+                eficiencia = "Sub-Eficiente"
+            else:
+                eficiencia = "Equilibrado"
+
             temas_geral.append({
                 'categoria_tema': item['categoria_tema'],
                 'total_posts': t_posts,
                 'total_interacoes': t_inter,
-                'share_interacoes': (
-                    round((t_inter / grand_interacoes * 100), 2)
-                    if grand_interacoes > 0
-                    else 0.0
-                ),
-                'share_posts': (
-                    round((t_posts / grand_posts * 100), 2) if grand_posts > 0 else 0.0
-                ),
-                'interacao_por_post': round(t_inter / t_posts, 2) if t_posts > 0 else 0.0,
+                'share_interacoes': round((t_inter / grand_interacoes * 100), 2) if grand_interacoes > 0 else 0.0,
+                'share_posts': round((t_posts / grand_posts * 100), 2) if grand_posts > 0 else 0.0,
+                'interacao_por_post': media_tema,
+                'eficiencia': eficiencia,
             })
+
+        # Ordena por interacao_por_post (maior eficiência primeiro)
+        temas_geral = sorted(temas_geral, key=lambda x: x['interacao_por_post'], reverse=True)
 
         # 2. Agrupamento Por Perfil
         raw_perfil = (
@@ -413,7 +425,6 @@ class TemasEngajamentoView(APIView):
                 total_posts=Count('id_post'),
                 total_interacoes=Coalesce(Sum(interacao_expr), 0),
             )
-            .order_by('profile', '-total_interacoes')
         )
 
         temas_por_perfil = []
@@ -422,304 +433,523 @@ class TemasEngajamentoView(APIView):
             t_inter = item['total_interacoes']
             t_posts = item['total_posts']
             prof_totals = totais_por_perfil.get(
-                prof, {'total_interacoes': 0, 'total_posts': 0}
+                prof, {'total_interacoes': 0, 'total_posts': 0, 'media_perfil': 0.0}
             )
 
             p_inter_tot = prof_totals['total_interacoes']
             p_posts_tot = prof_totals['total_posts']
+            p_media = prof_totals['media_perfil']
+            
+            media_tema = round(t_inter / t_posts, 2) if t_posts > 0 else 0.0
+
+            # Lógica de Eficiência em relação à Média do Perfil
+            if media_tema > (p_media * 1.02):
+                eficiencia = "Alta Eficiência"
+            elif media_tema < (p_media * 0.98):
+                eficiencia = "Sub-Eficiente"
+            else:
+                eficiencia = "Equilibrado"
 
             temas_por_perfil.append({
                 'profile': prof,
                 'categoria_tema': item['categoria_tema'],
                 'total_posts': t_posts,
                 'total_interacoes': t_inter,
-                'share_interacoes_perfil': (
-                    round((t_inter / p_inter_tot * 100), 2) if p_inter_tot > 0 else 0.0
-                ),
-                'share_posts_perfil': (
-                    round((t_posts / p_posts_tot * 100), 2) if p_posts_tot > 0 else 0.0
-                ),
-                'interacao_por_post': round(t_inter / t_posts, 2) if t_posts > 0 else 0.0,
+                'share_interacoes_perfil': round((t_inter / p_inter_tot * 100), 2) if p_inter_tot > 0 else 0.0,
+                'share_posts_perfil': round((t_posts / p_posts_tot * 100), 2) if p_posts_tot > 0 else 0.0,
+                'interacao_por_post': media_tema,
+                'eficiencia': eficiencia,
             })
+
+        temas_por_perfil = sorted(temas_por_perfil, key=lambda x: x['interacao_por_post'], reverse=True)
 
         return Response({
             "filtros": {"projeto_ipd_id": projeto_ipd_id, "mes": mes, "ano": ano},
+            "metricas_gerais": {
+                "media_interacao_por_post_geral": media_geral_interacoes,
+                "totais_por_perfil": totais_por_perfil
+            },
             "temas_geral": temas_geral,
             "temas_por_perfil": temas_por_perfil,
         }, status=status.HTTP_200_OK)
 
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
-from xgboost import XGBRegressor
-from sklearn.metrics import root_mean_squared_error
-import pandas as pd
-import numpy as np
+import traceback
 from datetime import timedelta
+import numpy as np
+import pandas as pd
+from rest_framework import status
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from sklearn.metrics import root_mean_squared_error
+from xgboost import XGBRegressor
+
+# IMPORTANTE: Garanta os imports dos seus modelos e utilitários
+# from django.shortcuts import get_object_or_404
+# from seu_app.models import ProjetoIPD, IPD
+# from seu_app.permissions import usuario_tem_acesso_ao_projeto
+
 
 class PrevisaoRankingSemanalView(APIView):
-    """API View para previsão do IPD e do RANKING SEMANAL BASEADO APENAS NO VALOR PREVISTO."""
+    """API View para previsão do IPD e do RANKING SEMANAL.
+
+    Ajustada para prever deltas de variação com suporte expandido a 5 dimensões,
+    proteção contra NaNs e tratamento robusto de erros.
+    """
+
+    permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        projeto_id = request.query_params.get("projeto_id")
-        semanas_frente = int(request.query_params.get("semanas_frente", 4))
+        try:
+            projeto_id = request.query_params.get("projeto_id")
+            semanas_frente = int(request.query_params.get("semanas_frente", 4))
 
-        if not projeto_id:
-            return Response(
-                {"error": "O parâmetro 'projeto_id' é obrigatório."},
-                status=status.HTTP_400_BAD_REQUEST,
+            if not projeto_id:
+                return Response(
+                    {"error": "O parâmetro 'projeto_id' é obrigatório."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            # ==============================================================================
+            # VALIDAÇÃO DE PERMISSÃO DO USUÁRIO
+            # ==============================================================================
+            projeto_ipd = get_object_or_404(ProjetoIPD, pk=projeto_id)
+            projetos_cliente = projeto_ipd.projetos_cliente.all()
+
+            tem_permissao = any(
+                usuario_tem_acesso_ao_projeto(request.user, proj)
+                for proj in projetos_cliente
+            )
+            if not tem_permissao:
+                return Response(
+                    {
+                        "error": (
+                            "Você não tem permissão para acessar os dados deste"
+                            " projeto."
+                        )
+                    },
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+            # ==============================================================================
+
+            queryset = (
+                IPD.objects.filter(projeto_ipd_id=projeto_id)
+                .order_by("data")
+                .values(
+                    "profile",
+                    "data",
+                    "ipd",
+                    "fama",
+                    "engaj",
+                    "valencia",
+                    "mob",
+                    "interesse",
+                )
             )
 
-        queryset = (
-            IPD.objects.filter(projeto_ipd_id=projeto_id)
-            .order_by("data")
-            .values("profile", "data", "ipd", "fama", "engaj", "valencia", "mob", "interesse")
-        )
+            df_raw = pd.DataFrame(list(queryset))
 
-        df_raw = pd.DataFrame(list(queryset))
+            if df_raw.empty:
+                return Response(
+                    {
+                        "error": (
+                            "Não foram encontrados dados históricos para este"
+                            " projeto."
+                        )
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
-        if df_raw.empty:
-            return Response(
-                {"error": "Não foram encontrados dados históricos para este projeto."},
-                status=status.HTTP_400_BAD_REQUEST,
+            cols_numeric = [
+                "ipd",
+                "fama",
+                "engaj",
+                "valencia",
+                "mob",
+                "interesse",
+            ]
+            for col in cols_numeric:
+                df_raw[col] = df_raw[col].astype(float)
+
+            df_raw["data"] = pd.to_datetime(df_raw["data"])
+
+            # Agregação Semanal
+            dfs_semanais = []
+            for p, group in df_raw.groupby("profile"):
+                g = group.set_index("data")
+                resampled = (
+                    g[cols_numeric].resample("W-MON").mean().reset_index()
+                )
+                resampled["profile"] = p
+                dfs_semanais.append(resampled)
+
+            df_semanal_global = pd.concat(dfs_semanais, ignore_index=True)
+            df_semanal_global = df_semanal_global.sort_values(
+                ["data", "profile"]
+            ).reset_index(drop=True)
+
+            df_feat_global = self._gerar_features_semanais_relacionais(
+                df_semanal_global
             )
 
-        cols_numeric = ["ipd", "fama", "engaj", "valencia", "mob", "interesse"]
-        for col in cols_numeric:
-            df_raw[col] = df_raw[col].astype(float)
+            # Preenchimento seguro de NaNs para evitar perda de linhas pelo dropna
+            df_model = df_feat_global.fillna(0.0).reset_index(drop=True)
 
-        df_raw["data"] = pd.to_datetime(df_raw["data"])
+            features = [
+                col
+                for col in df_model.columns
+                if col not in ["data", "target_delta"] + cols_numeric
+            ]
 
-        # Agregação Semanal
-        dfs_semanais = []
-        for p, group in df_raw.groupby("profile"):
-            g = group.set_index("data")
-            resampled = g[cols_numeric].resample("W-MON").mean().reset_index()
-            resampled["profile"] = p
-            dfs_semanais.append(resampled)
+            if len(df_model) < 5:
+                return Response(
+                    {"error": "Histórico insuficiente para treinar o modelo."},
+                    status=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                )
 
-        df_semanal_global = pd.concat(dfs_semanais, ignore_index=True)
-        df_semanal_global = df_semanal_global.sort_values(["data", "profile"]).reset_index(drop=True)
+            df_model["profile"] = df_model["profile"].astype("category")
 
-        df_feat_global = self._gerar_features_semanais_relacionais(df_semanal_global)
-        df_model = df_feat_global.dropna().reset_index(drop=True)
+            # ==============================================================================
+            # CROSS-VALIDATION & CÁLCULO DE ERRO
+            # ==============================================================================
+            datas_unicas = sorted(list(df_model["data"].unique()))
+            qtd_semanas_val = min(4, max(1, int(len(datas_unicas) * 0.2)))
+            data_corte = datas_unicas[-qtd_semanas_val]
 
-        features = [
-            col for col in df_model.columns
-            if col not in ["data"] + cols_numeric
-        ]
+            mask_val = df_model["data"] >= data_corte
+            df_tr = df_model[~mask_val].copy()
+            df_val = df_model[mask_val].copy()
 
-        if len(df_model) < 10:
-            return Response(
-                {"error": "Histórico insuficiente para treinar o modelo."},
-                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            if df_tr.empty:
+                df_tr = df_model.copy()
+
+            eval_model = self._instanciar_xgboost()
+            eval_model.fit(df_tr[features], df_tr["target_delta"])
+
+            # Reconstrução para validação do erro em IPD
+            df_val["delta_pred"] = eval_model.predict(df_val[features])
+            df_val["ipd_anterior"] = df_val["ipd"] - df_val["target_delta"]
+            df_val["y_pred"] = (
+                df_val["ipd_anterior"] + df_val["delta_pred"]
+            ).clip(0.0, 100.0)
+            df_val["erro_abs"] = (df_val["ipd"] - df_val["y_pred"]).abs()
+
+            mae_por_perfil = (
+                df_val.groupby("profile")["erro_abs"].mean().to_dict()
+            )
+            mae_global = (
+                float(df_val["erro_abs"].mean())
+                if not df_val.empty
+                else 1.5
+            )
+            std_erro_por_perfil = (
+                df_val.groupby("profile")["erro_abs"]
+                .std()
+                .fillna(0.5)
+                .to_dict()
             )
 
-        df_model["profile"] = df_model["profile"].astype("category")
+            # ==============================================================================
+            # TREINO FINAL COM 100% DO HISTÓRICO
+            # ==============================================================================
+            model = self._instanciar_xgboost()
+            model.fit(df_model[features], df_model["target_delta"])
 
-        # Cross-validation & Erro
-        datas_unicas = sorted(list(df_model["data"].unique()))
-        qtd_semanas_val = min(4, max(1, int(len(datas_unicas) * 0.2)))
-        data_corte = datas_unicas[-qtd_semanas_val]
+            ultima_data_semana = df_semanal_global["data"].max()
+            df_ultima_semana_real = df_semanal_global[
+                df_semanal_global["data"] == ultima_data_semana
+            ].copy()
+            df_ultima_semana_real["posicao"] = df_ultima_semana_real[
+                "ipd"
+            ].rank(ascending=False, method="min")
+            mapa_posicoes_rodada_anterior = dict(
+                zip(
+                    df_ultima_semana_real["profile"],
+                    df_ultima_semana_real["posicao"],
+                )
+            )
 
-        mask_val = df_model["data"] >= data_corte
-        df_tr = df_model[~mask_val].copy()
-        df_val = df_model[mask_val].copy()
+            historico_acumulado = df_semanal_global.copy()
+            perfis_unicos = sorted(
+                list(historico_acumulado["profile"].unique())
+            )
+            ranking_semanal_projetado = []
 
-        eval_model = self._instanciar_xgboost()
-        eval_model.fit(df_tr[features], df_tr["ipd"])
+            # ==============================================================================
+            # LOOP AUTOREGRESSIVO COM MANTENIMENTO DE VOLATILIDADE
+            # ==============================================================================
+            for i in range(1, semanas_frente + 1):
+                proxima_semana_inicio = ultima_data_semana + timedelta(weeks=i)
+                proxima_semana_fim = proxima_semana_inicio + timedelta(days=6)
 
-        df_val["y_pred"] = eval_model.predict(df_val[features])
-        df_val["erro_abs"] = (df_val["ipd"] - df_val["y_pred"]).abs()
+                df_feat_temp = self._gerar_features_semanais_relacionais(
+                    historico_acumulado
+                ).fillna(0.0)
 
-        mae_por_perfil = df_val.groupby("profile")["erro_abs"].mean().to_dict()
-        mae_global = float(df_val["erro_abs"].mean())
-        std_erro_por_perfil = df_val.groupby("profile")["erro_abs"].std().fillna(0.5).to_dict()
+                previsoes_perfis_semana = []
+                novas_linhas_hist = []
 
-        model = self._instanciar_xgboost()
-        model.fit(df_model[features], df_model["ipd"])
+                for p in perfis_unicos:
+                    ult_feat_perfil = (
+                        df_feat_temp[df_feat_temp["profile"] == p]
+                        .iloc[[-1]]
+                        .copy()
+                    )
+                    ult_feat_perfil["data"] = proxima_semana_inicio
+                    ult_feat_perfil["profile"] = ult_feat_perfil[
+                        "profile"
+                    ].astype("category")
 
-        ultima_data_semana = df_semanal_global["data"].max()
-        df_ultima_semana_real = df_semanal_global[df_semanal_global["data"] == ultima_data_semana].copy()
-        df_ultima_semana_real["posicao"] = df_ultima_semana_real["ipd"].rank(ascending=False, method="min")
-        mapa_posicoes_rodada_anterior = dict(zip(df_ultima_semana_real["profile"], df_ultima_semana_real["posicao"]))
+                    delta_predito = float(
+                        model.predict(ult_feat_perfil[features])[0]
+                    )
 
-        historico_acumulado = df_semanal_global.copy()
-        perfis_unicos = sorted(list(historico_acumulado["profile"].unique()))
-        ranking_semanal_projetado = []
+                    ult_registro = historico_acumulado[
+                        historico_acumulado["profile"] == p
+                    ].iloc[-1]
+                    ipd_anterior = float(ult_registro["ipd"])
 
-        for i in range(1, semanas_frente + 1):
-            proxima_semana_inicio = ultima_data_semana + timedelta(weeks=i)
-            proxima_semana_fim = proxima_semana_inicio + timedelta(days=6)
+                    ipd_predito = max(
+                        0.0,
+                        min(100.0, round(ipd_anterior + delta_predito, 2)),
+                    )
 
-            df_feat_temp = self._gerar_features_semanais_relacionais(historico_acumulado)
+                    mae_p = mae_por_perfil.get(p, mae_global)
+                    if np.isnan(mae_p) or mae_p < 0.3:
+                        mae_p = mae_global if not np.isnan(mae_global) else 1.5
 
-            previsoes_perfis_semana = []
-            novas_linhas_hist = []
+                    std_p = std_erro_por_perfil.get(p, 0.5)
+                    fator_incerteza = np.sqrt(i) + (0.1 * (i - 1))
+                    margem_erro_indiv = round(
+                        (mae_p + (0.2 * std_p)) * fator_incerteza, 2
+                    )
 
-            for p in perfis_unicos:
-                ult_feat_perfil = df_feat_temp[df_feat_temp["profile"] == p].iloc[[-1]].copy()
-                ult_feat_perfil["data"] = proxima_semana_inicio
-                ult_feat_perfil["profile"] = ult_feat_perfil["profile"].astype("category")
+                    ipd_min = max(
+                        0.0, round(ipd_predito - margem_erro_indiv, 2)
+                    )
+                    ipd_max = min(
+                        100.0, round(ipd_predito + margem_erro_indiv, 2)
+                    )
 
-                ipd_predito = float(model.predict(ult_feat_perfil[features])[0])
-                ipd_predito = max(0.0, min(100.0, round(ipd_predito, 2)))
+                    previsoes_perfis_semana.append({
+                        "profile": p,
+                        "ipd_previsto": ipd_predito,
+                        "margem_erro": margem_erro_indiv,
+                        "ipd_minimo": ipd_min,
+                        "ipd_maximo": ipd_max,
+                    })
 
-                mae_p = mae_por_perfil.get(p, mae_global)
-                if np.isnan(mae_p) or mae_p < 0.3:
-                    mae_p = mae_global if not np.isnan(mae_global) else 1.5
+                    novas_linhas_hist.append({
+                        "data": proxima_semana_inicio,
+                        "profile": p,
+                        "ipd": ipd_predito,
+                        "fama": float(ult_registro["fama"]),
+                        "engaj": float(ult_registro["engaj"]),
+                        "valencia": float(ult_registro["valencia"]),
+                        "mob": float(ult_registro["mob"]),
+                        "interesse": float(ult_registro["interesse"]),
+                    })
 
-                std_p = std_erro_por_perfil.get(p, 0.5)
-                fator_incerteza = np.sqrt(i) + (0.1 * (i - 1))
-                margem_erro_indiv = round((mae_p + (0.2 * std_p)) * fator_incerteza, 2)
+                df_semana_proj = pd.DataFrame(previsoes_perfis_semana)
 
-                ipd_min = max(0.0, round(ipd_predito - margem_erro_indiv, 2))
-                ipd_max = min(100.0, round(ipd_predito + margem_erro_indiv, 2))
+                df_semana_proj = df_semana_proj.sort_values(
+                    by="ipd_previsto", ascending=False
+                ).reset_index(drop=True)
+                df_semana_proj["posicao_oficial"] = (
+                    df_semana_proj["ipd_previsto"]
+                    .rank(ascending=False, method="min")
+                    .astype(int)
+                )
 
-                previsoes_perfis_semana.append({
-                    "profile": p,
-                    "ipd_previsto": ipd_predito,
-                    "margem_erro": margem_erro_indiv,
-                    "ipd_minimo": ipd_min,
-                    "ipd_maximo": ipd_max
+                lista_perfis_semana = df_semana_proj.to_dict(orient="records")
+
+                for idx, item in enumerate(lista_perfis_semana):
+                    item["empatados_com"] = []
+                    p_min, p_max = item["ipd_minimo"], item["ipd_maximo"]
+
+                    for outro_idx, outro_item in enumerate(
+                        lista_perfis_semana
+                    ):
+                        if idx == outro_idx:
+                            continue
+                        o_min, o_max = outro_item["ipd_minimo"], outro_item[
+                            "ipd_maximo"
+                        ]
+
+                        if (p_min <= o_max) and (p_max >= o_min):
+                            item["empatados_com"].append(outro_item["profile"])
+
+                itens_ranking = []
+                novo_mapa_posicoes = {}
+
+                for item in lista_perfis_semana:
+                    p_nome = item["profile"]
+                    pos_atual = int(item["posicao_oficial"])
+                    pos_anterior = mapa_posicoes_rodada_anterior.get(
+                        p_nome, pos_atual
+                    )
+                    var_posicao = int(pos_anterior - pos_atual)
+
+                    itens_ranking.append({
+                        "posicao": pos_atual,
+                        "profile": p_nome,
+                        "ipd_previsto": item["ipd_previsto"],
+                        "variacao_posicao_vs_semana_anterior": var_posicao,
+                        "margem_erro_estimada": item["margem_erro"],
+                        "ipd_minimo_provavel": item["ipd_minimo"],
+                        "ipd_maximo_provavel": item["ipd_maximo"],
+                        "empate_estatistico": len(item["empatados_com"]) > 0,
+                        "empatado_com": item["empatados_com"],
+                    })
+
+                    novo_mapa_posicoes[p_nome] = pos_atual
+
+                mapa_posicoes_rodada_anterior = novo_mapa_posicoes
+                intervalo_datas = (
+                    f"{proxima_semana_inicio.strftime('%d/%b')} a"
+                    f" {proxima_semana_fim.strftime('%d/%b/%y')}"
+                )
+
+                ranking_semanal_projetado.append({
+                    "semana_horizonte": i,
+                    "rotulo_semana": f"Semana +{i}",
+                    "intervalo_datas": intervalo_datas,
+                    "data_inicio_semana": proxima_semana_inicio.strftime(
+                        "%Y-%m-%d"
+                    ),
+                    "lider_previsto": (
+                        itens_ranking[0]["profile"] if itens_ranking else None
+                    ),
+                    "ranking_perfis": itens_ranking,
                 })
 
-                ult_registro = historico_acumulado[historico_acumulado["profile"] == p].iloc[-1]
-                ipd_anterior = ult_registro["ipd"] if ult_registro["ipd"] > 0 else 1.0
-                razao_variacao = ipd_predito / ipd_anterior
+                historico_acumulado = pd.concat(
+                    [historico_acumulado, pd.DataFrame(novas_linhas_hist)],
+                    ignore_index=True,
+                )
 
-                novas_linhas_hist.append({
-                    "data": proxima_semana_inicio,
-                    "profile": p,
-                    "ipd": ipd_predito,
-                    "fama": round(float(ult_registro["fama"] * razao_variacao), 2),
-                    "engaj": round(float(ult_registro["engaj"] * razao_variacao), 2),
-                    "valencia": round(float(ult_registro["valencia"] * razao_variacao), 2),
-                    "mob": round(float(ult_registro["mob"] * razao_variacao), 2),
-                    "interesse": round(float(ult_registro["interesse"] * razao_variacao), 2)
-                })
+            rmse_val = (
+                round(
+                    float(
+                        root_mean_squared_error(df_val["ipd"], df_val["y_pred"])
+                    ),
+                    2,
+                )
+                if not df_val.empty
+                else 0.0
+            )
 
-            df_semana_proj = pd.DataFrame(previsoes_perfis_semana)
-            
-            # ORDENAÇÃO E RANKING ESTRITO APENAS PELO VALOR DO IPD_PREVISTO
-            df_semana_proj = df_semana_proj.sort_values(by="ipd_previsto", ascending=False).reset_index(drop=True)
-            df_semana_proj["posicao_oficial"] = df_semana_proj["ipd_previsto"].rank(ascending=False, method="min").astype(int)
-
-            lista_perfis_semana = df_semana_proj.to_dict(orient="records")
-
-            # Checagem de intersecção apenas para fornecer a flag 'empatado_com' como metadado complementar
-            for idx, item in enumerate(lista_perfis_semana):
-                item["empatados_com"] = []
-                p_min, p_max = item["ipd_minimo"], item["ipd_maximo"]
-
-                for outro_idx, outro_item in enumerate(lista_perfis_semana):
-                    if idx == outro_idx:
-                        continue
-                    o_min, o_max = outro_item["ipd_minimo"], outro_item["ipd_maximo"]
-
-                    if (p_min <= o_max) and (p_max >= o_min):
-                        item["empatados_com"].append(outro_item["profile"])
-
-            # Estrutura Final
-            itens_ranking = []
-            novo_mapa_posicoes = {}
-
-            for item in lista_perfis_semana:
-                p_nome = item["profile"]
-                pos_atual = int(item["posicao_oficial"])
-                pos_anterior = mapa_posicoes_rodada_anterior.get(p_nome, pos_atual)
-                var_posicao = int(pos_anterior - pos_atual)
-
-                itens_ranking.append({
-                    "posicao": pos_atual,
-                    "profile": p_nome,
-                    "ipd_previsto": item["ipd_previsto"],
-                    "variacao_posicao_vs_semana_anterior": var_posicao,
-                    "margem_erro_estimada": item["margem_erro"],
-                    "ipd_minimo_provavel": item["ipd_minimo"],
-                    "ipd_maximo_provavel": item["ipd_maximo"],
-                    "empate_estatistico": len(item["empatados_com"]) > 0,
-                    "empatado_com": item["empatados_com"]
-                })
-
-                novo_mapa_posicoes[p_nome] = pos_atual
-
-            mapa_posicoes_rodada_anterior = novo_mapa_posicoes
-            intervalo_datas = f"{proxima_semana_inicio.strftime('%d/%b')} a {proxima_semana_fim.strftime('%d/%b/%y')}"
-
-            ranking_semanal_projetado.append({
-                "semana_horizonte": i,
-                "rotulo_semana": f"Semana +{i}",
-                "intervalo_datas": intervalo_datas,
-                "data_inicio_semana": proxima_semana_inicio.strftime("%Y-%m-%d"),
-                "lider_previsto": itens_ranking[0]["profile"] if itens_ranking else None,
-                "ranking_perfis": itens_ranking
-            })
-
-            historico_acumulado = pd.concat([historico_acumulado, pd.DataFrame(novas_linhas_hist)], ignore_index=True)
-
-        return Response(
-            {
-                "meta": {
-                    "projeto_id": projeto_id,
-                    "total_perfis_avaliados": len(perfis_unicos),
-                    "ultima_semana_banco": ultima_data_semana.strftime("%Y-%m-%d"),
-                    "total_semanas_previstas": semanas_frente,
+            return Response(
+                {
+                    "meta": {
+                        "projeto_id": projeto_id,
+                        "total_perfis_avaliados": len(perfis_unicos),
+                        "ultima_semana_banco": ultima_data_semana.strftime(
+                            "%Y-%m-%d"
+                        ),
+                        "total_semanas_previstas": semanas_frente,
+                    },
+                    "metricas_erro_modelo_grupo": {
+                        "mae_historico_semanal_medio": round(mae_global, 2),
+                        "rmse_historico_semanal": rmse_val,
+                    },
+                    "previsoes_semanais": ranking_semanal_projetado,
                 },
-                "metricas_erro_modelo_grupo": {
-                    "mae_historico_semanal_medio": round(mae_global, 2),
-                    "rmse_historico_semanal": round(float(root_mean_squared_error(df_val["ipd"], df_val["y_pred"])), 2),
+                status=status.HTTP_200_OK,
+            )
+
+        except Exception as e:
+            traceback.print_exc()
+            return Response(
+                {
+                    "error": (
+                        "Ocorreu um erro interno ao processar a previsão:"
+                        f" {str(e)}"
+                    )
                 },
-                "previsoes_semanais": ranking_semanal_projetado,
-            },
-            status=status.HTTP_200_OK,
-        )
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
     def _instanciar_xgboost(self):
         return XGBRegressor(
-            n_estimators=250,
-            learning_rate=0.03,
-            max_depth=4,
-            subsample=0.8,
-            colsample_bytree=0.8,
+            n_estimators=180,
+            learning_rate=0.06,
+            max_depth=5,
+            subsample=0.85,
+            colsample_bytree=0.85,
             enable_categorical=True,
             random_state=42,
         )
 
     def _gerar_features_semanais_relacionais(self, df_input):
         df = df_input.copy()
-
-        df["semana_ano"] = df["data"].dt.isocalendar().week.astype(int)
-        df["mes"] = df["data"].dt.month
-
-        stats_grupo = df.groupby("data")["ipd"].agg(
-            ipd_grupo_media="mean",
-            ipd_grupo_std="std",
-            ipd_grupo_max="max"
-        ).reset_index()
-
-        df = pd.merge(df, stats_grupo, on="data", how="left")
-
-        df["ipd_dif_grupo_media"] = df["ipd"] - df["ipd_grupo_media"]
-        df["ipd_rank_grupo"] = df.groupby("data")["ipd"].rank(ascending=False, method="min")
-
         df = df.sort_values(["profile", "data"]).reset_index(drop=True)
 
-        for lag in [1, 2, 4]:
-            df[f"ipd_lag_sem_{lag}"] = df.groupby("profile")["ipd"].shift(lag)
+        # Target Principal: Variação Semanal do IPD
+        df["target_delta"] = df.groupby("profile")["ipd"].diff().fillna(0.0)
 
-        df["ipd_grupo_media_lag_1"] = df.groupby("profile")["ipd_grupo_media"].shift(1)
-        df["ipd_dif_grupo_lag_1"] = df.groupby("profile")["ipd_dif_grupo_media"].shift(1)
-        df["ipd_rank_grupo_lag_1"] = df.groupby("profile")["ipd_rank_grupo"].shift(1)
+        # Ciclicidade Temporal
+        semana = df["data"].dt.isocalendar().week.astype(int)
+        df["sin_semana"] = np.sin(2 * np.pi * semana / 52.0)
+        df["cos_semana"] = np.cos(2 * np.pi * semana / 52.0)
 
-        df["ipd_rolling_mean_4sem"] = df.groupby("profile")["ipd"].shift(1).rolling(window=4).mean()
-        df["ipd_rolling_std_4sem"] = df.groupby("profile")["ipd"].shift(1).rolling(window=4).std()
+        # 1. Deltas e Lags do IPD Global
+        for lag in [1, 2, 3]:
+            df[f"ipd_lag_{lag}"] = df.groupby("profile")["ipd"].shift(lag)
+            df[f"delta_ipd_lag_{lag}"] = df.groupby("profile")[
+                "target_delta"
+            ].shift(lag)
 
-        for metric in ["fama", "engaj", "valencia", "mob", "interesse"]:
-            df[f"{metric}_lag_sem_1"] = df.groupby("profile")[metric].shift(1)
+        df["volatilidade_ipd_3sem"] = (
+            df.groupby("profile")["target_delta"]
+            .shift(1)
+            .rolling(window=3)
+            .std()
+            .fillna(0.0)
+        )
+
+        # 2. ENRIQUECIMENTO: Deltas e Lags de TODAS as 5 Dimensões
+        dimensoes = ["fama", "engaj", "valencia", "mob", "interesse"]
+
+        for dim in dimensoes:
+            # Variação semanal da dimensão
+            delta_dim = df.groupby("profile")[dim].diff().fillna(0.0)
+
+            # Lag da variação agrupando a Series pelo perfil (Sintaxe Corrigida)
+            df[f"delta_{dim}_lag_1"] = delta_dim.groupby(df["profile"]).shift(1)
+
+            # Lags dos valores absolutos da dimensão
+            for lag in [1, 2]:
+                df[f"{dim}_lag_{lag}"] = df.groupby("profile")[dim].shift(lag)
+
+        # 3. Contexto Competitivo do Grupo
+        stats_grupo = (
+            df.groupby("data")["ipd"]
+            .agg(
+                ipd_grupo_media="mean",
+                ipd_grupo_std="std",
+                ipd_grupo_max="max",
+            )
+            .reset_index()
+        )
+
+        df = pd.merge(df, stats_grupo, on="data", how="left")
+        df["ipd_dif_grupo_media"] = df["ipd"] - df["ipd_grupo_media"]
+        df["ipd_rank_grupo"] = df.groupby("data")["ipd"].rank(
+            ascending=False, method="min"
+        )
+
+        df["ipd_grupo_media_lag_1"] = df.groupby("profile")[
+            "ipd_grupo_media"
+        ].shift(1)
+        df["ipd_dif_grupo_lag_1"] = df.groupby("profile")[
+            "ipd_dif_grupo_media"
+        ].shift(1)
+        df["ipd_rank_grupo_lag_1"] = df.groupby("profile")[
+            "ipd_rank_grupo"
+        ].shift(1)
 
         return df
-
 import os
 import re
 from rest_framework.views import APIView
@@ -739,25 +969,23 @@ class RespostaExplicacaoSchema(BaseModel):
         description="Lista de 2 a 4 tópicos sobre destaques, empates estatísticos e variações do ranking."
     )
 
-
 class ExplicacaoRankingIAView(APIView):
     """
     Endpoint assíncrono para explicação de gráficos de ranking via IA (LangChain + OpenRouter).
     Possui camadas de segurança ativas contra Prompt Injection.
     """
+    permission_classes = [IsAuthenticated]  # Garantir autenticação DRF
 
     def _sanitizar_texto(self, texto: str) -> str:
-        """Remove tags HTML/XML e caracteres/espaços de escape."""
+        # ... Mantido conforme original ...
         if not isinstance(texto, str):
             return str(texto)
-        # Remove tags HTML/XML
         texto_limpo = re.sub(r"<[^>]*>", "", texto)
-        # Remove múltiplos espaços/quebras de linha
         texto_limpo = re.sub(r"\s+", " ", texto_limpo).strip()
         return texto_limpo
 
     def _sanitizar_payload(self, payload_semanal: list) -> list:
-        """Sanitiza recursivamente os dados recebidos antes de enviar ao prompt."""
+        # ... Mantido conforme original ...
         payload_limpo = []
         for semana in payload_semanal:
             semana_copy = {
@@ -784,13 +1012,36 @@ class ExplicacaoRankingIAView(APIView):
         return payload_limpo
 
     def post(self, request):
+        projeto_id = request.data.get("projeto_id")
         previsoes_semanais = request.data.get("previsoes_semanais")
+
+        if not projeto_id:
+            return Response(
+                {"error": "O parâmetro 'projeto_id' é obrigatório no corpo da requisição."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         if not previsoes_semanais or not isinstance(previsoes_semanais, list):
             return Response(
                 {"error": "O parâmetro 'previsoes_semanais' deve ser uma lista válida."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
+        # ==============================================================================
+        # VALIDAÇÃO DE PERMISSÃO DO USUÁRIO
+        # ==============================================================================
+        projeto_ipd = get_object_or_404(ProjetoIPD, pk=projeto_id)
+        projetos_cliente = projeto_ipd.projetos_cliente.all()
+
+        tem_permissao = any(
+            usuario_tem_acesso_ao_projeto(request.user, proj) for proj in projetos_cliente
+        )
+        if not tem_permissao:
+            return Response(
+                {"error": "Você não tem permissão para acessar os dados deste projeto."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        # ==============================================================================
 
         api_key = os.getenv("OPENROUTER_API_KEY")
         if not api_key:

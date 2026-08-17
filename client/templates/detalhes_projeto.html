@@ -52,7 +52,7 @@
             50% { opacity: 0; }
         }
         .animate-cursor { animation: pulse-cursor 0.8s infinite; }
-        .ranking-scroll::-webkit-scrollbar { width: 4px; }
+        .ranking-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
         .ranking-scroll::-webkit-scrollbar-track { background: #f1f5f9; }
         .ranking-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
         
@@ -391,10 +391,11 @@
         <div class="h-1.5 w-full bg-gradient-to-r from-quaest-teal via-quaest-tealDark to-slate-900 absolute bottom-0 left-0"></div>
     </footer>
 
-    <!-- LÓGICA JAVASCRIPT INTEGRADA -->
+    <!-- LÓGICA JAVASCRIPT INTEGRADA E CORRIGIDA -->
     <script>
         let mapPrevisaoCharts = {};
         let statePrevisaoPreditiva = {};
+        let mapRankingCharts = {};
         const PROJETO_ID = "{{ projeto.id|default:'1' }}";
 
         window.onscroll = function() {
@@ -423,8 +424,93 @@
         let currentAbortController = null;
 
         /* =========================================================
+           PLUGIN DE DESENHO DE VALORES DIRETO NAS BARRAS DO RANKING
+           ========================================================= */
+        const pluginValoresBarrasRanking = {
+            id: 'pluginValoresBarrasRanking',
+            afterDatasetsDraw(chart) {
+                const { ctx, data } = chart;
+                const meta = chart.getDatasetMeta(0);
+                if (!meta || !meta.data) return;
+
+                const dataset = data.datasets[0];
+                if (!dataset || !dataset.customData) return;
+
+                ctx.save();
+                ctx.textBaseline = 'middle';
+
+                meta.data.forEach((bar, index) => {
+                    const item = dataset.customData[index];
+                    if (!item) return;
+
+                    const x = bar.x;
+                    const y = bar.y;
+
+                    const textScore = `${item.score.toFixed(2)} pts`;
+                    
+                    let textDiff = '';
+                    let colorDiff = '#64748B';
+                    if (item.diffScore > 0) {
+                        textDiff = ` (+${item.diffScore.toFixed(2)})`;
+                        colorDiff = '#10B981';
+                    } else if (item.diffScore < 0) {
+                        textDiff = ` (${item.diffScore.toFixed(2)})`;
+                        colorDiff = '#E11D48';
+                    }
+
+                    let textPos = '';
+                    if (item.isNovo) {
+                        textPos = ' • Novo';
+                    } else if (item.varPosicao > 0) {
+                        textPos = ` • ▲ +${item.varPosicao} pos`;
+                    } else if (item.varPosicao < 0) {
+                        textPos = ` • ▼ ${item.varPosicao} pos`;
+                    } else {
+                        textPos = ' • =';
+                    }
+
+                    ctx.font = 'bold 11px "Inter", sans-serif';
+                    
+                    let currentX = x + 8;
+                    ctx.fillStyle = '#0F172A';
+                    ctx.fillText(textScore, currentX, y);
+                    currentX += ctx.measureText(textScore).width;
+
+                    if (textDiff) {
+                        ctx.fillStyle = colorDiff;
+                        ctx.fillText(textDiff, currentX, y);
+                        currentX += ctx.measureText(textDiff).width;
+                    }
+
+                    ctx.fillStyle = '#64748B';
+                    ctx.fillText(textPos, currentX, y);
+                });
+
+                ctx.restore();
+            }
+        };
+
+        /* =========================================================
            FUNÇÕES GLOBAIS DE SELEÇÃO TOTAL E DESMARCAÇÃO DE PROFILES
            ========================================================= */
+
+        // 0. RANKING BARRAS DADOS
+        function selecionarTodosRanking(ipdId) {
+            const ref = stateIPDs[ipdId];
+            if (!ref) return;
+            const profiles = (ref.ipdObj?.profiles_usados || Object.keys(ref.profilesDataMes.profiles)).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+            ref.profilesSelecionadosRanking = new Set(profiles);
+            const selectMes = document.getElementById(`select-mes-ranking-${ipdId}`);
+            atualizarRankingIpdModulo(ipdId, selectMes ? selectMes.value : null);
+        }
+
+        function desmarcarTodosRanking(ipdId) {
+            const ref = stateIPDs[ipdId];
+            if (!ref) return;
+            ref.profilesSelecionadosRanking.clear();
+            const selectMes = document.getElementById(`select-mes-ranking-${ipdId}`);
+            atualizarRankingIpdModulo(ipdId, selectMes ? selectMes.value : null);
+        }
 
         // 1. EVOLUÇÃO HISTÓRICA DO IPD
         function selecionarTodosHistorico(ipdId) {
@@ -551,6 +637,7 @@
                                 if (stateIPDs[idAtual].lineChart) stateIPDs[idAtual].lineChart.resize();
                                 if (stateIPDs[idAtual].radarChart) stateIPDs[idAtual].radarChart.resize();
                             }
+                            if (mapRankingCharts[idAtual]) mapRankingCharts[idAtual].resize();
                             if (mapCausalCharts[idAtual]) mapCausalCharts[idAtual].resize();
                             if (mapPrevisaoCharts[idAtual]) mapPrevisaoCharts[idAtual].resize();
                         }, 50);
@@ -596,150 +683,61 @@
             link.click();
         }
 
-
         function exportarRankingIpdPNG(ipdId) {
-            const selectMes = document.getElementById(`select-mes-ranking-${ipdId}`);
-            const mesSel = selectMes ? selectMes.value : 'atual';
-            const dadosRanking = obterRankingModuloIpd(ipdId, mesSel);
+            exportarGraficoParaPNG(`chart-bar-ranking-${ipdId}`, `Ranking_IPD`);
+        }
 
-            if (!dadosRanking || dadosRanking.length === 0) return;
+        function formatarNumeroParaCSV(valor) {
+            if (valor === null || valor === undefined || valor === '') return '""';
+            if (typeof valor === 'number' || (!isNaN(valor) && !isNaN(parseFloat(valor)))) {
+                const num = parseFloat(valor);
+                if (Number.isInteger(num)) return `"${num}"`;
+                return `"${num.toString().replace('.', ',')}"`;
+            }
+            return `"${valor}"`;
+        }
 
-            const canvas = document.createElement('canvas');
-            canvas.width = 800;
-            canvas.height = 80 + (dadosRanking.length * 40);
-            const ctx = canvas.getContext('2d');
+        function exportarGraficoParaCSV(chartInstance, nomeArquivo) {
+            if (!chartInstance || !chartInstance.data) return;
 
-            ctx.fillStyle = '#FFFFFF';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            const labels = chartInstance.data.labels || [];
+            const datasets = chartInstance.data.datasets || [];
 
-            ctx.fillStyle = '#0F172A';
-            ctx.font = 'bold 18px "Inter", sans-serif';
-            ctx.fillText(`Ranking Executivo IPD - (${formatarDataAnoCurto(mesSel, true)})`, 30, 40);
+            let csv = ['sep=;'];
+            let header = ['"Data/Rótulo"'];
+            datasets.forEach(ds => {
+                if (!ds.label.includes('_max') && !ds.label.includes('_min')) {
+                    header.push(`"${ds.label || 'Série'}"`);
+                }
+            });
+            csv.push(header.join(';'));
 
-            let topY = 80;
-            const maxScore = Math.max(...dadosRanking.map(d => d.score), 100);
-
-            dadosRanking.forEach((item, index) => {
-                ctx.fillStyle = '#64748B';
-                ctx.font = 'bold 12px "Inter", sans-serif';
-                ctx.fillText(`${index + 1}º`, 30, topY + 18);
-
-                ctx.fillStyle = '#0F172A';
-                ctx.font = 'bold 13px "Inter", sans-serif';
-                ctx.fillText(item.profile, 65, topY + 18);
-
-                const barX = 220;
-                const maxBarWidth = 460;
-                const barWidth = (item.score / maxScore) * maxBarWidth;
-
-                ctx.fillStyle = '#F1F5F9';
-                ctx.fillRect(barX, topY + 4, maxBarWidth, 20);
-
-                ctx.fillStyle = '#1FA4B6';
-                ctx.fillRect(barX, topY + 4, barWidth, 20);
-
-                ctx.fillStyle = '#0F172A';
-                ctx.font = 'bold 12px "Inter", sans-serif';
-                ctx.fillText(`${item.score}`, barX + maxBarWidth + 15, topY + 18);
-
-                topY += 38;
+            labels.forEach((lbl, idx) => {
+                let row = [`"${lbl}"`];
+                datasets.forEach(ds => {
+                    if (!ds.label.includes('_max') && !ds.label.includes('_min')) {
+                        let val = ds.data[idx];
+                        row.push(formatarNumeroParaCSV(val));
+                    }
+                });
+                csv.push(row.join(';'));
             });
 
+            const csvString = '\uFEFF' + csv.join('\r\n');
+            const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement('a');
-            link.download = `Ranking_IPD_${mesSel}.png`;
-            link.href = canvas.toDataURL('image/png');
+            link.href = URL.createObjectURL(blob);
+            link.setAttribute('download', `${nomeArquivo}.csv`);
+            document.body.appendChild(link);
             link.click();
+            document.body.removeChild(link);
         }
 
-        /* =========================================================
-   FUNÇÃO AUXILIAR: FORMATAR NÚMEROS COM VÍRGULA PARA O EXCEL
-   ========================================================= */
-function formatarNumeroParaCSV(valor) {
-    if (valor === null || valor === undefined || valor === '') return '""';
-    
-    // Se for número ou string numérica válida
-    if (typeof valor === 'number' || (!isNaN(valor) && !isNaN(parseFloat(valor)))) {
-        const num = parseFloat(valor);
-        // Se for inteiro, retorna sem decimal
-        if (Number.isInteger(num)) {
-            return `"${num}"`;
-        }
-        // Se for decimal, substitui o ponto por vírgula (Padrão PT-BR do Excel)
-        return `"${num.toString().replace('.', ',')}"`;
-    }
-    
-    // Para textos e nomes de perfis
-    return `"${valor}"`;
-}
-
-
-/* =========================================================
-   FUNÇÃO 1: EXPORTAR GRÁFICOS PARA CSV (SUBSTITUIR A SUA EXISTENTE)
-   ========================================================= */
-function exportarGraficoParaCSV(chartInstance, nomeArquivo) {
-    if (!chartInstance || !chartInstance.data) return;
-
-    const labels = chartInstance.data.labels || [];
-    const datasets = chartInstance.data.datasets || [];
-
-    // 'sep=;' força o Excel a separar as colunas por ponto e vírgula
-    let csv = ['sep=;'];
-    
-    let header = ['"Data/Rótulo"'];
-    datasets.forEach(ds => {
-        if (!ds.label.includes('_max') && !ds.label.includes('_min')) {
-            header.push(`"${ds.label || 'Série'}"`);
-        }
-    });
-    csv.push(header.join(';'));
-
-    labels.forEach((lbl, idx) => {
-        let row = [`"${lbl}"`];
-        datasets.forEach(ds => {
-            if (!ds.label.includes('_max') && !ds.label.includes('_min')) {
-                let val = ds.data[idx];
-                row.push(formatarNumeroParaCSV(val));
+        function exportarRankingIpdCSV(ipdId) {
+            if (mapRankingCharts[ipdId]) {
+                exportarGraficoParaCSV(mapRankingCharts[ipdId], `Ranking_IPD`);
             }
-        });
-        csv.push(row.join(';'));
-    });
-
-    const csvString = '\uFEFF' + csv.join('\r\n');
-    const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.setAttribute('download', `${nomeArquivo}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-}
-
-
-/* =========================================================
-   FUNÇÃO 2: EXPORTAR RANKING IPD PARA CSV (SUBSTITUIR A SUA EXISTENTE)
-   ========================================================= */
-function exportarRankingIpdCSV(ipdId) {
-    const selectMes = document.getElementById(`select-mes-ranking-${ipdId}`);
-    const mesSel = selectMes ? selectMes.value : 'atual';
-    const dadosRanking = obterRankingModuloIpd(ipdId, mesSel);
-
-    if (!dadosRanking || dadosRanking.length === 0) return;
-
-    let csv = ['sep=;', '"Posicao";"Perfil/Marca";"Pontuacao IPD"'];
-    dadosRanking.forEach((item, index) => {
-        const scoreFormatado = formatarNumeroParaCSV(item.score);
-        csv.push(`"${index + 1}º";"${item.profile}";${scoreFormatado}`);
-    });
-
-    const csvString = '\uFEFF' + csv.join('\r\n');
-    const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.setAttribute('download', `Ranking_IPD_${mesSel}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-}
+        }
 
         function formatarMesExtenso(dataStr) {
             if (!dataStr) return 'N/A';
@@ -785,6 +783,17 @@ function exportarRankingIpdCSV(ipdId) {
             return dataStr;
         }
 
+        function obterCorDoTema(nomeTema) {
+            if (!nomeTema) return paletaCores[0];
+            let hash = 5381;
+            const str = String(nomeTema).trim().toLowerCase();
+            for (let i = 0; i < str.length; i++) {
+                hash = ((hash << 5) + hash) + str.charCodeAt(i);
+            }
+            const index = Math.abs(hash) % paletaCores.length;
+            return paletaCores[index];
+        }
+
         function renderizarEmbedConteudo(ipdId, postUrl) {
             const container = document.getElementById(`embed-box-${ipdId}`);
             if (!container) return;
@@ -823,23 +832,12 @@ function exportarRankingIpdCSV(ipdId) {
                             <a href="${urlLimpa}" style="background:#FFFFFF; line-height:0; padding:0 0; text-align:center; text-decoration:none; width:100%;" target="_blank"> 
                                 <div style="display: flex; flex-direction: row; align-items: center;"> 
                                     <div style="background-color: #F4F4F4; border-radius: 50%; flex-grow: 0; height: 40px; margin-right: 14px; width: 40px;"></div> 
-                                    <div style="display: flex; flex-direction: column; flex-grow: 1; justify-content: center;"> 
+                                    <div style="display: flex; flex-direction: column; flex-grow: 1; justify-center;"> 
                                         <div style="background-color: #F4F4F4; border-radius: 4px; flex-grow: 0; height: 14px; margin-bottom: 6px; width: 100px;"></div> 
                                         <div style="background-color: #F4F4F4; border-radius: 4px; flex-grow: 0; height: 14px; width: 60px;"></div>
                                     </div>
                                 </div>
                                 <div style="padding: 19% 0;"></div> 
-                                <div style="display:block; height:50px; margin:0 auto 12px; width:50px;">
-                                    <svg width="50px" height="50px" viewBox="0 0 60 60" version="1.1" xmlns="https://www.w3.org/2000/svg" xmlns:xlink="https://www.w3.org/1999/xlink">
-                                        <g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
-                                            <g transform="translate(-511.000000, -20.000000)" fill="#000000">
-                                                <g>
-                                                    <path d="M556.869,30.41 C554.814,30.41 553.148,32.076 553.148,34.131 C553.148,36.186 554.814,37.852 556.869,37.852 C558.924,37.852 560.59,36.186 560.59,34.131 C560.59,32.076 558.924,30.41 556.869,30.41 M541,60.657 C535.114,60.657 530.342,55.887 530.342,50 C530.342,44.114 535.114,39.342 541,39.342 C546.887,39.342 551.658,44.114 551.658,50 C551.658,55.887 546.887,60.657 541,60.657 M541,33.886 C532.1,33.886 524.886,41.1 524.886,50 C524.886,58.899 532.1,66.113 541,66.113 C549.9,66.113 557.115,58.899 557.115,50 C557.115,41.1 549.9,33.886 541,33.886 M565.378,62.101 C565.244,65.022 564.756,66.606 564.346,67.663 C563.803,69.06 563.154,70.057 562.106,71.106 C561.058,72.155 560.06,72.803 558.662,73.347 C557.607,73.757 556.021,74.244 553.102,74.378 C549.944,74.521 548.997,74.552 541,74.552 C533.003,74.552 532.056,74.521 528.898,74.378 C525.979,74.244 524.393,73.757 523.338,73.347 C521.94,72.803 520.942,72.155 519.894,71.106 C518.846,70.057 518.197,69.06 517.654,67.663 C517.244,66.606 516.755,65.022 516.623,62.101 C516.479,58.943 516.448,57.996 516.448,50 C516.448,42.003 516.479,41.056 516.623,37.899 C516.755,34.978 517.244,33.391 517.654,32.338 C518.197,30.938 518.846,29.942 519.894,28.894 C520.942,27.846 521.94,27.196 523.338,26.654 C524.393,26.244 525.979,25.756 528.898,25.623 C532.057,25.479 533.004,25.448 541,25.448 C548.997,25.448 549.943,25.479 553.102,25.623 C556.021,25.756 557.607,26.244 558.662,26.654 C560.06,27.196 561.058,27.846 562.106,28.894 C563.154,29.942 563.803,30.938 564.346,32.338 C564.756,33.391 565.244,34.978 565.378,37.899 C565.522,41.056 565.552,42.003 565.552,50 C565.552,57.996 565.522,58.943 565.378,62.101 M570.82,37.631 C570.674,34.438 570.167,32.258 569.425,30.349 C568.659,28.377 567.633,26.702 565.965,25.035 C564.297,23.368 562.623,22.342 560.652,21.575 C558.743,20.834 556.562,20.326 553.369,20.18 C550.169,20.033 554.148,20 541,20 C532.853,20 531.831,20.033 528.631,20.18 C525.438,20.326 523.257,20.834 521.349,21.575 C519.376,22.342 517.703,23.368 516.035,25.035 C514.368,26.702 513.342,28.377 512.574,30.349 C511.834,32.258 511.326,34.438 511.181,37.631 C511.035,40.831 511,41.851 511,50 C511,58.147 511.035,59.17 511.181,62.369 C511.326,65.562 511.834,67.743 512.574,69.651 C513.342,71.625 514.368,73.296 516.035,74.965 C517.703,76.634 519.376,77.658 521.349,78.425 C523.257,79.167 525.438,79.673 528.631,79.82 C531.831,79.965 532.853,80.001 541,80.001 C549.148,80.001 550.169,79.965 553.369,79.82 C556.562,79.673 558.743,79.167 560.652,78.425 C562.623,77.658 564.297,76.634 565.965,74.965 C567.633,73.296 568.659,71.625 569.425,69.651 C570.167,67.743 570.674,65.562 570.82,62.369 C570.966,59.17 571,58.147 571,50 C571,41.851 570.966,40.831 570.82,37.631"></path>
-                                                </g>
-                                            </g>
-                                        </g>
-                                    </svg>
-                                </div>
                                 <div style="padding-top: 8px;"> 
                                     <div style="color:#3897f0; font-family:Arial,sans-serif; font-size:14px; font-style:normal; font-weight:550; line-height:18px;">Ver essa publicação no Instagram</div>
                                 </div>
@@ -922,10 +920,14 @@ function exportarRankingIpdCSV(ipdId) {
                 if (!stateIPDs[ipdId]) stateIPDs[ipdId] = {};
                 stateIPDs[ipdId].dadosTemas = data;
 
+                const todosPerfis = (stateIPDs[ipdId]?.ipdObj?.profiles_usados || []).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+
                 if (!stateTemasMetricas[ipdId]) {
                     stateTemasMetricas[ipdId] = {
-                        perfisComparativo: new Set()
+                        perfisComparativo: new Set(todosPerfis.slice(0, 2))
                     };
+                } else if (stateTemasMetricas[ipdId].perfisComparativo.size === 0) {
+                    stateTemasMetricas[ipdId].perfisComparativo = new Set(todosPerfis.slice(0, 2));
                 }
 
                 popularSeletorPerfisTemas(ipdId, data.temas_por_perfil || []);
@@ -1001,96 +1003,120 @@ function exportarRankingIpdCSV(ipdId) {
                 const { ctx, chartArea: { left, top, right, bottom }, scales: { x, y } } = chart;
                 if (!x || !y) return;
                 
-                const xMid = x.getPixelForValue(50);
-                const yMid = y.getPixelForValue(50);
+                const dataset = chart.data.datasets[0];
+                if (!dataset || !dataset.data || dataset.data.length === 0) {
+                    ctx.save();
+                    ctx.font = '600 12px "Inter", sans-serif';
+                    ctx.fillStyle = '#94A3B8';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText('Nenhum dado disponível no período selecionado', (left + right) / 2, (top + bottom) / 2);
+                    ctx.restore();
+                    return;
+                }
+
+                const xCut = chart.config.options.plugins.quadrantesCustom?.xCut || 0;
+                const yCut = chart.config.options.plugins.quadrantesCustom?.yCut || 0;
+
+                const xPixel = Math.max(left + 20, Math.min(x.getPixelForValue(xCut), right - 20));
+                const yPixel = Math.max(top + 20, Math.min(y.getPixelForValue(yCut), bottom - 20));
 
                 ctx.save();
+
                 ctx.setLineDash([3, 3]);
-                ctx.lineWidth = 1;
-                ctx.strokeStyle = '#E2E8F0';
+                ctx.lineWidth = 1.2;
+                ctx.strokeStyle = '#CBD5E1';
 
                 ctx.beginPath();
-                ctx.moveTo(xMid, top);
-                ctx.lineTo(xMid, bottom);
+                ctx.moveTo(xPixel, top);
+                ctx.lineTo(xPixel, bottom);
                 ctx.stroke();
 
                 ctx.beginPath();
-                ctx.moveTo(left, yMid);
-                ctx.lineTo(right, yMid);
+                ctx.moveTo(left, yPixel);
+                ctx.lineTo(right, yPixel);
                 ctx.stroke();
 
-                ctx.font = '600 9px "Inter", sans-serif';
-                ctx.fillStyle = '#94A3B8';
-                ctx.fillText('ALTA EFICIÊNCIA', left + 8, top + 12);
-                ctx.fillText('CARROS-CHEFE', xMid + 8, top + 12);
-                ctx.fillText('SECUNDÁRIOS', left + 8, yMid + 12);
-                ctx.fillText('ALTO CUSTO / BAIXO RETORNO', xMid + 8, yMid + 12);
+                ctx.font = '700 8.5px "Inter", sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+
+                const centroXEsquerda = left + (xPixel - left) / 2;
+                const centroXDireita = xPixel + (right - xPixel) / 2;
+                const centroYSuperior = top + (yPixel - top) / 2;
+                const centroYInferior = yPixel + (bottom - yPixel) / 2;
+
+                const desenharTextoMultilinha = (linhas, cx, cy, cor) => {
+                    ctx.fillStyle = cor;
+                    const lineHeight = 11;
+                    const startY = cy - ((linhas.length - 1) * lineHeight) / 2;
+                    linhas.forEach((linha, i) => {
+                        ctx.fillText(linha, cx, startY + i * lineHeight);
+                    });
+                };
+
+                desenharTextoMultilinha(['NICHO DE ALTA', 'PERFORMANCE'], centroXEsquerda, centroYSuperior, 'rgba(16, 185, 129, 0.65)');
+                desenharTextoMultilinha(['PILARES', 'ESTRATÉGICOS'], centroXDireita, centroYSuperior, 'rgba(2, 132, 199, 0.65)');
+                desenharTextoMultilinha(['CATEGORIAS', 'SECUNDÁRIAS'], centroXEsquerda, centroYInferior, 'rgba(100, 116, 139, 0.65)');
+                desenharTextoMultilinha(['ALTO ESFORÇO /', 'SUB-OTIMIZADO'], centroXDireita, centroYInferior, 'rgba(225, 29, 72, 0.65)');
 
                 ctx.restore();
             }
         };
 
-        function calcularMetricaEficiencia(sharePosts, shareInteracoes) {
-            const posts = parseFloat(sharePosts) || 0;
-            const interacoes = parseFloat(shareInteracoes) || 0;
-
-            if (posts === 0) return { status: 'Sem Posts', bgClass: 'bg-slate-100 text-slate-600 border border-slate-200' };
-
-            const razao = interacoes / posts;
-            const pctEficiencia = ((razao - 1) * 100);
-
-            if (pctEficiencia > 15) {
-                return { 
-                    status: 'Super-Eficiente', 
-                    bgClass: 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                };
-            } else if (pctEficiencia < -15) {
-                return { 
-                    status: 'Sub-Eficiente', 
-                    bgClass: 'bg-rose-50 text-rose-700 border border-rose-200'
-                };
-            } else {
-                return { 
-                    status: 'Equilibrado', 
-                    bgClass: 'bg-sky-50 text-sky-700 border border-sky-200'
-                };
-            }
-        }
-
-        function obterCorDoTema(nomeTema) {
-            if (!nomeTema) return paletaCores[0];
-            let hash = 5381;
-            const str = String(nomeTema).trim().toLowerCase();
-            for (let i = 0; i < str.length; i++) {
-                hash = ((hash << 5) + hash) + str.charCodeAt(i);
-            }
-            const index = Math.abs(hash) % paletaCores.length;
-            return paletaCores[index];
-        }
-
+        /* =========================================================
+           2. MATRIZ GERAL DO PROJETO (LEGENDA DINÂMICA + TABELA)
+           ========================================================= */
         function renderizarMatrizGeralTemas(ipdId) {
             const data = stateIPDs[ipdId]?.dadosTemas?.temas_geral || [];
             const ctx = document.getElementById(`chart-matrix-geral-${ipdId}`)?.getContext('2d');
-            const tblGeral = document.getElementById(`tbl-temas-geral-${ipdId}`);
+            const containerLegenda = document.getElementById(`legend-matrix-geral-${ipdId}`);
+            const tbodyTable = document.getElementById(`tbl-temas-geral-${ipdId}`);
 
             if (!ctx) return;
 
+            if (mapTemasCharts[`matrix_geral_${ipdId}`]) {
+                mapTemasCharts[`matrix_geral_${ipdId}`].destroy();
+            }
+
+            if (!data || data.length === 0) {
+                mapTemasCharts[`matrix_geral_${ipdId}`] = new Chart(ctx, {
+                    type: 'scatter',
+                    data: { datasets: [] },
+                    plugins: [pluginQuadrantesMatriz],
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+                });
+
+                if (containerLegenda) {
+                    containerLegenda.innerHTML = `<p class="text-xs text-slate-400 italic text-center py-2">Sem dados de categorias para o período selecionado.</p>`;
+                }
+                if (tbodyTable) tbodyTable.innerHTML = `<tr><td colspan="5" class="py-4 text-center text-slate-400 italic">Sem registros.</td></tr>`;
+                return;
+            }
+
+            let mediaGeralY = stateIPDs[ipdId]?.dadosTemas?.metricas_gerais?.media_interacao_por_post_geral;
+            if (!mediaGeralY || mediaGeralY === 0) {
+                const totalPostsGeral = data.reduce((acc, d) => acc + (d.total_posts || 0), 0);
+                const totalInterGeral = data.reduce((acc, d) => acc + (d.total_interacoes || 0), 0);
+                mediaGeralY = totalPostsGeral > 0 ? (totalInterGeral / totalPostsGeral) : 0;
+            }
+
+            const totalPostsSum = data.reduce((acc, d) => acc + (d.total_posts || 0), 0);
+            const mediaGeralX = data.length > 0 ? (totalPostsSum / data.length) : 0;
+
             const points = data.map((d) => {
-                const ef = calcularMetricaEficiencia(d.share_posts, d.share_interacoes);
                 const corTema = obterCorDoTema(d.categoria_tema);
                 return {
-                    x: d.share_posts,
-                    y: d.share_interacoes,
-                    tema: d.categoria_tema,
-                    intPorPost: d.interacao_por_post || 0,
-                    posts: d.total_posts || 0,
-                    interacoes: d.total_interacoes || 0,
-                    eficiencia: ef,
+                    x: d.total_posts || 0,
+                    y: d.interacao_por_post || 0,
+                    tema: d.categoria_tema || 'Sem Categoria',
+                    sharePosts: d.share_posts || 0,
                     color: corTema
                 };
             });
 
-            if (mapTemasCharts[`matrix_geral_${ipdId}`]) mapTemasCharts[`matrix_geral_${ipdId}`].destroy();
+            const maxPosts = Math.max(...points.map(p => p.x), mediaGeralX * 2, 10);
+            const maxInter = Math.max(...points.map(p => p.y), mediaGeralY * 2, 100);
 
             mapTemasCharts[`matrix_geral_${ipdId}`] = new Chart(ctx, {
                 type: 'scatter',
@@ -1099,8 +1125,8 @@ function exportarRankingIpdCSV(ipdId) {
                         label: 'Temas Gerais',
                         data: points,
                         backgroundColor: points.map(p => p.color + 'CC'),
-                        pointRadius: 5,
-                        pointHoverRadius: 8,
+                        pointRadius: 7,
+                        pointHoverRadius: 10,
                         borderWidth: 1.5,
                         borderColor: points.map(p => p.color),
                         clip: false
@@ -1110,39 +1136,32 @@ function exportarRankingIpdCSV(ipdId) {
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    layout: {
-                        padding: { left: 10, right: 15, top: 15, bottom: 10 }
-                    },
+                    layout: { padding: { left: 10, right: 15, top: 15, bottom: 10 } },
                     scales: {
                         x: {
-                            min: -5,
-                            max: 105,
-                            title: { display: true, text: 'Share de Posts (%)', font: { weight: 'bold', size: 10, family: 'Inter' }, color: '#64748B' },
+                            min: 0,
+                            max: Math.ceil(maxPosts * 1.15),
+                            title: { display: true, text: 'Total de Postagens', font: { weight: 'bold', size: 10, family: 'Inter' }, color: '#64748B' },
                             grid: { color: '#F8FAFC' },
-                            ticks: { 
-                                callback: function(val) {
-                                    if (val >= 0 && val <= 100 && val % 20 === 0) return val + '%';
-                                    return '';
-                                }, 
-                                font: { size: 10, family: 'Inter' } 
-                            }
+                            ticks: { font: { size: 10, family: 'Inter' } }
                         },
                         y: {
-                            min: -5,
-                            max: 105,
-                            title: { display: true, text: 'Share de Interações (%)', font: { weight: 'bold', size: 10, family: 'Inter' }, color: '#64748B' },
+                            min: 0,
+                            max: Math.ceil(maxInter * 1.15),
+                            title: { display: true, text: 'Média de Interações por Post', font: { weight: 'bold', size: 10, family: 'Inter' }, color: '#64748B' },
                             grid: { color: '#F8FAFC' },
                             ticks: { 
-                                callback: function(val) {
-                                    if (val >= 0 && val <= 100 && val % 20 === 0) return val + '%';
-                                    return '';
-                                }, 
+                                callback: (val) => val.toLocaleString('pt-BR'),
                                 font: { size: 10, family: 'Inter' } 
                             }
                         }
                     },
                     plugins: {
                         legend: { display: false },
+                        quadrantesCustom: {
+                            xCut: mediaGeralX,
+                            yCut: mediaGeralY
+                        },
                         tooltip: {
                             padding: 10,
                             cornerRadius: 8,
@@ -1151,10 +1170,9 @@ function exportarRankingIpdCSV(ipdId) {
                                     const p = c.raw;
                                     return [
                                         ` Tema: ${p.tema}`,
-                                        ` Share Interações: ${p.y}% (${(p.interacoes || 0).toLocaleString('pt-BR')})`,
-                                        ` Share Posts: ${p.x}% (${p.posts} posts)`,
-                                        ` Média: ${(p.intPorPost || 0).toLocaleString('pt-BR')} int/post`,
-                                        ` Classificação: ${p.eficiencia.status}`
+                                        ` Média do Tema: ${p.y.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} int/post`,
+                                        ` Total de Posts: ${p.x} (${p.sharePosts}%)`,
+                                        ` Média Geral/Post: ${mediaGeralY.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}`
                                     ];
                                 }
                             }
@@ -1163,32 +1181,45 @@ function exportarRankingIpdCSV(ipdId) {
                 }
             });
 
-            if (tblGeral) {
-                const dataOrdenada = [...data].sort((a, b) => (b.interacao_por_post || 0) - (a.interacao_por_post || 0));
-                tblGeral.innerHTML = dataOrdenada.map((item) => {
-                    const ef = calcularMetricaEficiencia(item.share_posts, item.share_interacoes);
-                    const corTema = obterCorDoTema(item.categoria_tema);
+            // RENDERIZA A LEGENDA DO GRÁFICO
+            if (containerLegenda) {
+                containerLegenda.innerHTML = `
+                    <div class="flex flex-wrap items-center gap-2 justify-center py-1">
+                        ${points.map(p => `
+                            <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-xs shadow-sm">
+                                <span class="w-2.5 h-2.5 rounded-full shrink-0" style="background-color: ${p.color}"></span>
+                                <span class="font-bold text-slate-800">${p.tema}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            }
 
+            // RENDERIZA AS LINHAS DA TABELA
+            if (tbodyTable) {
+                tbodyTable.innerHTML = data.map(d => {
+                    const cor = obterCorDoTema(d.categoria_tema);
+                    const interPost = d.interacao_por_post || 0;
+                    const eAlta = interPost >= mediaGeralY;
                     return `
-                        <tr class="hover:bg-white transition border-b border-slate-100 text-xs h-9">
-                            <td class="py-2 font-bold text-slate-800 flex items-center gap-1.5 truncate">
-                                <span class="w-2.5 h-2.5 rounded-full shrink-0" style="background-color: ${corTema}"></span>
-                                <span class="truncate" title="${item.categoria_tema}">${item.categoria_tema}</span>
+                        <tr class="hover:bg-slate-100/60 transition">
+                            <td class="py-2 font-bold text-slate-800 flex items-center gap-2">
+                                <span class="w-2.5 h-2.5 rounded-full shrink-0" style="background-color: ${cor}"></span>
+                                ${d.categoria_tema || 'Sem Categoria'}
                             </td>
-                            <td class="py-2 text-right font-semibold text-slate-600">${item.share_posts}%</td>
-                            <td class="py-2 text-right font-semibold text-slate-900">${item.share_interacoes}%</td>
-                            <td class="py-2 text-right font-black text-slate-800">${(item.interacao_por_post || 0).toLocaleString('pt-BR')}</td>
-                            <td class="py-2 text-center">
-                                <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold ${ef.bgClass}">
-                                    ${ef.status}
-                                </span>
-                            </td>
+                            <td class="py-2 text-right font-semibold">${d.total_posts || 0} (${d.share_posts || 0}%)</td>
+                            <td class="py-2 text-right font-semibold">${(d.total_interacoes || 0).toLocaleString('pt-BR')}</td>
+                            <td class="py-2 text-right font-black text-quaest-teal">${interPost.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}</td>
+                            
                         </tr>
                     `;
                 }).join('');
             }
         }
 
+        /* =========================================================
+           3. MATRIZ POR PERFIL (LEGENDA DINÂMICA + TABELA)
+           ========================================================= */
         function renderizarMatrizPerfilTemas(ipdId) {
             const selectPerfil = document.getElementById(`select-perfil-temas-${ipdId}`);
             if (!selectPerfil) return;
@@ -1198,26 +1229,53 @@ function exportarRankingIpdCSV(ipdId) {
             const dadosPerfil = todosPerfis.filter(item => item.profile === perfilSelecionado);
 
             const ctx = document.getElementById(`chart-matrix-perfil-${ipdId}`)?.getContext('2d');
-            const tblPerfil = document.getElementById(`tbl-temas-perfil-${ipdId}`);
+            const containerLegenda = document.getElementById(`legend-matrix-perfil-${ipdId}`);
+            const tbodyTable = document.getElementById(`tbl-temas-perfil-${ipdId}`);
 
             if (!ctx) return;
 
+            if (mapTemasCharts[`matrix_perfil_${ipdId}`]) {
+                mapTemasCharts[`matrix_perfil_${ipdId}`].destroy();
+            }
+
+            if (!dadosPerfil || dadosPerfil.length === 0) {
+                mapTemasCharts[`matrix_perfil_${ipdId}`] = new Chart(ctx, {
+                    type: 'scatter',
+                    data: { datasets: [] },
+                    plugins: [pluginQuadrantesMatriz],
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+                });
+
+                if (containerLegenda) {
+                    containerLegenda.innerHTML = `<p class="text-xs text-slate-400 italic text-center py-2">Nenhum dado para ${perfilSelecionado} no período.</p>`;
+                }
+                if (tbodyTable) tbodyTable.innerHTML = `<tr><td colspan="5" class="py-4 text-center text-slate-400 italic">Sem registros.</td></tr>`;
+                return;
+            }
+
+            let mediaPerfilY = stateIPDs[ipdId]?.dadosTemas?.metricas_gerais?.totais_por_perfil?.[perfilSelecionado]?.media_perfil;
+            if (!mediaPerfilY || mediaPerfilY === 0) {
+                const totalPostsPerfil = dadosPerfil.reduce((acc, d) => acc + (d.total_posts || 0), 0);
+                const totalInterPerfil = dadosPerfil.reduce((acc, d) => acc + (d.total_interacoes || 0), 0);
+                mediaPerfilY = totalPostsPerfil > 0 ? (totalInterPerfil / totalPostsPerfil) : 0;
+            }
+
+            const totalPostsSum = dadosPerfil.reduce((acc, d) => acc + (d.total_posts || 0), 0);
+            const mediaPerfilX = dadosPerfil.length > 0 ? (totalPostsSum / dadosPerfil.length) : 0;
+
             const points = dadosPerfil.map((d) => {
-                const ef = calcularMetricaEficiencia(d.share_posts_perfil, d.share_interacoes_perfil);
                 const corTema = obterCorDoTema(d.categoria_tema);
                 return {
-                    x: d.share_posts_perfil,
-                    y: d.share_interacoes_perfil,
-                    tema: d.categoria_tema,
-                    intPorPost: d.interacao_por_post || 0,
-                    posts: d.total_posts || 0,
-                    interacoes: d.total_interacoes || 0,
-                    eficiencia: ef,
+                    x: d.total_posts || 0,
+                    y: d.interacao_por_post || 0,
+                    tema: d.categoria_tema || 'Sem Categoria',
+                    sharePosts: d.share_posts_perfil || 0,
                     color: corTema
                 };
             });
 
-            if (mapTemasCharts[`matrix_perfil_${ipdId}`]) mapTemasCharts[`matrix_perfil_${ipdId}`].destroy();
+            const maxPosts = Math.max(...points.map(p => p.x), mediaPerfilX * 2, 10);
+            const maxInter = Math.max(...points.map(p => p.y), mediaPerfilY * 2, 100);
 
             mapTemasCharts[`matrix_perfil_${ipdId}`] = new Chart(ctx, {
                 type: 'scatter',
@@ -1226,8 +1284,8 @@ function exportarRankingIpdCSV(ipdId) {
                         label: `Temas - ${perfilSelecionado}`,
                         data: points,
                         backgroundColor: points.map(p => p.color + 'CC'),
-                        pointRadius: 5,
-                        pointHoverRadius: 8,
+                        pointRadius: 7,
+                        pointHoverRadius: 10,
                         borderWidth: 1.5,
                         borderColor: points.map(p => p.color),
                         clip: false
@@ -1237,39 +1295,32 @@ function exportarRankingIpdCSV(ipdId) {
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    layout: {
-                        padding: { left: 10, right: 15, top: 15, bottom: 10 }
-                    },
+                    layout: { padding: { left: 10, right: 15, top: 15, bottom: 10 } },
                     scales: {
                         x: {
-                            min: -5,
-                            max: 105,
-                            title: { display: true, text: 'Share Posts Perfil (%)', font: { weight: 'bold', size: 10, family: 'Inter' }, color: '#64748B' },
+                            min: 0,
+                            max: Math.ceil(maxPosts * 1.15),
+                            title: { display: true, text: `Total de Postagens (${perfilSelecionado})`, font: { weight: 'bold', size: 10, family: 'Inter' }, color: '#64748B' },
                             grid: { color: '#F8FAFC' },
-                            ticks: { 
-                                callback: function(val) {
-                                    if (val >= 0 && val <= 100 && val % 20 === 0) return val + '%';
-                                    return '';
-                                }, 
-                                font: { size: 10, family: 'Inter' } 
-                            }
+                            ticks: { font: { size: 10, family: 'Inter' } }
                         },
                         y: {
-                            min: -5,
-                            max: 105,
-                            title: { display: true, text: 'Share Interações Perfil (%)', font: { weight: 'bold', size: 10, family: 'Inter' }, color: '#64748B' },
+                            min: 0,
+                            max: Math.ceil(maxInter * 1.15),
+                            title: { display: true, text: 'Média de Interações por Post', font: { weight: 'bold', size: 10, family: 'Inter' }, color: '#64748B' },
                             grid: { color: '#F8FAFC' },
                             ticks: { 
-                                callback: function(val) {
-                                    if (val >= 0 && val <= 100 && val % 20 === 0) return val + '%';
-                                    return '';
-                                }, 
+                                callback: (val) => val.toLocaleString('pt-BR'),
                                 font: { size: 10, family: 'Inter' } 
                             }
                         }
                     },
                     plugins: {
                         legend: { display: false },
+                        quadrantesCustom: {
+                            xCut: mediaPerfilX,
+                            yCut: mediaPerfilY
+                        },
                         tooltip: {
                             padding: 10,
                             cornerRadius: 8,
@@ -1278,10 +1329,9 @@ function exportarRankingIpdCSV(ipdId) {
                                     const p = c.raw;
                                     return [
                                         ` Tema: ${p.tema}`,
-                                        ` Share Interações: ${p.y}% (${(p.interacoes || 0).toLocaleString('pt-BR')})`,
-                                        ` Share Posts: ${p.x}% (${p.posts} posts)`,
-                                        ` Média: ${(p.intPorPost || 0).toLocaleString('pt-BR')} int/post`,
-                                        ` Classificação: ${p.eficiencia.status}`
+                                        ` Média do Tema: ${p.y.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} int/post`,
+                                        ` Total de Posts: ${p.x} (${p.sharePosts}%)`,
+                                        ` Média do Perfil: ${mediaPerfilY.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}`
                                     ];
                                 }
                             }
@@ -1290,26 +1340,36 @@ function exportarRankingIpdCSV(ipdId) {
                 }
             });
 
-            if (tblPerfil) {
-                const dataOrdenada = [...dadosPerfil].sort((a, b) => (b.interacao_por_post || 0) - (a.interacao_por_post || 0));
-                tblPerfil.innerHTML = dataOrdenada.map((item) => {
-                    const ef = calcularMetricaEficiencia(item.share_posts_perfil, item.share_interacoes_perfil);
-                    const corTema = obterCorDoTema(item.categoria_tema);
+            // RENDERIZA A LEGENDA DO GRÁFICO
+            if (containerLegenda) {
+                containerLegenda.innerHTML = `
+                    <div class="flex flex-wrap items-center gap-2 justify-center py-1">
+                        ${points.map(p => `
+                            <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-xs shadow-sm">
+                                <span class="w-2.5 h-2.5 rounded-full shrink-0" style="background-color: ${p.color}"></span>
+                                <span class="font-bold text-slate-800">${p.tema}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            }
 
+            // RENDERIZA AS LINHAS DA TABELA DO PERFIL
+            if (tbodyTable) {
+                tbodyTable.innerHTML = dadosPerfil.map(d => {
+                    const cor = obterCorDoTema(d.categoria_tema);
+                    const interPost = d.interacao_por_post || 0;
+                    const eAlta = interPost >= mediaPerfilY;
                     return `
-                        <tr class="hover:bg-white transition border-b border-slate-100 text-xs h-9">
-                            <td class="py-2 font-bold text-slate-800 flex items-center gap-1.5 truncate">
-                                <span class="w-2.5 h-2.5 rounded-full shrink-0" style="background-color: ${corTema}"></span>
-                                <span class="truncate" title="${item.categoria_tema}">${item.categoria_tema}</span>
+                        <tr class="hover:bg-slate-100/60 transition">
+                            <td class="py-2 font-bold text-slate-800 flex items-center gap-2">
+                                <span class="w-2.5 h-2.5 rounded-full shrink-0" style="background-color: ${cor}"></span>
+                                ${d.categoria_tema || 'Sem Categoria'}
                             </td>
-                            <td class="py-2 text-right font-semibold text-slate-600">${item.share_posts_perfil}%</td>
-                            <td class="py-2 text-right font-semibold text-slate-900">${item.share_interacoes_perfil}%</td>
-                            <td class="py-2 text-right font-black text-slate-800">${(item.interacao_por_post || 0).toLocaleString('pt-BR')}</td>
-                            <td class="py-2 text-center">
-                                <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold ${ef.bgClass}">
-                                    ${ef.status}
-                                </span>
-                            </td>
+                            <td class="py-2 text-right font-semibold">${d.total_posts || 0} (${d.share_posts_perfil || 0}%)</td>
+                            <td class="py-2 text-right font-semibold">${(d.total_interacoes || 0).toLocaleString('pt-BR')}</td>
+                            <td class="py-2 text-right font-black text-quaest-teal">${interPost.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}</td>
+                           
                         </tr>
                     `;
                 }).join('');
@@ -1582,21 +1642,65 @@ function exportarRankingIpdCSV(ipdId) {
             return lista;
         }
 
-        let perfisDestacadosPorModulo = {};
+        function montarBotoesRanking(ipdId) {
+            const ref = stateIPDs[ipdId];
+            const container = document.getElementById(`container-profiles-ranking-${ipdId}`);
+            if (!container) return;
+
+            const profiles = (ref.ipdObj?.profiles_usados || Object.keys(ref.profilesDataMes.profiles)).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+            const selecionados = ref.profilesSelecionadosRanking;
+
+            container.innerHTML = `
+                <div class="flex items-center justify-between w-full mb-1">
+                    <span class="text-xs font-bold text-slate-500">Perfis no Ranking:</span>
+                    <div class="flex items-center gap-2">
+                        <button onclick="selecionarTodosRanking(${ipdId})" class="text-[11px] font-bold text-quaest-teal hover:underline flex items-center gap-1 cursor-pointer">
+                            <i class="fa-solid fa-check-double text-[10px]"></i> Selecionar Tudo
+                        </button>
+                        <span class="text-slate-300">|</span>
+                        <button onclick="desmarcarTodosRanking(${ipdId})" class="text-[11px] font-bold text-rose-500 hover:underline flex items-center gap-1 cursor-pointer">
+                            <i class="fa-solid fa-trash-can text-[10px]"></i> Remover Seleção
+                        </button>
+                    </div>
+                </div>
+                <div id="botoes-ranking-list-${ipdId}" class="flex flex-wrap items-center gap-1.5"></div>
+            `;
+
+            const subContainer = document.getElementById(`botoes-ranking-list-${ipdId}`);
+
+            profiles.forEach((profileName) => {
+                const isAtivo = selecionados.has(profileName);
+                const btn = document.createElement('button');
+                btn.className = `${isAtivo ? 'bg-quaest-teal text-white border-quaest-teal' : 'bg-white text-slate-600 border-slate-300'} px-3 py-1 rounded-lg text-xs font-bold border shadow-sm transition flex items-center gap-1.5 cursor-pointer`;
+                btn.innerHTML = `<i class="fa-solid fa-${isAtivo ? 'check' : 'plus'} text-[10px]"></i> ${profileName}`;
+
+                btn.onclick = () => {
+                    if (selecionados.has(profileName)) {
+                        selecionados.delete(profileName);
+                    } else {
+                        selecionados.add(profileName);
+                    }
+                    const selectMes = document.getElementById(`select-mes-ranking-${ipdId}`);
+                    atualizarRankingIpdModulo(ipdId, selectMes ? selectMes.value : null);
+                };
+
+                subContainer.appendChild(btn);
+            });
+        }
 
         function atualizarRankingIpdModulo(ipdId, mesSelecionado) {
             const selectMes = document.getElementById(`select-mes-ranking-${ipdId}`);
             if (!selectMes) return;
+            const mesSel = mesSelecionado || selectMes.value;
 
-            if (!perfisDestacadosPorModulo[ipdId]) {
-                perfisDestacadosPorModulo[ipdId] = new Set();
-            }
+            const ref = stateIPDs[ipdId];
+            if (!ref) return;
+
+            const rankingGeral = obterRankingModuloIpd(ipdId, mesSel);
 
             const opcoesMeses = Array.from(selectMes.options).map(opt => opt.value).sort();
-            const indexAtual = opcoesMeses.indexOf(mesSelecionado);
+            const indexAtual = opcoesMeses.indexOf(mesSel);
             const mesAnterior = indexAtual > 0 ? opcoesMeses[indexAtual - 1] : null;
-
-            const rankingAtual = obterRankingModuloIpd(ipdId, mesSelecionado);
             const rankingAnterior = mesAnterior ? obterRankingModuloIpd(ipdId, mesAnterior) : [];
 
             const mapaPosAnterior = {};
@@ -1606,51 +1710,38 @@ function exportarRankingIpdCSV(ipdId) {
                 mapaScoreAnterior[item.profile] = item.score;
             });
 
-            const dadosProcessados = rankingAtual.map((item, idxAtual) => {
+            const dadosProcessados = rankingGeral.map((item, idxAtual) => {
                 const posAtual = idxAtual + 1;
                 const posAnt = mapaPosAnterior[item.profile];
                 const scoreAnt = mapaScoreAnterior[item.profile];
-
-                let varPosicao = 0;
-                if (posAnt) varPosicao = posAnt - posAtual;
-
-                let diffScore = 0;
-                if (scoreAnt !== undefined) diffScore = parseFloat((item.score - scoreAnt).toFixed(2));
-
                 return {
                     profile: item.profile,
                     score: item.score,
                     posicao: posAtual,
-                    varPosicao: varPosicao,
-                    diffScore: diffScore,
+                    varPosicao: posAnt ? posAnt - posAtual : 0,
+                    diffScore: scoreAnt !== undefined ? parseFloat((item.score - scoreAnt).toFixed(2)) : 0,
                     isNovo: !posAnt
                 };
             });
 
-            renderizarHighlightsEListaRanking(ipdId, dadosProcessados);
-        }
+            const rankingFiltrado = dadosProcessados.filter(item => ref.profilesSelecionadosRanking.has(item.profile));
 
-        function renderizarHighlightsEListaRanking(ipdId, dados) {
-            const containerCards = document.getElementById(`lista-ranking-cards-${ipdId}`);
-            if (!containerCards) return;
+            const canvas = document.getElementById(`chart-bar-ranking-${ipdId}`);
+            if (!canvas) return;
 
-            containerCards.innerHTML = '';
-
-            if (!dados || dados.length === 0) {
-                containerCards.innerHTML = `<p class="text-xs text-slate-400 italic text-center py-4">Sem dados no período.</p>`;
-                renderizarCardsHighlights(ipdId, null, null, null);
-                return;
+            // Ajuste dinâmico de altura do wrapper para acomodar as barras no contêiner com scroll
+            const totalItens = rankingFiltrado.length;
+            const alturaDinamica = Math.max(200, totalItens * 28);
+            const wrapperChart = document.getElementById(`wrapper-chart-ranking-${ipdId}`);
+            if (wrapperChart) {
+                wrapperChart.style.height = `${alturaDinamica}px`;
             }
 
-            const lider = dados[0] || null;
+            const lider = dadosProcessados[0] || null;
+            let maiorSubida = null, maxGanhoPosicoes = -1;
+            let maiorEvolucao = null, maxGanhoPontos = -999;
 
-            let maiorSubida = null;
-            let maxGanhoPosicoes = -1;
-
-            let maiorEvolucao = null;
-            let maxGanhoPontos = -999;
-
-            dados.forEach(item => {
+            dadosProcessados.forEach(item => {
                 if (item.varPosicao > maxGanhoPosicoes && item.varPosicao > 0) {
                     maxGanhoPosicoes = item.varPosicao;
                     maiorSubida = item;
@@ -1662,44 +1753,93 @@ function exportarRankingIpdCSV(ipdId) {
             });
 
             renderizarCardsHighlights(ipdId, lider, maiorSubida, maiorEvolucao);
+            montarBotoesRanking(ipdId);
 
-            dados.forEach(item => {
-                let badgeHtml = item.isNovo 
-                    ? `<span class="px-2 py-0.5 rounded text-[10px] font-extrabold bg-blue-50 text-blue-700 border border-blue-200">Novo</span>`
-                    : (item.varPosicao > 0 
-                        ? `<span class="px-2 py-0.5 rounded text-[10px] font-black bg-emerald-50 text-emerald-700 border border-emerald-200"><i class="fa-solid fa-arrow-up"></i> +${item.varPosicao} pos</span>`
-                        : (item.varPosicao < 0 
-                            ? `<span class="px-2 py-0.5 rounded text-[10px] font-black bg-rose-50 text-rose-700 border border-rose-200"><i class="fa-solid fa-arrow-down"></i> ${item.varPosicao} pos</span>`
-                            : `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-500 border border-slate-200">= Manteve</span>`));
+            // Cores: Azul Claro por padrão (#38BDF8), Azul Escuro no destaque (#1D4ED8), suavizado (#E2E8F0)
+            const perfilAtivo = ref.perfilDestacadoRanking;
+            const colors = rankingFiltrado.map(item => {
+                if (!perfilAtivo) return '#38BDF8';
+                return item.profile === perfilAtivo ? '#1D4ED8' : '#E2E8F0';
+            });
 
-                let diffScoreHtml = item.diffScore > 0 
-                    ? `<span class="text-[10px] font-bold text-emerald-600 ml-1.5">(+${item.diffScore})</span>` 
-                    : (item.diffScore < 0 ? `<span class="text-[10px] font-bold text-rose-600 ml-1.5">(${item.diffScore})</span>` : '');
+            const labels = rankingFiltrado.map(item => item.profile);
+            const dataScores = rankingFiltrado.map(item => item.score);
+            const maxScoreVal = Math.max(...dataScores, 1);
 
-                const isDestacado = perfisDestacadosPorModulo[ipdId]?.has(item.profile);
-                const cardEstilo = isDestacado 
-                    ? 'bg-quaest-tealLight border-quaest-teal/50 shadow-sm' 
-                    : 'bg-slate-50 border-slate-200/80 hover:bg-white hover:shadow-sm';
+            if (mapRankingCharts[ipdId]) {
+                mapRankingCharts[ipdId].destroy();
+            }
 
-                const numBadgeEstilo = isDestacado
-                    ? 'bg-quaest-teal text-white shadow-sm'
-                    : 'bg-white border text-slate-700';
+            const ctx = canvas.getContext('2d');
 
-                containerCards.innerHTML += `
-                    <div id="card-ranking-item-${ipdId}-${encodeURIComponent(item.profile)}" onclick="alternarDestaquePerfilRanking(${ipdId}, '${item.profile}')" class="flex items-center justify-between p-2.5 rounded-xl border transition cursor-pointer ${cardEstilo}">
-                        <div class="flex items-center gap-2.5 truncate mr-2">
-                            <span class="w-5 h-5 rounded-md font-black text-[11px] flex items-center justify-center shrink-0 ${numBadgeEstilo}">
-                                ${item.posicao}º
-                            </span>
-                            <span class="text-xs font-black ${isDestacado ? 'text-quaest-tealDark' : 'text-slate-900'} truncate" title="${item.profile}">
-                                ${item.profile}
-                            </span>
-                        </div>
-                        <div class="flex items-center gap-2 shrink-0">
-                            <span class="text-xs font-black text-slate-900">${item.score}${diffScoreHtml}</span>
-                            ${badgeHtml}
-                        </div>
-                    </div>`;
+            mapRankingCharts[ipdId] = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Pontuação IPD',
+                        data: dataScores,
+                        backgroundColor: colors,
+                        borderRadius: 4,
+                        barThickness: 16,
+                        customData: rankingFiltrado
+                    }]
+                },
+                plugins: [pluginValoresBarrasRanking],
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    onClick: (evt, activeElements) => {
+                        if (activeElements.length > 0) {
+                            const index = activeElements[0].index;
+                            const perfilClicado = rankingFiltrado[index].profile;
+                            
+                            // Alterna o perfil destacado sem recarregar nem reconstruir o gráfico
+                            ref.perfilDestacadoRanking = (ref.perfilDestacadoRanking === perfilClicado) ? null : perfilClicado;
+
+                            const novasCores = rankingFiltrado.map(item => {
+                                if (!ref.perfilDestacadoRanking) return '#38BDF8';
+                                return item.profile === ref.perfilDestacadoRanking ? '#1D4ED8' : '#E2E8F0';
+                            });
+
+                            mapRankingCharts[ipdId].data.datasets[0].backgroundColor = novasCores;
+                            mapRankingCharts[ipdId].update('none'); // Atualiza cores suavemente sem relayout
+                        }
+                    },
+                    layout: {
+                        padding: { right: 220, top: 5, bottom: 5 }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: (c) => {
+                                    const item = rankingFiltrado[c.dataIndex];
+                                    if (!item) return ` IPD: ${c.raw} pts`;
+                                    let diffStr = item.diffScore > 0 ? `+${item.diffScore}` : `${item.diffScore}`;
+                                    let posStr = item.isNovo ? 'Novo' : (item.varPosicao > 0 ? `+${item.varPosicao} pos` : (item.varPosicao < 0 ? `${item.varPosicao} pos` : 'Manteve'));
+                                    return [
+                                        ` IPD: ${item.score} pts`,
+                                        ` Var. IPD: ${diffStr} pts vs mês anterior`,
+                                        ` Var. Posição: ${posStr}`
+                                    ];
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            display: false,
+                            min: 0,
+                            max: Math.ceil(maxScoreVal * 1.35)
+                        },
+                        y: {
+                            grid: { display: false },
+                            ticks: { font: { weight: 'bold', size: 11, family: 'Inter' }, color: '#0F172A' }
+                        }
+                    }
+                }
             });
         }
 
@@ -1753,20 +1893,6 @@ function exportarRankingIpdCSV(ipdId) {
                     </div>
                 </div>
             `;
-        }
-
-        function alternarDestaquePerfilRanking(ipdId, perfilNome) {
-            if (!perfisDestacadosPorModulo[ipdId]) {
-                perfisDestacadosPorModulo[ipdId] = new Set();
-            }
-
-            const conjunto = perfisDestacadosPorModulo[ipdId];
-
-            if (conjunto.has(perfilNome)) {
-                conjunto.delete(perfilNome);
-            } else {
-                conjunto.add(perfilNome);
-            }
         }
 
         async function executarCalculoCausal(ipdId) {
@@ -2237,7 +2363,7 @@ function exportarRankingIpdCSV(ipdId) {
                         </div>
                     </div>
 
-                    <!-- 1º MÓDULO: RANKING MENSAL DO IPD -->
+                    <!-- 1º MÓDULO: RANKING MENSAL DO IPD (GRÁFICO DE BARRAS INTERATIVO) -->
                     <div class="space-y-6">
                         <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
                             <div class="flex items-center gap-3">
@@ -2272,20 +2398,20 @@ function exportarRankingIpdCSV(ipdId) {
                             </div>
                         </div>
 
-                        <div id="box-ranking-${ipdId}" class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start transition-all">
-                            <div id="container-highlights-ranking-${ipdId}" class="lg:col-span-5 grid grid-cols-1 gap-3">
-                                <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-slate-400 italic text-center">
-                                    Carregando destaques executivos...
-                                </div>
+                        <div id="box-ranking-${ipdId}" class="space-y-4 transition-all">
+                            <div id="container-highlights-ranking-${ipdId}" class="grid grid-cols-1 md:grid-cols-3 gap-3">
                             </div>
 
-                            <div class="lg:col-span-7 space-y-3 bg-slate-50/50 p-5 rounded-3xl border border-slate-200/80">
-                                <div class="flex items-center justify-between pb-2 border-b border-slate-200/80 text-xs font-black text-slate-400 uppercase tracking-wider">
-                                    <span>Perfil / Marca</span>
-                                    <span>Pontuação & Posição</span>
-                                </div>
-                                <div id="lista-ranking-cards-${ipdId}" class="space-y-2 max-h-72 overflow-y-auto pr-1 ranking-scroll">
-                                    <p class="text-xs text-slate-400 italic text-center py-4">Carregando posições do ranking...</p>
+                            <div id="container-profiles-ranking-${ipdId}" class="flex flex-col gap-1.5">
+                                <span class="text-xs font-bold text-slate-500">Perfis no Ranking:</span>
+                            </div>
+
+                            <div class="p-6 rounded-2xl bg-slate-50 border border-slate-200 space-y-4">
+                                <!-- Contêiner específico com Scroll Lateral e Vertical -->
+                                <div class="max-h-[420px] overflow-x-auto overflow-y-auto ranking-scroll relative w-full">
+                                    <div id="wrapper-chart-ranking-${ipdId}" class="min-w-[600px] w-full relative">
+                                        <canvas id="chart-bar-ranking-${ipdId}"></canvas>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -2400,64 +2526,58 @@ function exportarRankingIpdCSV(ipdId) {
                                 </div>
                                 <p id="previsao-erro-msg-${ipdId}">Verifique se há histórico de medições suficiente.</p>
                             </div>
+
                             <div id="previsao-resultados-${ipdId}" class="hidden space-y-6">
-    <!-- STATS DE RESULTADOS -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div class="p-4 rounded-2xl bg-white border border-purple-200 bg-purple-50/30 shadow-sm space-y-1">
-            <span class="text-[10px] text-purple-600 font-extrabold uppercase block">Líder Previsto no Final do Período</span>
-            <div id="previsao-ult-ipd-${ipdId}" class="text-2xl font-black text-purple-700">--</div>
-            <span id="previsao-ult-data-${ipdId}" class="text-[10px] text-slate-500 font-mono">--</span>
-        </div>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div class="p-4 rounded-2xl bg-white border border-purple-200 bg-purple-50/30 shadow-sm space-y-1">
+                                        <span class="text-[10px] text-purple-600 font-extrabold uppercase block">Líder Previsto no Final do Período</span>
+                                        <div id="previsao-ult-ipd-${ipdId}" class="text-2xl font-black text-purple-700">--</div>
+                                        <span id="previsao-ult-data-${ipdId}" class="text-[10px] text-slate-500 font-mono">--</span>
+                                    </div>
 
-        <div class="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-1">
-            <span class="text-[10px] text-slate-400 font-extrabold uppercase block">Universo Avaliado</span>
-            <div class="text-2xl font-black text-slate-900">${profiles.length} Perfis</div>
-            <span class="text-[10px] text-slate-500">Classificação relacional automatizada</span>
-        </div>
-    </div>
+                                    <div class="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-1">
+                                        <span class="text-[10px] text-slate-400 font-extrabold uppercase block">Universo Avaliado</span>
+                                        <div class="text-2xl font-black text-slate-900">${profiles.length} Perfis</div>
+                                        <span class="text-[10px] text-slate-500">Classificação relacional automatizada</span>
+                                    </div>
+                                </div>
 
-    <!-- BOTÃO DE IA QUE SÓ APARECE APÓS CARREGAR O GRÁFICO -->
-    <div id="box-btn-explicacao-ia-${ipdId}" class="flex items-center justify-end">
-        <button id="btn-explicar-ia-${ipdId}" onclick="solicitarExplicacaoIARanking(${ipdId})" class="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-extrabold text-xs px-5 py-2.5 rounded-xl shadow-md shadow-purple-500/20 transition flex items-center gap-2 cursor-pointer">
-            <i class="fa-solid fa-wand-magic-sparkles text-amber-300"></i>
-            <span>Gerar Explicação da Tendência via IA</span>
-        </button>
-    </div>
+                                <div id="box-btn-explicacao-ia-${ipdId}" class="flex items-center justify-end">
+                                    <button id="btn-explicar-ia-${ipdId}" onclick="solicitarExplicacaoIARanking(${ipdId})" class="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-extrabold text-xs px-5 py-2.5 rounded-xl shadow-md shadow-purple-500/20 transition flex items-center gap-2 cursor-pointer">
+                                        <i class="fa-solid fa-wand-magic-sparkles text-amber-300"></i>
+                                        <span>Gerar Explicação da Tendência via IA</span>
+                                    </button>
+                                </div>
 
-    <!-- CARD RECEPTOR DA EXPLICAÇÃO TEXTUAL DA IA -->
-    <div id="box-texto-explicacao-ia-${ipdId}" class="hidden p-6 rounded-3xl bg-purple-50/60 border border-purple-200 space-y-4 shadow-sm">
-        <div class="flex items-center justify-between border-b border-purple-200/80 pb-3">
-            <div class="flex items-center gap-2 text-purple-900 font-black text-xs uppercase tracking-wider">
-                <i class="fa-solid fa-robot text-purple-600 text-sm"></i>
-                <span>Análise de Tendência</span>
-            </div>
-            <span class="text-[10px] font-bold bg-purple-200 text-purple-800 px-2.5 py-0.5 rounded-md">OpenRouter + GPT-4o</span>
-        </div>
-        <div id="conteudo-explicacao-ia-${ipdId}" class="text-xs text-slate-700 space-y-3 leading-relaxed">
-            <!-- Texto injetado dinamicamente -->
-        </div>
-    </div>
+                                <div id="box-texto-explicacao-ia-${ipdId}" class="hidden p-6 rounded-3xl bg-purple-50/60 border border-purple-200 space-y-4 shadow-sm">
+                                    <div class="flex items-center justify-between border-b border-purple-200/80 pb-3">
+                                        <div class="flex items-center gap-2 text-purple-900 font-black text-xs uppercase tracking-wider">
+                                            <i class="fa-solid fa-robot text-purple-600 text-sm"></i>
+                                            <span>Análise de Tendência</span>
+                                        </div>
+                                        <span class="text-[10px] font-bold bg-purple-200 text-purple-800 px-2.5 py-0.5 rounded-md">OpenRouter + GPT-4o</span>
+                                    </div>
+                                    <div id="conteudo-explicacao-ia-${ipdId}" class="text-xs text-slate-700 space-y-3 leading-relaxed">
+                                    </div>
+                                </div>
 
-    <div id="container-profiles-previsao-${ipdId}" class="flex flex-col gap-1.5">
-        <span class="text-xs font-bold text-slate-500">Exibir no Gráfico Futurista:</span>
-    </div>
-<!-- ( ... seu código acima ... ) -->
-    <div class="p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
-        <div class="flex items-center justify-between">
-            <h4 class="text-xs font-black text-slate-900 uppercase tracking-wider">Tendência e Evolução de Ranking por Perfil</h4>
-        </div>
-        <div class="h-80 w-full">
-            <canvas id="chartPrevisaoCanvas-${ipdId}"></canvas>
-        </div>
-    </div>
-</div> <!-- Fecha o previsao-resultados-${ipdId} -->
+                                <div id="container-profiles-previsao-${ipdId}" class="flex flex-col gap-1.5">
+                                    <span class="text-xs font-bold text-slate-500">Exibir no Gráfico Futurista:</span>
+                                </div>
 
-</div> <!-- ADICIONE ESTA DIV: Fecha o box-previsao-${ipdId} -->
-</div> <!-- ADICIONE ESTA DIV: Fecha o wrapper do Módulo Preditivo -->
+                                <div class="p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
+                                    <div class="flex items-center justify-between">
+                                        <h4 class="text-xs font-black text-slate-900 uppercase tracking-wider">Tendência e Evolução de Ranking por Perfil</h4>
+                                    </div>
+                                    <div class="h-80 w-full">
+                                        <canvas id="chartPrevisaoCanvas-${ipdId}"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
-
-<!-- 3. MÓDULO DE ANÁLISE DE IMPACTO CAUSAL (BSTS) -->
-
+                    <!-- 3. MÓDULO DE ANÁLISE DE IMPACTO CAUSAL (BSTS) -->
                     <div class="space-y-6 pt-4 border-t border-slate-100">
                         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                             <div class="flex items-center gap-3">
@@ -2649,7 +2769,7 @@ function exportarRankingIpdCSV(ipdId) {
                             <div>
                                 <span class="text-xs font-black text-quaest-teal uppercase tracking-widest">Matriz de Eficiência Temática</span>
                                 <h3 class="text-xl font-black text-slate-900 mt-1">Análise Temática e Matriz de Retorno</h3>
-                                <p class="text-slate-500 text-xs mt-0.5">Cruze o volume de publicações (Share de Posts %) contra o engajamento retornado (Share de Interações %).</p>
+                                <p class="text-slate-500 text-xs mt-0.5">Cruze o volume de publicações (Total de Posts) contra o engajamento retornado (Média de Interações/Post).</p>
                             </div>
                             
                             <div class="flex items-center gap-3">
@@ -2683,15 +2803,18 @@ function exportarRankingIpdCSV(ipdId) {
                                         <canvas id="chart-matrix-geral-${ipdId}"></canvas>
                                     </div>
 
+                                    <!-- LEGENDA EXCLUSIVA DO GRÁFICO GERAL -->
+                                    <div id="legend-matrix-geral-${ipdId}" class="py-1"></div>
+
                                     <div class="overflow-y-auto h-48 ranking-scroll pt-2 border-t border-slate-200/60">
                                         <table id="tbl-full-geral-${ipdId}" class="w-full text-left text-xs">
                                             <thead class="sticky top-0 bg-slate-50 z-10">
                                                 <tr class="text-slate-400 font-extrabold border-b border-slate-200 uppercase text-[9px]">
                                                     <th class="pb-2">Tema</th>
-                                                    <th class="pb-2 text-right">Posts (%)</th>
-                                                    <th class="pb-2 text-right">Inter. (%)</th>
+                                                    <th class="pb-2 text-right">Posts (Total/%)</th>
+                                                    <th class="pb-2 text-right">Interações Total</th>
                                                     <th class="pb-2 text-right">Média/Post</th>
-                                                    <th class="pb-2 text-center">Eficiência</th>
+                                                
                                                 </tr>
                                             </thead>
                                             <tbody id="tbl-temas-geral-${ipdId}" class="divide-y divide-slate-200/60 font-medium text-slate-700">
@@ -2717,15 +2840,18 @@ function exportarRankingIpdCSV(ipdId) {
                                         <canvas id="chart-matrix-perfil-${ipdId}"></canvas>
                                     </div>
 
+                                    <!-- LEGENDA EXCLUSIVA DO GRÁFICO POR PERFIL -->
+                                    <div id="legend-matrix-perfil-${ipdId}" class="py-1"></div>
+
                                     <div class="overflow-y-auto h-48 ranking-scroll pt-2 border-t border-slate-200/60">
                                         <table id="tbl-full-perfil-${ipdId}" class="w-full text-left text-xs">
                                             <thead class="sticky top-0 bg-slate-50 z-10">
                                                 <tr class="text-slate-400 font-extrabold border-b border-slate-200 uppercase text-[9px]">
                                                     <th class="pb-2">Tema</th>
-                                                    <th class="pb-2 text-right">Posts (%)</th>
-                                                    <th class="pb-2 text-right">Inter. (%)</th>
+                                                    <th class="pb-2 text-right">Posts (Total/%)</th>
+                                                    <th class="pb-2 text-right">Interações Total</th>
                                                     <th class="pb-2 text-right">Média/Post</th>
-                                                    <th class="pb-2 text-center">Eficiência</th>
+                                                   
                                                 </tr>
                                             </thead>
                                             <tbody id="tbl-temas-perfil-${ipdId}" class="divide-y divide-slate-200/60 font-medium text-slate-700">
@@ -2886,16 +3012,21 @@ function exportarRankingIpdCSV(ipdId) {
             const rawSemanais = ipdObj.medias_semanais || [];
             const rawMensais = ipdObj.medias_mensais || [];
 
+            const profilesDataMesObj = processarMapeamentoPeriodo(rawMensais, 'mes');
+            const todosPerfisIpd = (ipdObj.profiles_usados || Object.keys(profilesDataMesObj.profiles)).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+
             stateIPDs[ipdId] = {
                 ipdObj: ipdObj,
                 periodoHistorico: 'mes',
                 mesSelecionadoRadar: null,
-                profilesSelecionadosRadar: new Set(),
+                profilesSelecionadosRanking: new Set(todosPerfisIpd), // Marcados todos por padrão
+                profilesSelecionadosRadar: new Set(todosPerfisIpd.slice(0, 2)),
+                perfilDestacadoRanking: null,
                 slidesCarrosselData: [],
                 slideIndexAtual: 0,
                 profilesDataDiario: processarMapeamentoPeriodo(rawDiarias, 'diario'),
                 profilesDataSemana: processarMapeamentoPeriodo(rawSemanais, 'semana'),
-                profilesDataMes: processarMapeamentoPeriodo(rawMensais, 'mes'),
+                profilesDataMes: profilesDataMesObj,
                 lineChart: null,
                 radarChart: null
             };
@@ -3347,7 +3478,7 @@ function exportarRankingIpdCSV(ipdId) {
 
                 const todosPerfis = [...new Set(semanasList.flatMap(s => (s.ranking_perfis || []).map(p => p.profile)))].sort((a,b) => a.localeCompare(b, 'pt-BR'));
 
-                todosPerfis.slice(0, 3).forEach(p => statePrevisaoPreditiva[ipdId].perfisAtivos.add(p));
+                todosPerfis.slice(0, 2).forEach(p => statePrevisaoPreditiva[ipdId].perfisAtivos.add(p));
 
                 montarBotoesFiltroPrevisao(ipdId, todosPerfis);
                 renderizarGraficoEStatsPrevisao(ipdId);
@@ -3403,311 +3534,320 @@ function exportarRankingIpdCSV(ipdId) {
 
                 subContainer.appendChild(btn);
             });
-        }function renderizarGraficoEStatsPrevisao(ipdId) {
-    const state = statePrevisaoPreditiva[ipdId];
-    if (!state || !state.dadosSemanais) return;
+        }
 
-    const refIPD = stateIPDs[ipdId];
-    if (!refIPD || !refIPD.profilesDataSemana) return;
+        function renderizarGraficoEStatsPrevisao(ipdId) {
+            const state = statePrevisaoPreditiva[ipdId];
+            if (!state || !state.dadosSemanais) return;
 
-    const datasHistoricoReais = refIPD.profilesDataSemana.datas || [];
-    const ultimasDatasReais = datasHistoricoReais.slice(-6);
+            const refIPD = stateIPDs[ipdId];
+            if (!refIPD || !refIPD.profilesDataSemana) return;
 
-    const semanasProjetadas = state.dadosSemanais || [];
-    const datasProjetadas = semanasProjetadas.map(s => s.data_inicio_semana);
+            const datasHistoricoReais = refIPD.profilesDataSemana.datas || [];
+            const ultimasDatasReais = datasHistoricoReais.slice(-6);
 
-    const eixoXDatas = [...ultimasDatasReais, ...datasProjetadas];
-    const eixoXLabels = eixoXDatas.map(d => formatarDataAnoCurto(d));
+            const semanasProjetadas = state.dadosSemanais || [];
+            const datasProjetadas = semanasProjetadas.map(s => s.data_inicio_semana);
 
-    const perfisAtivos = Array.from(state.perfisAtivos);
+            const eixoXDatas = [...ultimasDatasReais, ...datasProjetadas];
+            const eixoXLabels = eixoXDatas.map(d => formatarDataAnoCurto(d));
 
-    const canvas = document.getElementById(`chartPrevisaoCanvas-${ipdId}`);
-    if (!canvas) return;
+            const perfisAtivos = Array.from(state.perfisAtivos);
 
-    const ctx = canvas.getContext('2d');
-    if (mapPrevisaoCharts[ipdId]) mapPrevisaoCharts[ipdId].destroy();
+            const canvas = document.getElementById(`chartPrevisaoCanvas-${ipdId}`);
+            if (!canvas) return;
 
-    const datasets = [];
+            const ctx = canvas.getContext('2d');
+            if (mapPrevisaoCharts[ipdId]) mapPrevisaoCharts[ipdId].destroy();
 
-    perfisAtivos.forEach((profileName, idx) => {
-        const color = paletaCores[idx % paletaCores.length];
-        const pInfoHist = refIPD.profilesDataSemana.profiles[profileName];
+            const datasets = [];
 
-        const serieHistorica = ultimasDatasReais.map(d => {
-            if (pInfoHist && pInfoHist.registrosPorData[d]) {
-                return pInfoHist.registrosPorData[d].ipd;
-            }
-            return null;
-        });
+            perfisAtivos.forEach((profileName, idx) => {
+                const color = paletaCores[idx % paletaCores.length];
+                const pInfoHist = refIPD.profilesDataSemana.profiles[profileName];
 
-        const serieHistoricaFull = [...serieHistorica, ...Array(semanasProjetadas.length).fill(null)];
-
-        datasets.push({
-            label: `${profileName} (Histórico)`,
-            data: serieHistoricaFull,
-            borderColor: color,
-            backgroundColor: color,
-            borderWidth: 2.5,
-            pointRadius: 3,
-            pointHoverRadius: 6,
-            tension: 0.15,
-            spanGaps: false
-        });
-
-        const ultimoValorReal = serieHistorica[serieHistorica.length - 1];
-
-        const serieProjetadaValues = semanasProjetadas.map(s => {
-            const item = (s.ranking_perfis || []).find(p => p.profile === profileName);
-            return item ? item.ipd_previsto : null;
-        });
-
-        const serieMinimaValues = semanasProjetadas.map(s => {
-            const item = (s.ranking_perfis || []).find(p => p.profile === profileName);
-            return item ? item.ipd_minimo_provavel : null;
-        });
-
-        const serieMaximaValues = semanasProjetadas.map(s => {
-            const item = (s.ranking_perfis || []).find(p => p.profile === profileName);
-            return item ? item.ipd_maximo_provavel : null;
-        });
-
-        const serieProjetadaFull = [
-            ...Array(ultimasDatasReais.length - 1).fill(null),
-            ultimoValorReal,
-            ...serieProjetadaValues
-        ];
-
-        const serieMinFull = [
-            ...Array(ultimasDatasReais.length - 1).fill(null),
-            ultimoValorReal,
-            ...serieMinimaValues
-        ];
-
-        const serieMaxFull = [
-            ...Array(ultimasDatasReais.length - 1).fill(null),
-            ultimoValorReal,
-            ...serieMaximaValues
-        ];
-
-        const idxDatasetMax = datasets.length;
-        datasets.push({
-            label: `${profileName}_max`,
-            data: serieMaxFull,
-            borderColor: 'transparent',
-            backgroundColor: 'transparent',
-            pointRadius: 0,
-            fill: false,
-            tension: 0.15
-        });
-
-        datasets.push({
-            label: `${profileName}_min`,
-            data: serieMinFull,
-            borderColor: 'transparent',
-            backgroundColor: color + '25',
-            pointRadius: 0,
-            fill: idxDatasetMax,
-            tension: 0.15
-        });
-
-        datasets.push({
-            label: `${profileName} (Projeção)`,
-            data: serieProjetadaFull,
-            borderColor: color,
-            backgroundColor: color,
-            borderDash: [6, 6],
-            borderWidth: 2.5,
-            pointRadius: 4,
-            pointStyle: 'circle',
-            pointHoverRadius: 7,
-            tension: 0.15,
-            spanGaps: false
-        });
-    });
-
-    mapPrevisaoCharts[ipdId] = new Chart(ctx, {
-        type: 'line',
-        data: { labels: eixoXLabels, datasets: datasets },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            interaction: { mode: 'index', intersect: false },
-            plugins: {
-                legend: {
-                    position: 'top',
-                    labels: {
-                        filter: (item) => !item.text.includes('_max') && !item.text.includes('_min') && !item.text.includes('(Projeção)'),
-                        generateLabels: () => {
-                            return perfisAtivos.map((pName, idx) => ({
-                                text: pName,
-                                fillStyle: paletaCores[idx % paletaCores.length],
-                                strokeStyle: paletaCores[idx % paletaCores.length],
-                                datasetIndex: idx * 4
-                            }));
-                        },
-                        font: { weight: 'bold', size: 11, family: 'Inter' }
+                const serieHistorica = ultimasDatasReais.map(d => {
+                    if (pInfoHist && pInfoHist.registrosPorData[d]) {
+                        return pInfoHist.registrosPorData[d].ipd;
                     }
-                },
-                tooltip: {
-                    padding: 12,
-                    cornerRadius: 10,
-                    callbacks: {
-                        label: (c) => {
-                            if (c.raw === null || c.raw === undefined) return null;
+                    return null;
+                });
 
-                            const labelName = c.dataset.label;
-                            if (labelName.includes('_max') || labelName.includes('_min')) return null;
+                const serieHistoricaFull = [...serieHistorica, ...Array(semanasProjetadas.length).fill(null)];
 
-                            const isProjecao = labelName.includes('(Projeção)');
-                            const idxProj = c.dataIndex - ultimasDatasReais.length;
+                datasets.push({
+                    label: `${profileName} (Histórico)`,
+                    data: serieHistoricaFull,
+                    borderColor: color,
+                    backgroundColor: color,
+                    borderWidth: 2.5,
+                    pointRadius: 3,
+                    pointHoverRadius: 6,
+                    tension: 0.15,
+                    spanGaps: false
+                });
 
-                            if (isProjecao && idxProj >= 0) {
-                                const semanaObj = semanasProjetadas[idxProj];
-                                if (semanaObj) {
-                                    const profileClean = labelName.replace(' (Projeção)', '');
-                                    const itemP = (semanaObj.ranking_perfis || []).find(p => p.profile === profileClean);
-                                    if (itemP) {
-                                        return [
-                                            ` 🔮 ${profileClean}: ${itemP.ipd_previsto} pts (${itemP.posicao}º no Ranking)`,
-                                            `    Margem Estimada: ${itemP.ipd_minimo_provavel} a ${itemP.ipd_maximo_provavel} pts (±${itemP.margem_erro_estimada})`
-                                        ];
-                                    }
-                                }
-                            } else if (!isProjecao) {
-                                const profileClean = labelName.replace(' (Histórico)', '');
-                                return ` 📊 ${profileClean} (IPD Real): ${c.raw.toFixed(2)} pts`;
+                const ultimoValorReal = serieHistorica[serieHistorica.length - 1];
+
+                const serieProjetadaValues = semanasProjetadas.map(s => {
+                    const item = (s.ranking_perfis || []).find(p => p.profile === profileName);
+                    return item ? item.ipd_previsto : null;
+                });
+
+                const serieMinimaValues = semanasProjetadas.map(s => {
+                    const item = (s.ranking_perfis || []).find(p => p.profile === profileName);
+                    return item ? item.ipd_minimo_provavel : null;
+                });
+
+                const serieMaximaValues = semanasProjetadas.map(s => {
+                    const item = (s.ranking_perfis || []).find(p => p.profile === profileName);
+                    return item ? item.ipd_maximo_provavel : null;
+                });
+
+                const serieProjetadaFull = [
+                    ...Array(ultimasDatasReais.length - 1).fill(null),
+                    ultimoValorReal,
+                    ...serieProjetadaValues
+                ];
+
+                const serieMinFull = [
+                    ...Array(ultimasDatasReais.length - 1).fill(null),
+                    ultimoValorReal,
+                    ...serieMinimaValues
+                ];
+
+                const serieMaxFull = [
+                    ...Array(ultimasDatasReais.length - 1).fill(null),
+                    ultimoValorReal,
+                    ...serieMaximaValues
+                ];
+
+                const idxDatasetMax = datasets.length;
+                datasets.push({
+                    label: `${profileName}_max`,
+                    data: serieMaxFull,
+                    borderColor: 'transparent',
+                    backgroundColor: 'transparent',
+                    pointRadius: 0,
+                    fill: false,
+                    tension: 0.15
+                });
+
+                datasets.push({
+                    label: `${profileName}_min`,
+                    data: serieMinFull,
+                    borderColor: 'transparent',
+                    backgroundColor: color + '25',
+                    pointRadius: 0,
+                    fill: idxDatasetMax,
+                    tension: 0.15
+                });
+
+                datasets.push({
+                    label: `${profileName} (Projeção)`,
+                    data: serieProjetadaFull,
+                    borderColor: color,
+                    backgroundColor: color,
+                    borderDash: [6, 6],
+                    borderWidth: 2.5,
+                    pointRadius: 4,
+                    pointStyle: 'circle',
+                    pointHoverRadius: 7,
+                    tension: 0.15,
+                    spanGaps: false
+                });
+            });
+
+            mapPrevisaoCharts[ipdId] = new Chart(ctx, {
+                type: 'line',
+                data: { labels: eixoXLabels, datasets: datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: {
+                                filter: (item) => !item.text.includes('_max') && !item.text.includes('_min') && !item.text.includes('(Projeção)'),
+                                generateLabels: () => {
+                                    return perfisAtivos.map((pName, idx) => ({
+                                        text: pName,
+                                        fillStyle: paletaCores[idx % paletaCores.length],
+                                        strokeStyle: paletaCores[idx % paletaCores.length],
+                                        datasetIndex: idx * 4
+                                    }));
+                                },
+                                font: { weight: 'bold', size: 11, family: 'Inter' }
                             }
-                            return null;
+                        },
+                        tooltip: {
+                            padding: 12,
+                            cornerRadius: 10,
+                            callbacks: {
+                                label: (c) => {
+                                    if (c.raw === null || c.raw === undefined) return null;
+
+                                    const labelName = c.dataset.label;
+                                    if (labelName.includes('_max') || labelName.includes('_min')) return null;
+
+                                    const isProjecao = labelName.includes('(Projeção)');
+                                    const idxProj = c.dataIndex - ultimasDatasReais.length;
+
+                                    if (isProjecao && idxProj >= 0) {
+                                        const semanaObj = semanasProjetadas[idxProj];
+                                        if (semanaObj) {
+                                            const profileClean = labelName.replace(' (Projeção)', '');
+                                            const itemP = (semanaObj.ranking_perfis || []).find(p => p.profile === profileClean);
+                                            if (itemP) {
+                                                return [
+                                                    ` 🔮 ${profileClean}: ${itemP.ipd_previsto} pts (${itemP.posicao}º no Ranking)`,
+                                                    `    Margem Estimada: ${itemP.ipd_minimo_provavel} a ${itemP.ipd_maximo_provavel} pts (±${itemP.margem_erro_estimada})`
+                                                ];
+                                            }
+                                        }
+                                    } else if (!isProjecao) {
+                                        const profileClean = labelName.replace(' (Histórico)', '');
+                                        return ` 📊 ${profileClean} (IPD Real): ${c.raw.toFixed(2)} pts`;
+                                    }
+                                    return null;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: { 
+                            grid: { color: '#E2E8F0' }, 
+                            ticks: { font: { weight: 'bold', size: 10, family: 'Inter' } } 
+                        },
+                        y: { 
+                            min: 0, 
+                            max: 100, 
+                            grid: { color: '#E2E8F0' }, 
+                            ticks: { font: { weight: 'bold', size: 10, family: 'Inter' } } 
                         }
                     }
                 }
-            },
-            scales: {
-                x: { 
-                    grid: { color: '#E2E8F0' }, 
-                    ticks: { font: { weight: 'bold', size: 10, family: 'Inter' } } 
-                },
-                y: { 
-                    min: 0, 
-                    max: 100, 
-                    grid: { color: '#E2E8F0' }, 
-                    ticks: { font: { weight: 'bold', size: 10, family: 'Inter' } } 
+            });
+
+            const boxBtn = document.getElementById(`box-btn-explicacao-ia-${ipdId}`);
+            if (boxBtn) boxBtn.classList.remove('hidden');
+
+            const ultSemana = semanasProjetadas[semanasProjetadas.length - 1];
+            if (ultSemana) {
+                document.getElementById(`previsao-ult-ipd-${ipdId}`).innerText = `${ultSemana.lider_previsto || '--'}`;
+                document.getElementById(`previsao-ult-data-${ipdId}`).innerText = `${ultSemana.rotulo_semana} (${ultSemana.intervalo_datas})`;
+            }
+        }
+
+        async function solicitarExplicacaoIARanking(ipdId) {
+            const state = statePrevisaoPreditiva[ipdId];
+            if (!state || !state.dadosSemanais || state.dadosSemanais.length === 0) {
+                alert("Calcule a previsão do gráfico primeiro antes de gerar a explicação.");
+                return;
+            }
+
+            const btn = document.getElementById(`btn-explicar-ia-${ipdId}`);
+            const boxTexto = document.getElementById(`box-texto-explicacao-ia-${ipdId}`);
+            const containerConteudo = document.getElementById(`conteudo-explicacao-ia-${ipdId}`);
+
+            btn.disabled = true;
+            btn.classList.add('opacity-70', 'cursor-not-allowed');
+            btn.innerHTML = `<i class="fa-solid fa-spinner animate-spin text-amber-300"></i> <span>Sintetizando Análise...</span>`;
+
+            boxTexto.classList.remove('hidden');
+            containerConteudo.innerHTML = `
+                <div class="flex items-center gap-2 text-slate-500 italic py-2">
+                    <i class="fa-solid fa-circle-notch animate-spin text-purple-600"></i>
+                    <span>Processando disputas de posições e empates pela margem de erro...</span>
+                </div>
+            `;
+
+            try {
+                const response = await fetch('/api/explicacao-ranking/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify({
+                        projeto_id: ipdId,
+                        previsoes_semanais: state.dadosSemanais
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.status === 403) {
+                    containerConteudo.innerHTML = `
+                        <p class="text-rose-600 font-bold">
+                            <i class="fa-solid fa-lock mr-1"></i>
+                            ${data.error || 'Acesso negado: Você não possui permissão para acessar este projeto.'}
+                        </p>
+                    `;
+                    return;
+                }
+
+                if (!response.ok || data.error) {
+                    containerConteudo.innerHTML = `
+                        <p class="text-rose-600 font-bold">
+                            <i class="fa-solid fa-triangle-exclamation mr-1"></i>
+                            ${data.error || 'Erro ao gerar explicação automatizada.'}
+                        </p>
+                    `;
+                    return;
+                }
+
+                let htmlFinal = `<p class="font-extrabold text-slate-900 leading-relaxed">${data.resumo_executivo}</p>`;
+
+                if (data.pontos_chaves && data.pontos_chaves.length > 0) {
+                    htmlFinal += `<ul class="space-y-1.5 pt-1">`;
+                    data.pontos_chaves.forEach(ponto => {
+                        htmlFinal += `
+                            <li class="flex items-start gap-2">
+                                <span class="w-1.5 h-1.5 rounded-full bg-purple-600 mt-1.5 shrink-0"></span>
+                                <span>${ponto}</span>
+                            </li>
+                        `;
+                    });
+                    htmlFinal += `</ul>`;
+                }
+
+                containerConteudo.innerHTML = htmlFinal;
+
+            } catch (err) {
+                console.error("Erro na requisição da IA:", err);
+                containerConteudo.innerHTML = `
+                    <p class="text-rose-600 font-bold">
+                        <i class="fa-solid fa-triangle-exclamation mr-1"></i>
+                        Falha na conexão com o serviço de explicação de ranking.
+                    </p>
+                `;
+            } finally {
+                btn.disabled = false;
+                btn.classList.remove('opacity-70', 'cursor-not-allowed');
+                btn.innerHTML = `
+                    <i class="fa-solid fa-rotate-right text-amber-300"></i>
+                    <span>Atualizar Explicação da IA</span>
+                `;
+            }
+        }
+
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
                 }
             }
-        }
-    });
-
-    // REVELA O BOTÃO DE GERAR EXPLICAÇÃO DA IA APÓS O DESENHO DO GRÁFICO
-    const boxBtn = document.getElementById(`box-btn-explicacao-ia-${ipdId}`);
-    if (boxBtn) boxBtn.classList.remove('hidden');
-
-    const ultSemana = semanasProjetadas[semanasProjetadas.length - 1];
-    if (ultSemana) {
-        document.getElementById(`previsao-ult-ipd-${ipdId}`).innerText = `${ultSemana.lider_previsto || '--'}`;
-        document.getElementById(`previsao-ult-data-${ipdId}`).innerText = `${ultSemana.rotulo_semana} (${ultSemana.intervalo_datas})`;
-    }
-}
-        async function solicitarExplicacaoIARanking(ipdId) {
-    const state = statePrevisaoPreditiva[ipdId];
-    if (!state || !state.dadosSemanais || state.dadosSemanais.length === 0) {
-        alert("Calcule a previsão do gráfico primeiro antes de gerar a explicação.");
-        return;
-    }
-
-    const btn = document.getElementById(`btn-explicar-ia-${ipdId}`);
-    const boxTexto = document.getElementById(`box-texto-explicacao-ia-${ipdId}`);
-    const containerConteudo = document.getElementById(`conteudo-explicacao-ia-${ipdId}`);
-
-    // Feedback visual de carregamento no botão
-    btn.disabled = true;
-    btn.classList.add('opacity-70', 'cursor-not-allowed');
-    btn.innerHTML = `<i class="fa-solid fa-spinner animate-spin text-amber-300"></i> <span>Sintetizando Análise...</span>`;
-
-    boxTexto.classList.remove('hidden');
-    containerConteudo.innerHTML = `
-        <div class="flex items-center gap-2 text-slate-500 italic py-2">
-            <i class="fa-solid fa-circle-notch animate-spin text-purple-600"></i>
-            <span>Processando disputas de posições e empates pela margem de erro...</span>
-        </div>
-    `;
-
-    try {
-        // Faz o POST enviando a estrutura do ranking semanal
-        const response = await fetch('/api/explicacao-ranking/', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': getCookie('csrftoken') // Função auxiliar CSRF do Django se necessário
-            },
-            body: JSON.stringify({
-                previsoes_semanais: state.dadosSemanais
-            })
-        });
-
-        const data = await response.json();
-
-        if (!response.ok || data.error) {
-            containerConteudo.innerHTML = `
-                <p class="text-rose-600 font-bold">
-                    <i class="fa-solid fa-triangle-exclamation mr-1"></i>
-                    ${data.error || 'Erro ao gerar explicação automatizada.'}
-                </p>
-            `;
-            return;
+            return cookieValue;
         }
 
-        // Renderiza o resumo executivo e a lista de tópicos
-        let htmlFinal = `<p class="font-extrabold text-slate-900 leading-relaxed">${data.resumo_executivo}</p>`;
-
-        if (data.pontos_chaves && data.pontos_chaves.length > 0) {
-            htmlFinal += `<ul class="space-y-1.5 pt-1">`;
-            data.pontos_chaves.forEach(ponto => {
-                htmlFinal += `
-                    <li class="flex items-start gap-2">
-                        <span class="w-1.5 h-1.5 rounded-full bg-purple-600 mt-1.5 shrink-0"></span>
-                        <span>${ponto}</span>
-                    </li>
-                `;
-            });
-            htmlFinal += `</ul>`;
-        }
-
-        containerConteudo.innerHTML = htmlFinal;
-
-    } catch (err) {
-        console.error("Erro na requisição da IA:", err);
-        containerConteudo.innerHTML = `
-            <p class="text-rose-600 font-bold">
-                <i class="fa-solid fa-triangle-exclamation mr-1"></i>
-                Falha na conexão com o serviço de explicação de ranking.
-            </p>
-        `;
-    } finally {
-        // Restaura o botão
-        btn.disabled = false;
-        btn.classList.remove('opacity-70', 'cursor-not-allowed');
-        btn.innerHTML = `
-            <i class="fa-solid fa-rotate-right text-amber-300"></i>
-            <span>Atualizar Explicação da IA</span>
-        `;
-    }
-}
-
-// Função auxiliar para obter o Cookie CSRF do Django
-function getCookie(name) {
-    let cookieValue = null;
-    if (document.cookie && document.cookie !== '') {
-        const cookies = document.cookie.split(';');
-        for (let i = 0; i < cookies.length; i++) {
-            const cookie = cookies[i].trim();
-            if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                break;
-            }
-        }
-    }
-    return cookieValue;
-}
         function renderizarSlideCard(ipdId) {
             const ref = stateIPDs[ipdId];
             const mesFormatado = formatarDataAnoCurto(ref.mesSelecionadoRadar, true);
