@@ -228,7 +228,20 @@ def analise_causal_impact_view(request, projeto_id):
 # ==============================================================================
 # 4. API VIEW: MÉDIA DE MÉTRICAS DE CONTEÚDO
 # ==============================================================================
-class MediaMetricasConteudoView(APIView):
+import calendar
+from datetime import datetime
+from django.db.models import Avg
+from django.shortcuts import get_object_or_404
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from rest_framework.permissions import IsAuthenticated
+
+from .models import IPD, Conteudo
+from client.models import ProjetoIPD
+
+
+class MediaMetricasIPDView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
@@ -244,9 +257,8 @@ class MediaMetricasConteudoView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Validação de Permissão buscando o ProjetoCliente via ProjetoIPD
+        # Validação de Permissão
         projeto_ipd = get_object_or_404(ProjetoIPD, pk=projeto_ipd_id)
-        # Verifica se o usuário tem permissão para ao menos um ProjetoCliente vinculado ao ProjetoIPD
         projetos_cliente = projeto_ipd.projetos_cliente.all()
 
         tem_permissao = any(
@@ -262,7 +274,6 @@ class MediaMetricasConteudoView(APIView):
             data_obj = datetime.strptime(ano_mes, '%Y-%m')
             ano = data_obj.year
             mes = data_obj.month
-
             _, ultimo_dia = calendar.monthrange(ano, mes)
 
             data_inicio = f"{ano:04d}-{mes:02d}-01"
@@ -273,46 +284,87 @@ class MediaMetricasConteudoView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        queryset = Conteudo.objects.filter(
-            projeto_ipd__id=projeto_ipd_id,
-            profile__iexact=profile.strip(),
+        # 1. Base IPD filtrada pelo mês
+        base_mes_ipd = IPD.objects.filter(
+            projeto_ipd_id=projeto_ipd_id,
             data__range=[data_inicio, data_fim],
         )
 
-        metricas = queryset.aggregate(
-            media_curtidas=Avg('curtidas'),
-            media_comentarios=Avg('comentarios'),
-            total_posts=Count('id_post'),
+        if not base_mes_ipd.exists():
+            return Response(
+                {"error": "Nenhum dado de IPD encontrado para este projeto no mês informado."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # 2. Médias do GRUPO (Todos os perfis do projeto)
+        media_grupo = base_mes_ipd.aggregate(
+            fama=Avg('fama'),
+            engaj=Avg('engaj'),
+            valencia=Avg('valencia'),
+            mob=Avg('mob'),
+            interesse=Avg('interesse'),
+            ipd=Avg('ipd'),
         )
 
-        total_posts = metricas['total_posts'] or 0
+        # 3. Médias do PERFIL ESPECÍFICO
+        media_perfil = base_mes_ipd.filter(profile__iexact=profile.strip()).aggregate(
+            fama=Avg('fama'),
+            engaj=Avg('engaj'),
+            valencia=Avg('valencia'),
+            mob=Avg('mob'),
+            interesse=Avg('interesse'),
+            ipd=Avg('ipd'),
+        )
 
-        top_posts_objs = queryset.order_by('-curtidas', '-comentarios')[:3]
+        # 4. Top Posts do perfil no mês
+        top_posts_objs = Conteudo.objects.filter(
+            projeto_ipd__id=projeto_ipd_id,
+            profile__iexact=profile.strip(),
+            data__range=[data_inicio, data_fim],
+        ).order_by('-curtidas', '-comentarios')[:3]
 
-        top_posts_data = []
-        for post in top_posts_objs:
-            top_posts_data.append({
+        top_posts_data = [
+            {
                 "id_post": post.id_post,
                 "texto": post.texto,
                 "data": post.data,
                 "curtidas": post.curtidas or 0,
                 "comentarios": post.comentarios or 0,
                 "url": post.link_post,
-            })
+            }
+            for post in top_posts_objs
+        ]
 
-        return Response({
-            "projeto_ipd": int(projeto_ipd_id) if str(projeto_ipd_id).isdigit() else projeto_ipd_id,
-            "profile": profile,
-            "periodo": ano_mes,
-            "data_inicio": data_inicio,
-            "data_fim": data_fim,
-            "total_posts": total_posts,
-            "media_curtidas": round(metricas['media_curtidas'] or 0, 2),
-            "media_comentarios": round(metricas['media_comentarios'] or 0, 2),
-            "top_posts": top_posts_data,
-        }, status=status.HTTP_200_OK)
+        def fmt(val):
+            return round(float(val), 2) if val is not None else 0.0
 
-
+        return Response(
+            {
+                "projeto_ipd": int(projeto_ipd_id) if str(projeto_ipd_id).isdigit() else projeto_ipd_id,
+                "profile": profile,
+                "periodo": ano_mes,
+                "data_inicio": data_inicio,
+                "data_fim": data_fim,
+                "metricas_perfil": {
+                    "fama": fmt(media_perfil['fama']),
+                    "engajamento": fmt(media_perfil['engaj']),
+                    "valencia": fmt(media_perfil['valencia']),
+                    "mobilizacao": fmt(media_perfil['mob']),
+                    "interesse": fmt(media_perfil['interesse']),
+                    "ipd_geral": fmt(media_perfil['ipd']),
+                },
+                "media_grupo": {
+                    "fama": fmt(media_grupo['fama']),
+                    "engajamento": fmt(media_grupo['engaj']),
+                    "valencia": fmt(media_grupo['valencia']),
+                    "mobilizacao": fmt(media_grupo['mob']),
+                    "interesse": fmt(media_grupo['interesse']),
+                    "ipd_geral": fmt(media_grupo['ipd']),
+                },
+                "top_posts": top_posts_data,
+            },
+            status=status.HTTP_200_OK,
+        )
 # =========================================
 # ==============================================================================
 # 5. API VIEW: TEMAS E ENGAJAMENTO (REFATORADA)

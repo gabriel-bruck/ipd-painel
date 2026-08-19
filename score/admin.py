@@ -10,11 +10,14 @@ from client.models import ProjetoIPD, ProjetoCliente
 
 class SmartForeignKeyWidget(ForeignKeyWidget):
     """Widget que aceita tanto o ID numérico quanto o Nome do projeto."""
-    def get_queryset(self, value, row, *args, **kwargs):
-        if str(value).isdigit():
-            return self.model.objects.filter(pk=int(value))
-        return self.model.objects.filter(nome__iexact=str(value).strip())
-
+    def clean(self, value, row=None, *args, **kwargs):
+        if not value:
+            return None
+        
+        val_str = str(value).strip()
+        if val_str.isdigit():
+            return self.model.objects.filter(pk=int(val_str)).first()
+        return self.model.objects.filter(nome__iexact=val_str).first()
 
 class SmartManyToManyWidget(ManyToManyWidget):
     """Widget ManyToMany que aceita IDs ou Nomes separados por vírgula ou ponto e vírgula."""
@@ -236,30 +239,20 @@ class ConteudoResource(resources.ModelResource):
 
     def save_m2m(self, obj, data, using_historical_record, dry_run):
         """
-        Sobrescreve a sincronização M2M padrão.
-        Em vez de substituir as relações do projeto_ipd, ele adiciona (acumula) novos projetos.
+        Sobrescreve a sincronização M2M para ACUMULAR novos projetos.
+        Atualiza todos os dados do Post normalmente, mas junta os projetos antigos com os novos.
         """
+        # 1. Salva em memória os projetos que o post JÁ TINHA antes da importação
+        projetos_antigos = list(obj.projeto_ipd.all()) if obj.pk else []
+
+        # 2. Chama o método original. Ele cuida de ler a planilha e salvar o NOVO projeto (ex: 2).
+        # (Neste momento, por baixo dos panos, a biblioteca sobrescreve o antigo)
         super().save_m2m(obj, data, using_historical_record, dry_run)
 
-        # Se for apenas pré-visualização (dry_run), não executa gravações reais no banco
-        if dry_run:
-            return
-
-        raw_ipd = data.get('projeto_ipd')
-        if raw_ipd:
-            raw_values = [v.strip() for v in str(raw_ipd).replace(';', ',').split(',') if v.strip()]
-            pks = [int(v) for v in raw_values if v.isdigit()]
-            names = [v for v in raw_values if not v.isdigit()]
-
-            # Busca os novos projetos informados na linha da planilha
-            qs_pk = ProjetoIPD.objects.filter(pk__in=pks) if pks else ProjetoIPD.objects.none()
-            qs_name = ProjetoIPD.objects.filter(nome__in=names) if names else ProjetoIPD.objects.none()
-            novos_projetos = (qs_pk | qs_name).distinct()
-
-            if novos_projetos.exists():
-                # ADICIONA os novos projetos ao registro existente mantendo os anteriores
-                obj.projeto_ipd.add(*novos_projetos)
-
+        # 3. Readiciona os projetos antigos junto com o novo que acabou de ser salvo (ex: junta 1 e 2).
+        # Fazemos isso apenas se não for dry_run (pré-visualização), para gravar de fato no banco.
+        if not dry_run and projetos_antigos:
+            obj.projeto_ipd.add(*projetos_antigos)
     def after_import_row(self, row, row_result, **kwargs):
         super().after_import_row(row, row_result, **kwargs)
         id_post_val = str(row.get('id_post') or '').strip()

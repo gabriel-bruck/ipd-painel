@@ -82,14 +82,14 @@
                 </a>
 
                 <nav class="hidden lg:flex items-center gap-1 border-l border-slate-200 pl-6 text-xs font-bold text-slate-600">
-                    <a href="#resumo-executivo-ia" class="px-3 py-1.5 rounded-lg hover:bg-quaest-tealLight hover:text-quaest-teal transition flex items-center gap-1.5">
-                        <i class="fa-solid fa-wand-magic-sparkles text-[11px]"></i> Resumo
-                    </a>
                     <a href="#explicacao-ipd" class="px-3 py-1.5 rounded-lg hover:bg-quaest-tealLight hover:text-quaest-teal transition flex items-center gap-1.5">
                         <i class="fa-solid fa-book-bookmark text-[11px]"></i> Metodologia
                     </a>
                     <a href="#secao-abas-ipd" class="px-3 py-1.5 rounded-lg hover:bg-quaest-tealLight hover:text-quaest-teal transition flex items-center gap-1.5">
                         <i class="fa-solid fa-chart-line text-[11px]"></i> Módulos IPD
+                    </a>
+                    <a href="#resumo-executivo-ia" class="px-3 py-1.5 rounded-lg hover:bg-quaest-tealLight hover:text-quaest-teal transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-wand-magic-sparkles text-[11px]"></i> Resumo Executivo
                     </a>
                 </nav>
             </div>
@@ -117,9 +117,7 @@
                         </button>
                     </form>
                 </div>
-
             </div>
-
         </div>
     </header>
 
@@ -323,8 +321,24 @@
             </div>
         </section>
 
+        <!-- SEÇÃO DE ABAS MÚLTIPLAS DOS MÓDULOS IPD -->
+        <section id="secao-abas-ipd" class="max-w-6xl mx-auto px-6 space-y-6">
+            
+            <div id="container-navegacao-abas" class="hidden flex items-center gap-2 overflow-x-auto pb-2 border-b border-slate-200">
+                <span class="text-xs font-black text-slate-400 uppercase tracking-widest mr-2 shrink-0">Selecione o Módulo:</span>
+                <div id="lista-botoes-abas" class="flex items-center gap-2"></div>
+            </div>
+
+            <div id="container-relatorios-ipd" class="space-y-12">
+                <div class="text-center py-12 text-slate-400 text-sm">
+                    <i class="fa-solid fa-spinner animate-spin mr-2"></i> Mapeando e processando os relatorios dos IPDs...
+                </div>
+            </div>
+
+        </section>
+
         <!-- SEÇÃO RESUMO EXECUTIVO STREAMING IA -->
-        <section id="resumo-executivo-ia" class="max-w-6xl mx-auto px-6">
+        <section id="resumo-executivo-ia" class="max-w-6xl mx-auto px-6 pt-4">
             <div class="bg-white border border-slate-200 rounded-3xl p-6 md:p-10 shadow-lg space-y-6 relative overflow-hidden">
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-6">
                     <div class="flex items-center gap-3">
@@ -332,8 +346,8 @@
                             <i class="fa-solid fa-wand-magic-sparkles"></i>
                         </div>
                         <div>
-                            <span class="text-[10px] font-black text-quaest-teal uppercase tracking-widest block">Análise Inteligente</span>
-                            <h2 class="text-2xl font-black text-slate-900">Resumo Executivo</h2>
+                            <span class="text-[10px] font-black text-quaest-teal uppercase tracking-widest block">Síntese Inteligente Global</span>
+                            <h2 class="text-2xl font-black text-slate-900">Resumo Executivo Geral</h2>
                         </div>
                     </div>
 
@@ -360,22 +374,6 @@
             </div>
         </section>
 
-        <!-- SEÇÃO DE ABAS MÚLTIPLAS DOS MÓDULOS IPD -->
-        <section id="secao-abas-ipd" class="max-w-6xl mx-auto px-6 space-y-6">
-            
-            <div id="container-navegacao-abas" class="hidden flex items-center gap-2 overflow-x-auto pb-2 border-b border-slate-200">
-                <span class="text-xs font-black text-slate-400 uppercase tracking-widest mr-2 shrink-0">Selecione o Módulo:</span>
-                <div id="lista-botoes-abas" class="flex items-center gap-2"></div>
-            </div>
-
-            <div id="container-relatorios-ipd" class="space-y-12">
-                <div class="text-center py-12 text-slate-400 text-sm">
-                    <i class="fa-solid fa-spinner animate-spin mr-2"></i> Mapeando e processando os relatórios dos IPDs...
-                </div>
-            </div>
-
-        </section>
-
     </main>
 
     <!-- FOOTER ESTILO REPORT -->
@@ -391,7 +389,7 @@
         <div class="h-1.5 w-full bg-gradient-to-r from-quaest-teal via-quaest-tealDark to-slate-900 absolute bottom-0 left-0"></div>
     </footer>
 
-    <!-- LÓGICA JAVASCRIPT INTEGRADA E CORRIGIDA -->
+    <!-- LÓGICA JAVASCRIPT INTEGRADA -->
     <script>
         let mapPrevisaoCharts = {};
         let statePrevisaoPreditiva = {};
@@ -598,7 +596,7 @@
             renderizarComparativoPerfis(ipdId);
         }
 
-        // 4. MÓDULO PREDITIVO (XGBOOST)
+        // 4. MÓDULO PREDITIVO
         function selecionarTodosPrevisao(ipdId) {
             const state = statePrevisaoPreditiva[ipdId];
             if (!state || !state.dadosSemanais) return;
@@ -795,108 +793,105 @@
         }
 
         function renderizarEmbedConteudo(ipdId, postUrl) {
-            const container = document.getElementById(`embed-box-${ipdId}`);
-            if (!container) return;
+    const container = document.getElementById(`embed-box-${ipdId}`);
+    if (!container) return;
 
-            if (!postUrl || typeof postUrl !== 'string' || !postUrl.startsWith('http')) {
-                container.innerHTML = `
-                    <div class="text-center p-4 text-xs text-slate-400 italic">
-                        <i class="fa-solid fa-link-slash text-slate-300 text-lg mb-1 block"></i>
-                        Link de publicação indisponível.
-                    </div>`;
-                return;
-            }
+    if (!postUrl || typeof postUrl !== 'string' || !postUrl.startsWith('http')) {
+        container.innerHTML = `
+            <div class="text-center p-4 text-xs text-slate-400 italic">
+                <i class="fa-solid fa-link-slash text-slate-300 text-lg mb-1 block"></i>
+                Link de publicação indisponível.
+            </div>`;
+        return;
+    }
 
-            container.innerHTML = '';
-            const urlLimpa = postUrl.trim();
+    container.innerHTML = '';
+    const urlLimpa = postUrl.trim();
 
-            if (urlLimpa.includes('facebook.com') || urlLimpa.includes('fb.watch')) {
-                const urlEncoded = encodeURIComponent(urlLimpa);
-                container.innerHTML = `
-                    <div class="w-full flex justify-center items-center overflow-hidden rounded-xl">
-                        <iframe 
-                            src="https://www.facebook.com/plugins/video.php?height=314&href=${urlEncoded}&show_text=false&width=560&t=0" 
-                            width="100%" 
-                            height="280" 
-                            style="border:none; overflow:hidden; max-width:340px;" 
-                            scrolling="no" 
-                            frameborder="0" 
-                            allowfullscreen="true" 
-                            allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share">
-                        </iframe>
-                    </div>`;
-            } else if (urlLimpa.includes('instagram.com')) {
-                container.innerHTML = `
-                    <blockquote class="instagram-media" data-instgrm-captioned data-instgrm-permalink="${urlLimpa}" data-instgrm-version="14" style="background:#FFF; border:0; border-radius:12px; box-shadow:0 0 1px 0 rgba(0,0,0,0.5),0 1px 10px 0 rgba(0,0,0,0.15); margin: 1px; max-width:540px; min-width:280px; padding:0; width:99.375%;">
-                        <div style="padding:16px;"> 
-                            <a href="${urlLimpa}" style="background:#FFFFFF; line-height:0; padding:0 0; text-align:center; text-decoration:none; width:100%;" target="_blank"> 
-                                <div style="display: flex; flex-direction: row; align-items: center;"> 
-                                    <div style="background-color: #F4F4F4; border-radius: 50%; flex-grow: 0; height: 40px; margin-right: 14px; width: 40px;"></div> 
-                                    <div style="display: flex; flex-direction: column; flex-grow: 1; justify-center;"> 
-                                        <div style="background-color: #F4F4F4; border-radius: 4px; flex-grow: 0; height: 14px; margin-bottom: 6px; width: 100px;"></div> 
-                                        <div style="background-color: #F4F4F4; border-radius: 4px; flex-grow: 0; height: 14px; width: 60px;"></div>
-                                    </div>
-                                </div>
-                                <div style="padding: 19% 0;"></div> 
-                                <div style="padding-top: 8px;"> 
-                                    <div style="color:#3897f0; font-family:Arial,sans-serif; font-size:14px; font-style:normal; font-weight:550; line-height:18px;">Ver essa publicação no Instagram</div>
-                                </div>
-                            </a>
-                        </div>
-                    </blockquote>`;
+    if (urlLimpa.includes('facebook.com') || urlLimpa.includes('fb.watch')) {
+        const urlEncoded = encodeURIComponent(urlLimpa);
+        container.innerHTML = `
+            <div class="w-full h-full flex justify-center items-center overflow-hidden rounded-xl">
+                <iframe 
+                    src="https://www.facebook.com/plugins/video.php?height=300&href=${urlEncoded}&show_text=false&width=560&t=0" 
+                    width="100%" 
+                    height="300" 
+                    style="border:none; overflow:hidden; max-width:480px; max-height:300px;" 
+                    scrolling="no" 
+                    frameborder="0" 
+                    allowfullscreen="true" 
+                    allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share">
+                </iframe>
+            </div>`;
+    } else if (urlLimpa.includes('instagram.com')) {
+        container.innerHTML = `
+            <div class="w-full max-h-[320px] overflow-y-auto ranking-scroll flex justify-center">
+                <blockquote class="instagram-media" data-instgrm-captioned data-instgrm-permalink="${urlLimpa}" data-instgrm-version="14" style="background:#FFF; border:0; border-radius:12px; box-shadow:0 0 1px 0 rgba(0,0,0,0.5),0 1px 10px 0 rgba(0,0,0,0.15); margin: 1px; max-width:400px; min-width:260px; padding:0; width:99.375%;">
+                    <div style="padding:12px;"> 
+                        <a href="${urlLimpa}" style="background:#FFFFFF; line-height:0; padding:0 0; text-align:center; text-decoration:none; width:100%;" target="_blank"> 
+                            <div style="color:#3897f0; font-family:Arial,sans-serif; font-size:13px; font-weight:550;">Ver essa publicação no Instagram</div>
+                        </a>
+                    </div>
+                </blockquote>
+            </div>`;
 
-                if (window.instgrm && window.instgrm.Embeds) {
-                    window.instgrm.Embeds.process();
-                } else {
-                    let script = document.createElement('script');
-                    script.src = "https://www.instagram.com/embed.js";
-                    script.async = true;
-                    document.body.appendChild(script);
-                }
-            } else if (urlLimpa.includes('tiktok.com')) {
-                let videoId = urlLimpa.includes('/video/') ? urlLimpa.split('/video/')[1]?.split('?')[0] || '' : '';
-                container.innerHTML = `
-                    <blockquote class="tiktok-embed" cite="${urlLimpa}" data-video-id="${videoId}" style="max-width: 325px; min-width: 280px; margin: 0 auto;">
-                        <section><a target="_blank" title="TikTok" href="${urlLimpa}">Carregando vídeo do TikTok...</a></section>
-                    </blockquote>`;
-                
-                const oldScript = document.getElementById('tiktok-embed-script');
-                if (oldScript) oldScript.remove();
-
-                const script = document.createElement('script');
-                script.id = 'tiktok-embed-script';
-                script.src = 'https://www.tiktok.com/embed.js';
-                script.async = true;
-                document.body.appendChild(script);
-            } else if (urlLimpa.includes('twitter.com') || urlLimpa.includes('x.com')) {
-                container.innerHTML = `<blockquote class="twitter-tweet" data-dnt="true" align="center"><a href="${urlLimpa}"></a></blockquote>`;
-                if (window.twttr && window.twttr.widgets) window.twttr.widgets.load(container);
-                else {
-                    let script = document.createElement('script');
-                    script.src = "https://platform.twitter.com/widgets.js";
-                    document.body.appendChild(script);
-                }
-            } else if (urlLimpa.includes('youtube.com') || urlLimpa.includes('youtu.be')) {
-                let videoId = '';
-                if (urlLimpa.includes('/shorts/')) videoId = urlLimpa.split('/shorts/')[1]?.split('?')[0];
-                else if (urlLimpa.includes('youtu.be/')) videoId = urlLimpa.split('youtu.be/')[1]?.split('?')[0];
-                else if (urlLimpa.includes('watch?v=')) videoId = urlLimpa.split('watch?v=')[1]?.split('&')[0];
-
-                if (videoId) {
-                    container.innerHTML = `
-                        <div class="w-full aspect-video max-w-md mx-auto rounded-xl overflow-hidden shadow-sm">
-                            <iframe class="w-full h-full" src="https://www.youtube.com/embed/${videoId}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
-                        </div>`;
-                } else {
-                    container.innerHTML = `<a href="${urlLimpa}" target="_blank" class="px-4 py-2 rounded-xl bg-red-50 text-red-600 font-bold text-xs border border-red-200"><i class="fa-brands fa-youtube mr-1"></i> Abrir no YouTube</a>`;
-                }
-            } else {
-                container.innerHTML = `
-                    <a href="${urlLimpa}" target="_blank" class="px-4 py-2 rounded-xl bg-quaest-tealLight text-quaest-teal font-bold text-xs border border-quaest-teal/30 hover:bg-quaest-teal/10 transition">
-                        Abrir Publicação Externa <i class="fa-solid fa-arrow-up-right-from-square ml-1"></i>
-                    </a>`;
-            }
+        if (window.instgrm && window.instgrm.Embeds) {
+            window.instgrm.Embeds.process();
+        } else {
+            let script = document.createElement('script');
+            script.src = "https://www.instagram.com/embed.js";
+            script.async = true;
+            document.body.appendChild(script);
         }
+    } else if (urlLimpa.includes('tiktok.com')) {
+        let videoId = urlLimpa.includes('/video/') ? urlLimpa.split('/video/')[1]?.split('?')[0] || '' : '';
+        container.innerHTML = `
+            <div class="w-full max-h-[320px] overflow-y-auto ranking-scroll flex justify-center">
+                <blockquote class="tiktok-embed" cite="${urlLimpa}" data-video-id="${videoId}" style="max-width: 320px; min-width: 260px; margin: 0 auto;">
+                    <section><a target="_blank" title="TikTok" href="${urlLimpa}">Carregando vídeo do TikTok...</a></section>
+                </blockquote>
+            </div>`;
+        
+        const oldScript = document.getElementById('tiktok-embed-script');
+        if (oldScript) oldScript.remove();
+
+        const script = document.createElement('script');
+        script.id = 'tiktok-embed-script';
+        script.src = 'https://www.tiktok.com/embed.js';
+        script.async = true;
+        document.body.appendChild(script);
+    } else if (urlLimpa.includes('twitter.com') || urlLimpa.includes('x.com')) {
+        container.innerHTML = `
+            <div class="w-full max-h-[320px] overflow-y-auto ranking-scroll">
+                <blockquote class="twitter-tweet" data-dnt="true" align="center"><a href="${urlLimpa}"></a></blockquote>
+            </div>`;
+        if (window.twttr && window.twttr.widgets) window.twttr.widgets.load(container);
+        else {
+            let script = document.createElement('script');
+            script.src = "https://platform.twitter.com/widgets.js";
+            document.body.appendChild(script);
+        }
+    } else if (urlLimpa.includes('youtube.com') || urlLimpa.includes('youtu.be')) {
+        let videoId = '';
+        if (urlLimpa.includes('/shorts/')) videoId = urlLimpa.split('/shorts/')[1]?.split('?')[0];
+        else if (urlLimpa.includes('youtu.be/')) videoId = urlLimpa.split('youtu.be/')[1]?.split('?')[0];
+        else if (urlLimpa.includes('watch?v=')) videoId = urlLimpa.split('watch?v=')[1]?.split('&')[0];
+
+        if (videoId) {
+            container.innerHTML = `
+                <div class="w-full h-[300px] max-w-lg mx-auto rounded-xl overflow-hidden shadow-sm">
+                    <iframe class="w-full h-full" src="https://www.youtube.com/embed/${videoId}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+                </div>`;
+        } else {
+            container.innerHTML = `<a href="${urlLimpa}" target="_blank" class="px-4 py-2 rounded-xl bg-red-50 text-red-600 font-bold text-xs border border-red-200"><i class="fa-brands fa-youtube mr-1"></i> Abrir no YouTube</a>`;
+        }
+    } else {
+        container.innerHTML = `
+            <a href="${urlLimpa}" target="_blank" class="px-4 py-2 rounded-xl bg-quaest-tealLight text-quaest-teal font-bold text-xs border border-quaest-teal/30 hover:bg-quaest-teal/10 transition">
+                Abrir Publicação Externa <i class="fa-solid fa-arrow-up-right-from-square ml-1"></i>
+            </a>`;
+    }
+}
 
         async function carregarTemasEngajamento(ipdId) {
             const selectMes = document.getElementById(`select-mes-temas-${ipdId}`);
@@ -1065,7 +1060,7 @@
         };
 
         /* =========================================================
-           2. MATRIZ GERAL DO PROJETO (LEGENDA DINÂMICA + TABELA)
+           MATRIZ GERAL DO PROJETO (COM ELEVAÇÃO VISUAL ACIMA DA LINHA)
            ========================================================= */
         function renderizarMatrizGeralTemas(ipdId) {
             const data = stateIPDs[ipdId]?.dadosTemas?.temas_geral || [];
@@ -1106,9 +1101,21 @@
 
             const points = data.map((d) => {
                 const corTema = obterCorDoTema(d.categoria_tema);
+                const yReal = d.interacao_por_post || 0;
+                
+                let yExibicao = yReal;
+                const margemMinima = mediaGeralY * 0.035;
+
+                if (yReal > mediaGeralY && (yReal - mediaGeralY) < margemMinima) {
+                    yExibicao = mediaGeralY + margemMinima;
+                } else if (yReal < mediaGeralY && (mediaGeralY - yReal) < margemMinima) {
+                    yExibicao = mediaGeralY - margemMinima;
+                }
+
                 return {
                     x: d.total_posts || 0,
-                    y: d.interacao_por_post || 0,
+                    y: yExibicao,
+                    yReal: yReal,
                     tema: d.categoria_tema || 'Sem Categoria',
                     sharePosts: d.share_posts || 0,
                     color: corTema
@@ -1116,7 +1123,7 @@
             });
 
             const maxPosts = Math.max(...points.map(p => p.x), mediaGeralX * 2, 10);
-            const maxInter = Math.max(...points.map(p => p.y), mediaGeralY * 2, 100);
+            const maxInter = Math.max(...points.map(p => p.yReal), mediaGeralY * 2, 100);
 
             mapTemasCharts[`matrix_geral_${ipdId}`] = new Chart(ctx, {
                 type: 'scatter',
@@ -1170,7 +1177,7 @@
                                     const p = c.raw;
                                     return [
                                         ` Tema: ${p.tema}`,
-                                        ` Média do Tema: ${p.y.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} int/post`,
+                                        ` Média do Tema: ${p.yReal.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} int/post`,
                                         ` Total de Posts: ${p.x} (${p.sharePosts}%)`,
                                         ` Média Geral/Post: ${mediaGeralY.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}`
                                     ];
@@ -1181,7 +1188,6 @@
                 }
             });
 
-            // RENDERIZA A LEGENDA DO GRÁFICO
             if (containerLegenda) {
                 containerLegenda.innerHTML = `
                     <div class="flex flex-wrap items-center gap-2 justify-center py-1">
@@ -1195,12 +1201,10 @@
                 `;
             }
 
-            // RENDERIZA AS LINHAS DA TABELA
             if (tbodyTable) {
                 tbodyTable.innerHTML = data.map(d => {
                     const cor = obterCorDoTema(d.categoria_tema);
                     const interPost = d.interacao_por_post || 0;
-                    const eAlta = interPost >= mediaGeralY;
                     return `
                         <tr class="hover:bg-slate-100/60 transition">
                             <td class="py-2 font-bold text-slate-800 flex items-center gap-2">
@@ -1210,7 +1214,6 @@
                             <td class="py-2 text-right font-semibold">${d.total_posts || 0} (${d.share_posts || 0}%)</td>
                             <td class="py-2 text-right font-semibold">${(d.total_interacoes || 0).toLocaleString('pt-BR')}</td>
                             <td class="py-2 text-right font-black text-quaest-teal">${interPost.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}</td>
-                            
                         </tr>
                     `;
                 }).join('');
@@ -1218,7 +1221,7 @@
         }
 
         /* =========================================================
-           3. MATRIZ POR PERFIL (LEGENDA DINÂMICA + TABELA)
+           MATRIZ POR PERFIL (COM ELEVAÇÃO VISUAL ACIMA DA LINHA)
            ========================================================= */
         function renderizarMatrizPerfilTemas(ipdId) {
             const selectPerfil = document.getElementById(`select-perfil-temas-${ipdId}`);
@@ -1265,9 +1268,21 @@
 
             const points = dadosPerfil.map((d) => {
                 const corTema = obterCorDoTema(d.categoria_tema);
+                const yReal = d.interacao_por_post || 0;
+
+                let yExibicao = yReal;
+                const margemMinima = mediaPerfilY * 0.035;
+
+                if (yReal > mediaPerfilY && (yReal - mediaPerfilY) < margemMinima) {
+                    yExibicao = mediaPerfilY + margemMinima;
+                } else if (yReal < mediaPerfilY && (mediaPerfilY - yReal) < margemMinima) {
+                    yExibicao = mediaPerfilY - margemMinima;
+                }
+
                 return {
                     x: d.total_posts || 0,
-                    y: d.interacao_por_post || 0,
+                    y: yExibicao,
+                    yReal: yReal,
                     tema: d.categoria_tema || 'Sem Categoria',
                     sharePosts: d.share_posts_perfil || 0,
                     color: corTema
@@ -1275,7 +1290,7 @@
             });
 
             const maxPosts = Math.max(...points.map(p => p.x), mediaPerfilX * 2, 10);
-            const maxInter = Math.max(...points.map(p => p.y), mediaPerfilY * 2, 100);
+            const maxInter = Math.max(...points.map(p => p.yReal), mediaPerfilY * 2, 100);
 
             mapTemasCharts[`matrix_perfil_${ipdId}`] = new Chart(ctx, {
                 type: 'scatter',
@@ -1329,7 +1344,7 @@
                                     const p = c.raw;
                                     return [
                                         ` Tema: ${p.tema}`,
-                                        ` Média do Tema: ${p.y.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} int/post`,
+                                        ` Média do Tema: ${p.yReal.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} int/post`,
                                         ` Total de Posts: ${p.x} (${p.sharePosts}%)`,
                                         ` Média do Perfil: ${mediaPerfilY.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}`
                                     ];
@@ -1340,7 +1355,6 @@
                 }
             });
 
-            // RENDERIZA A LEGENDA DO GRÁFICO
             if (containerLegenda) {
                 containerLegenda.innerHTML = `
                     <div class="flex flex-wrap items-center gap-2 justify-center py-1">
@@ -1354,12 +1368,10 @@
                 `;
             }
 
-            // RENDERIZA AS LINHAS DA TABELA DO PERFIL
             if (tbodyTable) {
                 tbodyTable.innerHTML = dadosPerfil.map(d => {
                     const cor = obterCorDoTema(d.categoria_tema);
                     const interPost = d.interacao_por_post || 0;
-                    const eAlta = interPost >= mediaPerfilY;
                     return `
                         <tr class="hover:bg-slate-100/60 transition">
                             <td class="py-2 font-bold text-slate-800 flex items-center gap-2">
@@ -1369,7 +1381,6 @@
                             <td class="py-2 text-right font-semibold">${d.total_posts || 0} (${d.share_posts_perfil || 0}%)</td>
                             <td class="py-2 text-right font-semibold">${(d.total_interacoes || 0).toLocaleString('pt-BR')}</td>
                             <td class="py-2 text-right font-black text-quaest-teal">${interPost.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}</td>
-                           
                         </tr>
                     `;
                 }).join('');
@@ -1460,33 +1471,50 @@
                 const response = await fetch(url);
                 const data = await response.json();
 
+                const dimKeys = ['fama', 'engaj', 'mob', 'valencia', 'interesse'];
+
                 if (!response.ok || data.error) {
                     const msgErro = data.error || "Erro ao consultar métricas do período.";
-                    document.getElementById(`val-media-likes-${ipdId}`).innerText = "0";
-                    document.getElementById(`val-media-comentarios-${ipdId}`).innerText = "0";
-                    document.getElementById(`val-total-posts-${ipdId}`).innerText = "0";
+                    
+                    dimKeys.forEach(dim => {
+                        const elVal = document.getElementById(`badge-val-${dim}-${ipdId}`);
+                        const elGrp = document.getElementById(`badge-grp-${dim}-${ipdId}`);
+                        if (elVal) elVal.innerText = "--";
+                        if (elGrp) elGrp.innerText = "--";
+                    });
+
                     document.getElementById(`top-post-texto-${ipdId}`).innerHTML = `<span class="text-rose-600 font-bold"><i class="fa-solid fa-triangle-exclamation mr-1"></i> ${msgErro}</span>`;
                     document.getElementById(`embed-box-${ipdId}`).innerHTML = `<p class="text-xs text-slate-400 italic">Sem dados para o período informado.</p>`;
                     
-                    resetarPainelInsights(ipdId);
                     return;
                 }
 
-                const mediaCurtidas = Number(data.media_curtidas || 0);
-                const mediaComentarios = Number(data.media_comentarios || 0);
-                const totalPosts = Number(data.total_posts || 0);
+                const mPerfil = data.metricas_perfil || {};
+                const mGrupo = data.media_grupo || {};
 
-                document.getElementById(`val-media-likes-${ipdId}`).innerText = mediaCurtidas.toLocaleString('pt-BR');
-                document.getElementById(`val-media-comentarios-${ipdId}`).innerText = mediaComentarios.toLocaleString('pt-BR');
-                document.getElementById(`val-total-posts-${ipdId}`).innerText = totalPosts;
+                const mapDimensoes = [
+                    { key: 'fama', valP: mPerfil.fama, valG: mGrupo.fama },
+                    { key: 'engaj', valP: mPerfil.engajamento, valG: mGrupo.engajamento },
+                    { key: 'mob', valP: mPerfil.mobilizacao, valG: mGrupo.mobilizacao },
+                    { key: 'valencia', valP: mPerfil.valencia, valG: mGrupo.valencia },
+                    { key: 'interesse', valP: mPerfil.interesse, valG: mGrupo.interesse }
+                ];
 
-                let listaTopPosts = data.top_posts || (data.top_post ? [data.top_post] : []);
+                mapDimensoes.forEach(item => {
+                    const elVal = document.getElementById(`badge-val-${item.key}-${ipdId}`);
+                    const elGrp = document.getElementById(`badge-grp-${item.key}-${ipdId}`);
+                    
+                    if (elVal) elVal.innerText = item.valP !== undefined && item.valP !== null ? Number(item.valP).toFixed(2) : '--';
+                    if (elGrp) elGrp.innerText = item.valG !== undefined && item.valG !== null ? Number(item.valG).toFixed(2) : '--';
+                });
+
+                let listaTopPosts = data.top_posts || [];
 
                 cacheTopPostsPorModulo[ipdId] = {
                     listaPosts: listaTopPosts,
-                    mediaCurtidas: mediaCurtidas,
-                    mediaComentarios: mediaComentarios,
-                    totalPosts: totalPosts
+                    mediaCurtidas: mPerfil.engajamento || 0,
+                    mediaComentarios: 0,
+                    totalPosts: 0
                 };
 
                 selecionarTopPostAba(ipdId, 0);
@@ -1495,7 +1523,6 @@
                 console.error("Falha ao carregar conteúdos:", err);
                 const elTexto = document.getElementById(`top-post-texto-${ipdId}`);
                 if (elTexto) elTexto.innerText = "Falha na comunicação com o servidor.";
-                resetarPainelInsights(ipdId);
             }
         }
 
@@ -1538,33 +1565,6 @@
 
                 renderizarEmbedConteudo(ipdId, postObj.url);
 
-                const mediaCurtidas = cache.mediaCurtidas;
-                const totalPosts = cache.totalPosts;
-
-                const elInsightPerf = document.getElementById(`insight-performance-relativa-${ipdId}`);
-                if (elInsightPerf && mediaCurtidas > 0) {
-                    const pctAumento = Math.round(((likesPost - mediaCurtidas) / mediaCurtidas) * 100);
-                    if (pctAumento > 0) {
-                        elInsightPerf.innerHTML = `<span class="text-emerald-600 font-extrabold"><i class="fa-solid fa-arrow-trend-up"></i> +${pctAumento}% acima</span> <span class="text-xs text-slate-500 font-normal">da média mensal do perfil</span>`;
-                    } else if (pctAumento < 0) {
-                        elInsightPerf.innerHTML = `<span class="text-rose-600 font-extrabold"><i class="fa-solid fa-arrow-trend-down"></i> ${pctAumento}% abaixo</span> <span class="text-xs text-slate-500 font-normal">da média mensal do perfil</span>`;
-                    } else {
-                        elInsightPerf.innerHTML = `<span class="text-slate-700 font-bold">= Na média do perfil</span>`;
-                    }
-                }
-
-                const elInsightRazao = document.getElementById(`insight-razao-engajamento-${ipdId}`);
-                if (elInsightRazao && likesPost > 0) {
-                    const taxaComent = ((comentariosPost / likesPost) * 100).toFixed(1);
-                    elInsightRazao.innerHTML = `<span class="text-quaest-teal font-extrabold">${taxaComent}</span> <span class="text-xs text-slate-500 font-normal">comentários para cada 100 curtidas</span>`;
-                }
-
-                const elInsightRitmo = document.getElementById(`insight-ritmo-postagens-${ipdId}`);
-                if (elInsightRitmo) {
-                    const mediaPostsSemana = (totalPosts / 4).toFixed(1);
-                    elInsightRitmo.innerHTML = `<span class="text-slate-900 font-extrabold">~${mediaPostsSemana} posts/semana</span> <span class="text-xs text-slate-500 font-normal">(${totalPosts} publicações no mês)</span>`;
-                }
-
             } else {
                 document.getElementById(`top-post-data-${ipdId}`).innerText = "-";
                 document.getElementById(`top-post-likes-${ipdId}`).innerText = "0";
@@ -1582,19 +1582,7 @@
                         <i class="fa-solid fa-folder-open text-slate-300 text-xl mb-2 block"></i>
                         Sem publicação nesta posição.
                     </div>`;
-
-                resetarPainelInsights(ipdId);
             }
-        }
-
-        function resetarPainelInsights(ipdId) {
-            const el1 = document.getElementById(`insight-performance-relativa-${ipdId}`);
-            const el2 = document.getElementById(`insight-razao-engajamento-${ipdId}`);
-            const el3 = document.getElementById(`insight-ritmo-postagens-${ipdId}`);
-
-            if (el1) el1.innerHTML = `<span class="text-slate-400 text-xs font-normal">Sem dados no período</span>`;
-            if (el2) el2.innerHTML = `<span class="text-slate-400 text-xs font-normal">Sem dados no período</span>`;
-            if (el3) el3.innerHTML = `<span class="text-slate-400 text-xs font-normal">Sem dados no período</span>`;
         }
 
         function inicializarRankingIpdModulo(ipdObj, ipdId) {
@@ -1729,7 +1717,6 @@
             const canvas = document.getElementById(`chart-bar-ranking-${ipdId}`);
             if (!canvas) return;
 
-            // Ajuste dinâmico de altura do wrapper para acomodar as barras no contêiner com scroll
             const totalItens = rankingFiltrado.length;
             const alturaDinamica = Math.max(200, totalItens * 28);
             const wrapperChart = document.getElementById(`wrapper-chart-ranking-${ipdId}`);
@@ -1755,11 +1742,13 @@
             renderizarCardsHighlights(ipdId, lider, maiorSubida, maiorEvolucao);
             montarBotoesRanking(ipdId);
 
-            // Cores: Azul Claro por padrão (#38BDF8), Azul Escuro no destaque (#1D4ED8), suavizado (#E2E8F0)
+            const COR_QUAEST_TEAL = '#1FA4B6';
+            const COR_CINZA_SUAVE = '#E2E8F0';
+
             const perfilAtivo = ref.perfilDestacadoRanking;
             const colors = rankingFiltrado.map(item => {
-                if (!perfilAtivo) return '#38BDF8';
-                return item.profile === perfilAtivo ? '#1D4ED8' : '#E2E8F0';
+                if (!perfilAtivo) return COR_QUAEST_TEAL;
+                return item.profile === perfilAtivo ? COR_QUAEST_TEAL : COR_CINZA_SUAVE;
             });
 
             const labels = rankingFiltrado.map(item => item.profile);
@@ -1795,16 +1784,15 @@
                             const index = activeElements[0].index;
                             const perfilClicado = rankingFiltrado[index].profile;
                             
-                            // Alterna o perfil destacado sem recarregar nem reconstruir o gráfico
                             ref.perfilDestacadoRanking = (ref.perfilDestacadoRanking === perfilClicado) ? null : perfilClicado;
 
                             const novasCores = rankingFiltrado.map(item => {
-                                if (!ref.perfilDestacadoRanking) return '#38BDF8';
-                                return item.profile === ref.perfilDestacadoRanking ? '#1D4ED8' : '#E2E8F0';
+                                if (!ref.perfilDestacadoRanking) return COR_QUAEST_TEAL;
+                                return item.profile === ref.perfilDestacadoRanking ? COR_QUAEST_TEAL : COR_CINZA_SUAVE;
                             });
 
                             mapRankingCharts[ipdId].data.datasets[0].backgroundColor = novasCores;
-                            mapRankingCharts[ipdId].update('none'); // Atualiza cores suavemente sem relayout
+                            mapRankingCharts[ipdId].update('none');
                         }
                     },
                     layout: {
@@ -2288,6 +2276,9 @@
             }
         }
 
+        /* =========================================================
+           RENDERIZAR MÓDULOS COM ORDEM REAJUSTADA E EXPLICAÇÕES
+           ========================================================= */
         function renderizarRelatoriosExecutivos() {
             const container = document.getElementById('container-relatorios-ipd');
             const navAbasContainer = document.getElementById('container-navegacao-abas');
@@ -2336,6 +2327,7 @@
                 ipdSection.id = `modulo-article-ipd-${ipdId}`;
                 ipdSection.className = `bg-white border border-slate-200 rounded-3xl p-6 md:p-10 shadow-sm space-y-12 ${index === 0 ? '' : 'hidden'}`;
                 ipdSection.innerHTML = `
+                    <!-- CABEÇALHO DO MÓDULO -->
                     <div class="border-b border-slate-100 pb-8 space-y-6">
                         <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
                             <div>
@@ -2363,7 +2355,7 @@
                         </div>
                     </div>
 
-                    <!-- 1º MÓDULO: RANKING MENSAL DO IPD (GRÁFICO DE BARRAS INTERATIVO) -->
+                    <!-- 1º SEÇÃO: RANKING MENSAL DO IPD -->
                     <div class="space-y-6">
                         <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
                             <div class="flex items-center gap-3">
@@ -2407,7 +2399,6 @@
                             </div>
 
                             <div class="p-6 rounded-2xl bg-slate-50 border border-slate-200 space-y-4">
-                                <!-- Contêiner específico com Scroll Lateral e Vertical -->
                                 <div class="max-h-[420px] overflow-x-auto overflow-y-auto ranking-scroll relative w-full">
                                     <div id="wrapper-chart-ranking-${ipdId}" class="min-w-[600px] w-full relative">
                                         <canvas id="chart-bar-ranking-${ipdId}"></canvas>
@@ -2419,7 +2410,7 @@
 
                     <hr class="border-slate-100" />
 
-                    <!-- 2º GRÁFICO: EVOLUÇÃO HISTÓRICA DO IPD -->
+                    <!-- 2º SEÇÃO: EVOLUÇÃO HISTÓRICA DO IPD -->
                     <div class="space-y-6">
                         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                             <div>
@@ -2469,15 +2460,394 @@
                         </div>
                     </div>
 
-                    <!-- MÓDULO PREDITIVO: RANKING E PREVISÃO IPD (XGBOOST RELACIONAL) -->
+                    <hr class="border-slate-100" />
+
+                    <!-- 3º SEÇÃO: RADAR MENSAL E CARROSSEL -->
                     <div class="space-y-6">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <div>
+                                <span class="text-xs font-black text-quaest-teal uppercase tracking-widest">Equilíbrio Multidimensão</span>
+                                <h3 class="text-xl font-black text-slate-900 mt-1">Radar Mensal por Perfil</h3>
+                            </div>
+                            
+                            <div class="flex items-center gap-3">
+                                <div class="flex items-center gap-1.5 bg-slate-50 p-1 rounded-xl border border-slate-200">
+                                    <button onclick="exportarGraficoParaPNG('chart-radar-${ipdId}', 'Radar_Multidimensao_IPD')" class="px-2.5 py-1 rounded-lg bg-white hover:bg-slate-100 text-slate-600 border border-slate-200 font-bold text-xs shadow-sm transition flex items-center gap-1">
+                                        <i class="fa-solid fa-download text-quaest-teal"></i> PNG
+                                    </button>
+                                    <button onclick="exportarGraficoParaCSV(stateIPDs[${ipdId}].radarChart, 'Radar_Multidimensao_IPD')" class="px-2.5 py-1 rounded-lg bg-white hover:bg-slate-100 text-slate-600 border border-slate-200 font-bold text-xs shadow-sm transition flex items-center gap-1">
+                                        <i class="fa-solid fa-file-csv text-emerald-600"></i> CSV
+                                    </button>
+                                </div>
+
+                                <div class="flex items-center gap-2">
+                                    <label for="select-mes-radar-${ipdId}" class="text-xs font-bold text-slate-500">Mês do Radar:</label>
+                                    <select id="select-mes-radar-${ipdId}" onchange="atualizarRadarPorMes(${ipdId})" class="bg-slate-100 text-slate-800 text-xs font-bold px-3 py-1.5 rounded-xl border border-slate-200 outline-none focus:border-quaest-teal">
+                                    </select>
+                                </div>
+                                <button onclick="toggleMinimizarCard('box-radar-${ipdId}', this)" title="Minimizar Seção" class="p-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 transition">
+                                    <i class="fa-solid fa-chevron-up text-xs"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div id="box-radar-${ipdId}" class="space-y-6 transition-all">
+                            <div id="container-profiles-radar-${ipdId}" class="flex flex-col gap-1.5">
+                                <span class="text-xs font-bold text-slate-500">Adicionar/Remover no Radar:</span>
+                            </div>
+
+                            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+                                <div class="lg:col-span-7 p-6 rounded-3xl bg-quaest-tealLight/40 border border-quaest-teal/20 flex items-center justify-center">
+                                    <div class="h-80 w-full max-w-md">
+                                        <canvas id="chart-radar-${ipdId}"></canvas>
+                                    </div>
+                                </div>
+
+                                <div class="lg:col-span-5 p-6 rounded-3xl bg-quaest-tealLight border border-quaest-tealBorder text-slate-900 space-y-5 shadow-sm relative overflow-hidden">
+                                    <div class="border-b border-quaest-tealBorder pb-3 flex items-center justify-between">
+                                        <div class="flex items-center gap-2">
+                                            <span class="w-2.5 h-2.5 rounded-full bg-quaest-teal"></span>
+                                            <span id="slide-label-perfil-${ipdId}" class="text-xs font-black uppercase tracking-wider text-quaest-tealDark truncate max-w-[180px]">Nenhum Perfil</span>
+                                        </div>
+                                        
+                                        <div id="nav-carrossel-${ipdId}" class="flex items-center gap-1.5">
+                                            <button onclick="mudarSlideCarrossel(${ipdId}, -1)" class="w-7 h-7 rounded-lg bg-white border border-quaest-tealBorder hover:bg-quaest-teal hover:text-white text-slate-600 font-bold transition flex items-center justify-center text-xs shadow-sm">
+                                                <i class="fa-solid fa-chevron-left"></i>
+                                            </button>
+                                            <span id="slide-indicador-num-${ipdId}" class="text-[10px] font-mono text-slate-500 px-1 font-bold">0/0</span>
+                                            <button onclick="mudarSlideCarrossel(${ipdId}, 1)" class="w-7 h-7 rounded-lg bg-white border border-quaest-tealBorder hover:bg-quaest-teal hover:text-white text-slate-600 font-bold transition flex items-center justify-center text-xs shadow-sm">
+                                                <i class="fa-solid fa-chevron-right"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div class="space-y-1">
+                                        <div class="flex items-baseline justify-between">
+                                            <span id="slide-tipo-titulo-${ipdId}" class="text-xs text-slate-500 font-medium block">IPD Média do Perfil</span>
+                                            <span id="slide-data-mes-${ipdId}" class="text-xs font-mono font-bold text-quaest-teal bg-white px-2 py-0.5 rounded-md border border-quaest-tealBorder shadow-sm">-</span>
+                                        </div>
+                                        <span id="slide-valor-ipd-${ipdId}" class="text-4xl font-black text-slate-900 tracking-tight block">0.00</span>
+                                    </div>
+
+                                    <div class="space-y-2 pt-2 border-t border-quaest-tealBorder">
+                                        <span class="text-[10px] text-slate-400 font-extrabold uppercase block tracking-wider">Desempenho por Dimensão</span>
+                                        <div id="slide-breakdown-dimensoes-${ipdId}" class="grid grid-cols-2 gap-2 text-xs">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr class="border-slate-100" />
+
+                    <!-- 4º SEÇÃO: ANÁLISE TEMÁTICA E MATRIZ DE EFICIÊNCIA -->
+                    <div class="space-y-6">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+                            <div>
+                                <span class="text-xs font-black text-quaest-teal uppercase tracking-widest">Matriz de Eficiência Temática</span>
+                                <h3 class="text-xl font-black text-slate-900 mt-1">Análise Temática e Matriz de Retorno</h3>
+                                <p class="text-slate-500 text-xs mt-0.5">Cruze o volume de publicações (Total de Posts) contra o engajamento retornado (Média de Interações/Post).</p>
+                            </div>
+                            
+                            <div class="flex items-center gap-3">
+                                <div class="flex items-center gap-2">
+                                    <label for="select-mes-temas-${ipdId}" class="text-xs font-bold text-slate-500">Mês de Análise:</label>
+                                    <select id="select-mes-temas-${ipdId}" onchange="carregarTemasEngajamento(${ipdId})" class="bg-slate-100 text-slate-800 text-xs font-bold px-3 py-1.5 rounded-xl border border-slate-200 outline-none focus:border-quaest-teal cursor-pointer">
+                                    </select>
+                                </div>
+                                <button onclick="toggleMinimizarCard('box-temas-${ipdId}', this)" title="Minimizar Seção" class="p-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 transition">
+                                    <i class="fa-solid fa-chevron-up text-xs"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div id="box-temas-${ipdId}" class="space-y-6 transition-all">
+                            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+                                
+                                <!-- MATRIZ GERAL -->
+                                <div class="lg:col-span-6 bg-slate-50 p-6 rounded-3xl border border-slate-200 flex flex-col justify-between space-y-4">
+                                    <div class="flex items-center justify-between border-b border-slate-200/80 pb-3">
+                                        <span class="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                                            <i class="fa-solid fa-table-cells text-quaest-teal"></i> Matriz Geral (Projeto)
+                                        </span>
+                                        <div class="flex items-center gap-1.5">
+                                            <button onclick="exportarGraficoParaPNG('chart-matrix-geral-${ipdId}', 'Matriz_Tematica_Geral')" class="px-2 py-1 rounded-lg bg-white hover:bg-slate-100 text-slate-600 border font-bold text-[10px] shadow-sm transition"><i class="fa-solid fa-download text-quaest-teal"></i> PNG</button>
+                                            <button onclick="exportarGraficoParaCSV(mapTemasCharts['matrix_geral_${ipdId}'], 'Matriz_Tematica_Geral')" class="px-2 py-1 rounded-lg bg-white hover:bg-slate-100 text-slate-600 border font-bold text-[10px] shadow-sm transition"><i class="fa-solid fa-file-csv text-emerald-600"></i> CSV</button>
+                                        </div>
+                                    </div>
+
+                                    <div class="h-60 w-full relative">
+                                        <canvas id="chart-matrix-geral-${ipdId}"></canvas>
+                                    </div>
+
+                                    <div id="legend-matrix-geral-${ipdId}" class="py-1"></div>
+
+                                    <div class="overflow-y-auto h-48 ranking-scroll pt-2 border-t border-slate-200/60">
+                                        <table id="tbl-full-geral-${ipdId}" class="w-full text-left text-xs">
+                                            <thead class="sticky top-0 bg-slate-50 z-10">
+                                                <tr class="text-slate-400 font-extrabold border-b border-slate-200 uppercase text-[9px]">
+                                                    <th class="pb-2">Tema</th>
+                                                    <th class="pb-2 text-right">Posts (Total/%)</th>
+                                                    <th class="pb-2 text-right">Interações Total</th>
+                                                    <th class="pb-2 text-right">Média/Post</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="tbl-temas-geral-${ipdId}" class="divide-y divide-slate-200/60 font-medium text-slate-700">
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                <!-- MATRIZ POR PERFIL -->
+                                <div class="lg:col-span-6 bg-slate-50 p-6 rounded-3xl border border-slate-200 flex flex-col justify-between space-y-4">
+                                    <div class="flex items-center justify-between border-b border-slate-200/80 pb-3">
+                                        <div class="flex items-center gap-1.5">
+                                            <select id="select-perfil-temas-${ipdId}" onchange="renderizarMatrizPerfilTemas(${ipdId})" class="bg-white text-slate-800 text-xs font-bold px-2 py-1 rounded-lg border border-slate-200 outline-none focus:border-quaest-teal cursor-pointer">
+                                            </select>
+                                        </div>
+                                        <div class="flex items-center gap-1.5">
+                                            <button onclick="exportarGraficoParaPNG('chart-matrix-perfil-${ipdId}', 'Matriz_Tematica_Perfil')" class="px-2 py-1 rounded-lg bg-white hover:bg-slate-100 text-slate-600 border font-bold text-[10px] shadow-sm transition"><i class="fa-solid fa-download text-quaest-teal"></i> PNG</button>
+                                            <button onclick="exportarGraficoParaCSV(mapTemasCharts['matrix_perfil_${ipdId}'], 'Matriz_Tematica_Perfil')" class="px-2 py-1 rounded-lg bg-white hover:bg-slate-100 text-slate-600 border font-bold text-[10px] shadow-sm transition"><i class="fa-solid fa-file-csv text-emerald-600"></i> CSV</button>
+                                        </div>
+                                    </div>
+
+                                    <div class="h-60 w-full relative">
+                                        <canvas id="chart-matrix-perfil-${ipdId}"></canvas>
+                                    </div>
+
+                                    <div id="legend-matrix-perfil-${ipdId}" class="py-1"></div>
+
+                                    <div class="overflow-y-auto h-48 ranking-scroll pt-2 border-t border-slate-200/60">
+                                        <table id="tbl-full-perfil-${ipdId}" class="w-full text-left text-xs">
+                                            <thead class="sticky top-0 bg-slate-50 z-10">
+                                                <tr class="text-slate-400 font-extrabold border-b border-slate-200 uppercase text-[9px]">
+                                                    <th class="pb-2">Tema</th>
+                                                    <th class="pb-2 text-right">Posts (Total/%)</th>
+                                                    <th class="pb-2 text-right">Interações Total</th>
+                                                    <th class="pb-2 text-right">Média/Post</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="tbl-temas-perfil-${ipdId}" class="divide-y divide-slate-200/60 font-medium text-slate-700">
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                            </div>
+
+                            <!-- COMPARATIVO MULTIPERFIL -->
+                            <div class="bg-slate-50 p-6 rounded-3xl border border-slate-200 space-y-4">
+                                <div class="border-b border-slate-200/80 pb-3 space-y-2">
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                                            <i class="fa-solid fa-code-compare text-indigo-600"></i> Eficiência Temática Comparativa (Interações por Post)
+                                        </span>
+                                        <div class="flex items-center gap-1.5">
+                                            <button onclick="exportarGraficoParaPNG('chart-bar-comparativo-${ipdId}', 'Eficiencia_Tematica_Comparativa')" class="px-2.5 py-1 rounded-lg bg-white hover:bg-slate-100 text-slate-600 border border-slate-200 font-bold text-[11px] shadow-sm transition"><i class="fa-solid fa-download text-quaest-teal"></i> PNG</button>
+                                            <button onclick="exportarGraficoParaCSV(mapTemasCharts['bar_comp_${ipdId}'], 'Eficiencia_Tematica_Comparativa')" class="px-2.5 py-1 rounded-lg bg-white hover:bg-slate-100 text-slate-600 border border-slate-200 font-bold text-[11px] shadow-sm transition"><i class="fa-solid fa-file-csv text-emerald-600"></i> CSV</button>
+                                        </div>
+                                    </div>
+                                    
+                                    <div id="container-comp-profiles-${ipdId}" class="flex flex-col gap-1.5 pt-1">
+                                    </div>
+                                </div>
+
+                                <div class="h-64 w-full relative">
+                                    <canvas id="chart-bar-comparativo-${ipdId}"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr class="border-slate-100" />
+
+                    <!-- 5º SEÇÃO: MÓDULO DE POSTAGENS: TOP 3 POSTS (EXPANDIDO) -->
+                    <div class="space-y-6">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+                            <div>
+                                <span class="text-xs font-black text-quaest-teal uppercase tracking-widest">Métricas de Conteúdo</span>
+                                <h3 class="text-xl font-black text-slate-900 mt-1">Análise de Conteúdo & Top 3 Publicações</h3>
+                            </div>
+                            
+                            <div class="flex flex-wrap items-center gap-2">
+                                <select id="select-profile-postages-${ipdId}" class="bg-slate-100 text-slate-800 text-xs font-bold px-3 py-1.5 rounded-xl border border-slate-200 outline-none focus:border-quaest-teal cursor-pointer">
+                                    ${optionsPerfilHtml}
+                                </select>
+                                <select id="select-mes-postages-${ipdId}" class="bg-slate-100 text-slate-800 text-xs font-bold px-3 py-1.5 rounded-xl border border-slate-200 outline-none focus:border-quaest-teal cursor-pointer">
+                                </select>
+                                <button onclick="carregarMetricasConteudo(${ipdId})" class="bg-quaest-teal hover:bg-quaest-tealDark text-white text-xs font-bold px-3.5 py-1.5 rounded-xl shadow-sm transition">
+                                    <i class="fa-solid fa-magnifying-glass mr-1"></i> Filtrar
+                                </button>
+                                <button onclick="toggleMinimizarCard('box-postagens-${ipdId}', this)" title="Minimizar Seção" class="p-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 transition ml-1">
+                                    <i class="fa-solid fa-chevron-up text-xs"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div id="box-postagens-${ipdId}" class="space-y-6 transition-all">
+                          <!-- CARDS DAS 5 DIMENSÕES DO IPD -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
+    <!-- Card 1: Fama -->
+    <div class="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm relative overflow-hidden group hover:border-amber-500/30 transition flex flex-col justify-between gap-3">
+        <div class="flex items-center justify-between">
+            <span class="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider flex items-center gap-1.5">
+                <i class="fa-solid fa-star text-amber-500"></i> Fama
+            </span>
+        </div>
+        <div>
+            <span class="text-[10px] text-slate-400 font-bold uppercase block">Perfil</span>
+            <span id="badge-val-fama-${ipdId}" class="text-3xl font-black text-slate-900 tracking-tight">--</span>
+        </div>
+        <div class="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
+            <span class="text-slate-500 font-medium">Média Grupo:</span>
+            <span id="badge-grp-fama-${ipdId}" class="font-extrabold text-slate-700">--</span>
+        </div>
+    </div>
+
+    <!-- Card 2: Engajamento -->
+    <div class="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm relative overflow-hidden group hover:border-rose-500/30 transition flex flex-col justify-between gap-3">
+        <div class="flex items-center justify-between">
+            <span class="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider flex items-center gap-1.5">
+                <i class="fa-solid fa-heart text-rose-500"></i> Engajamento
+            </span>
+        </div>
+        <div>
+            <span class="text-[10px] text-slate-400 font-bold uppercase block">Perfil</span>
+            <span id="badge-val-engaj-${ipdId}" class="text-3xl font-black text-slate-900 tracking-tight">--</span>
+        </div>
+        <div class="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
+            <span class="text-slate-500 font-medium">Média Grupo:</span>
+            <span id="badge-grp-engaj-${ipdId}" class="font-extrabold text-slate-700">--</span>
+        </div>
+    </div>
+
+    <!-- Card 3: Mobilização -->
+    <div class="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm relative overflow-hidden group hover:border-quaest-teal/30 transition flex flex-col justify-between gap-3">
+        <div class="flex items-center justify-between">
+            <span class="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider flex items-center gap-1.5">
+                <i class="fa-solid fa-share-nodes text-quaest-teal"></i> Mobilização
+            </span>
+        </div>
+        <div>
+            <span class="text-[10px] text-slate-400 font-bold uppercase block">Perfil</span>
+            <span id="badge-val-mob-${ipdId}" class="text-3xl font-black text-slate-900 tracking-tight">--</span>
+        </div>
+        <div class="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
+            <span class="text-slate-500 font-medium">Média Grupo:</span>
+            <span id="badge-grp-mob-${ipdId}" class="font-extrabold text-slate-700">--</span>
+        </div>
+    </div>
+
+    <!-- Card 4: Valência -->
+    <div class="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm relative overflow-hidden group hover:border-emerald-500/30 transition flex flex-col justify-between gap-3">
+        <div class="flex items-center justify-between">
+            <span class="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider flex items-center gap-1.5">
+                <i class="fa-solid fa-scale-balanced text-emerald-500"></i> Valência
+            </span>
+        </div>
+        <div>
+            <span class="text-[10px] text-slate-400 font-bold uppercase block">Perfil</span>
+            <span id="badge-val-valencia-${ipdId}" class="text-3xl font-black text-slate-900 tracking-tight">--</span>
+        </div>
+        <div class="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
+            <span class="text-slate-500 font-medium">Média Grupo:</span>
+            <span id="badge-grp-valencia-${ipdId}" class="font-extrabold text-slate-700">--</span>
+        </div>
+    </div>
+
+    <!-- Card 5: Interesse -->
+    <div class="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm relative overflow-hidden group hover:border-indigo-500/30 transition flex flex-col justify-between gap-3">
+        <div class="flex items-center justify-between">
+            <span class="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider flex items-center gap-1.5">
+                <i class="fa-solid fa-magnifying-glass-chart text-indigo-500"></i> Interesse
+            </span>
+        </div>
+        <div>
+            <span class="text-[10px] text-slate-400 font-bold uppercase block">Perfil</span>
+            <span id="badge-val-interesse-${ipdId}" class="text-3xl font-black text-slate-900 tracking-tight">--</span>
+        </div>
+        <div class="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
+            <span class="text-slate-500 font-medium">Média Grupo:</span>
+            <span id="badge-grp-interesse-${ipdId}" class="font-extrabold text-slate-700">--</span>
+        </div>
+    </div>
+</div>
+
+                            <div class="p-6 rounded-3xl bg-slate-50 border border-slate-200 space-y-4">
+                                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200/80 pb-3">
+                                    <div class="flex items-center gap-2 font-black text-slate-900 text-sm">
+                                        <i class="fa-solid fa-fire text-rose-500"></i> Top Publicações do Mês
+                                    </div>
+                                    
+                                    <div id="container-abas-top-posts-${ipdId}" class="inline-flex p-1 bg-slate-200/60 rounded-xl border border-slate-200 text-xs font-bold gap-1">
+                                        <button id="btn-top-1-${ipdId}" onclick="selecionarTopPostAba(${ipdId}, 0)" class="px-3 py-1 rounded-lg bg-white text-quaest-teal shadow-sm transition">1º Destaque</button>
+                                        <button id="btn-top-2-${ipdId}" onclick="selecionarTopPostAba(${ipdId}, 1)" class="px-3 py-1 rounded-lg text-slate-600 hover:text-slate-900 transition">2º Destaque</button>
+                                        <button id="btn-top-3-${ipdId}" onclick="selecionarTopPostAba(${ipdId}, 2)" class="px-3 py-1 rounded-lg text-slate-600 hover:text-slate-900 transition">3º Destaque</button>
+                                    </div>
+                                </div>
+
+                                <!-- ÁREA DO POST AMPLIADA -->
+                                <div class="bg-white p-6 rounded-2xl border border-slate-200 space-y-4">
+                                    <div class="flex items-center justify-between text-xs text-slate-500 border-b border-slate-100 pb-3">
+                                        <div class="flex items-center gap-3">
+                                            <span><strong>Data:</strong> <span id="top-post-data-${ipdId}">-</span></span>
+                                            <span id="badge-posicao-post-${ipdId}" class="text-[10px] bg-quaest-tealLight text-quaest-teal px-2.5 py-0.5 rounded-md font-extrabold border border-quaest-teal/20">1º Mais Curtido</span>
+                                        </div>
+                                        <a id="top-post-link-${ipdId}" href="#" target="_blank" class="text-quaest-teal font-bold hover:underline flex items-center gap-1">
+                                            Link Original <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+                                        </a>
+                                    </div>
+
+                                    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                                        <div class="lg:col-span-4 space-y-4">
+                                            <div class="flex items-center gap-4 text-sm py-2 border-b border-slate-100">
+                                                <span class="text-slate-800 font-extrabold"><i class="fa-solid fa-heart text-rose-500 mr-1.5"></i> <span id="top-post-likes-${ipdId}">0</span></span>
+                                                <span class="text-slate-800 font-extrabold"><i class="fa-solid fa-comment text-emerald-500 mr-1.5"></i> <span id="top-post-comentarios-${ipdId}">0</span></span>
+                                            </div>
+
+                                            <div class="space-y-1.5">
+                                                <span class="text-[10px] text-slate-400 font-bold uppercase block">Legenda da Publicação</span>
+                                                <div id="top-post-texto-${ipdId}" class="text-xs text-slate-600 leading-relaxed max-h-80 overflow-y-auto whitespace-pre-line bg-slate-50 p-3.5 rounded-xl border border-slate-100 ranking-scroll">
+                                                    Selecione um perfil e mês acima para carregar os conteúdos.
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                       <div class="lg:col-span-8 flex justify-center items-center min-h-[320px] max-h-[360px] bg-slate-50 p-2 rounded-2xl border border-slate-200 overflow-hidden" id="embed-box-${ipdId}">
+    <p class="text-xs text-slate-400 italic text-center">O player do post será exibido aqui...</p>
+</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr class="border-slate-100" />
+
+                    <!-- 6º SEÇÃO: PREVISÃO IPD (MOVIDA PARA DEPOIS DAS POSTAGENS) COM EXPLICAÇÃO -->
+                    <div class="space-y-6">
+                        <!-- BANNER EXPLICATIVO DA PREVISÃO -->
+                        <div class="p-5 rounded-2xl bg-purple-50/70 border border-purple-200/80 flex items-start gap-4">
+                            <div class="w-10 h-10 rounded-xl bg-purple-100 text-purple-600 font-black flex items-center justify-center text-lg shrink-0 shadow-sm mt-0.5">
+                                <i class="fa-solid fa-lightbulb"></i>
+                            </div>
+                            <div class="space-y-1 text-xs text-slate-700">
+                                <h4 class="font-extrabold text-purple-900 text-sm">Entenda o Módulo de Previsão de Performance</h4>
+                                <p class="leading-relaxed">
+                                    O modelo preditivo analisa as trajetórias históricas e a dinâmica relacional do grupo para projetar a tendência de pontuação do IPD nas próximas semanas. A simulação calcula a margem provável de variação e estima possíveis trocas de liderança ou empates técnicos.
+                                </p>
+                            </div>
+                        </div>
+
                         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                             <div class="flex items-center gap-3">
                                 <div class="w-9 h-9 rounded-xl bg-purple-50 border border-purple-200 flex items-center justify-center text-purple-600 text-base font-black shrink-0">
                                     <i class="fa-solid fa-crystal-ball"></i>
                                 </div>
                                 <div>
-                                    <span class="text-[10px] font-black text-purple-600 uppercase tracking-widest block">Inteligência Preditiva (ML)</span>
+                                    <span class="text-[10px] font-black text-purple-600 uppercase tracking-widest block">Inteligência Preditiva</span>
                                     <h3 class="text-xl font-black text-slate-900">Previsão e Ranking Semanal do IPD (${nomeIpd})</h3>
                                 </div>
                             </div>
@@ -2492,7 +2862,7 @@
                                 </div>
 
                                 <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-50 text-purple-700 text-xs font-bold border border-purple-200 w-fit">
-                                    <i class="fa-solid fa-robot"></i> XGBoost Relacional
+                                    <i class="fa-solid fa-robot"></i> Modelo Preditivo Relacional
                                 </span>
                                 <button onclick="toggleMinimizarCard('box-previsao-${ipdId}', this)" title="Minimizar Seção" class="p-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 transition">
                                     <i class="fa-solid fa-chevron-up text-xs"></i>
@@ -2503,9 +2873,19 @@
                         <div id="box-previsao-${ipdId}" class="space-y-6 transition-all">
                             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-slate-50/80 p-5 rounded-2xl border border-slate-200 items-end">
                                 <div class="sm:col-span-2">
-                                    <label for="previsao-semanas-${ipdId}" class="block text-xs font-bold text-slate-600 uppercase mb-1">Horizonte de Projeção (Semanas à Frente)</label>
-                                    <input type="number" id="previsao-semanas-${ipdId}" value="4" min="2" max="12" class="w-full bg-white text-slate-800 text-xs font-bold px-3 py-2 rounded-xl border border-slate-200 outline-none focus:border-purple-500">
-                                </div>
+    <label for="previsao-semanas-${ipdId}" class="flex items-center justify-between text-xs font-bold text-slate-600 uppercase mb-1">
+        <span>Horizonte de Projeção (Semanas à Frente)</span>
+        <span class="text-[9px] bg-purple-100 text-purple-700 px-2 py-0.5 rounded border border-purple-200 tracking-wider">Ideal: 4</span>
+    </label>
+    
+    <!-- O SEGREDO ESTÁ AQUI NOS EVENTOS oninput E onblur -->
+    <input type="number" id="previsao-semanas-${ipdId}" value="4" min="2" max="8" 
+           oninput="if(this.value > 8) this.value = 8;" 
+           onblur="if(this.value < 2 || this.value === '') this.value = 2;"
+           class="w-full bg-white text-slate-800 text-xs font-bold px-3 py-2 rounded-xl border border-slate-200 outline-none focus:border-purple-500">
+           
+    <p class="text-[10px] text-slate-400 mt-1 font-medium"><i class="fa-solid fa-circle-info text-purple-400 mr-1"></i> Limite máximo de 8 semanas para manter a precisão do modelo estatístico.</p>
+</div>
 
                                 <div>
                                     <button type="button" onclick="executarPrevisaoIPD(${ipdId})" class="w-full bg-purple-600 hover:bg-purple-700 text-white text-xs font-black py-2.5 px-4 rounded-xl shadow-sm transition flex items-center justify-center gap-2 cursor-pointer">
@@ -2517,7 +2897,7 @@
 
                             <div id="previsao-loading-${ipdId}" class="hidden p-6 text-center text-slate-500 text-xs italic space-y-2">
                                 <i class="fa-solid fa-spinner animate-spin text-purple-600 text-xl"></i>
-                                <p>Treinando o XGBoost relacional para estimar o ranking de todos os perfis...</p>
+                                <p>Processando modelos estatísticos e preditivos para estimar o ranking de todos os perfis...</p>
                             </div>
 
                             <div id="previsao-erro-${ipdId}" class="hidden p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs space-y-1">
@@ -2555,7 +2935,7 @@
                                             <i class="fa-solid fa-robot text-purple-600 text-sm"></i>
                                             <span>Análise de Tendência</span>
                                         </div>
-                                        <span class="text-[10px] font-bold bg-purple-200 text-purple-800 px-2.5 py-0.5 rounded-md">OpenRouter + GPT-4o</span>
+                                        <span class="text-[10px] font-bold bg-purple-200 text-purple-800 px-2.5 py-0.5 rounded-md">Síntese Inteligente</span>
                                     </div>
                                     <div id="conteudo-explicacao-ia-${ipdId}" class="text-xs text-slate-700 space-y-3 leading-relaxed">
                                     </div>
@@ -2577,8 +2957,23 @@
                         </div>
                     </div>
 
-                    <!-- 3. MÓDULO DE ANÁLISE DE IMPACTO CAUSAL (BSTS) -->
-                    <div class="space-y-6 pt-4 border-t border-slate-100">
+                    <hr class="border-slate-100" />
+
+                    <!-- 7º SEÇÃO: CONTROLE SINTÉTICO / ANÁLISE DE IMPACTO CAUSAL (NO FINAL DO MÓDULO) COM EXPLICAÇÃO -->
+                    <div class="space-y-6">
+                        <!-- BANNER EXPLICATIVO DO CONTROLE SINTÉTICO -->
+                        <div class="p-5 rounded-2xl bg-teal-50/70 border border-quaest-tealBorder flex items-start gap-4">
+                            <div class="w-10 h-10 rounded-xl bg-quaest-tealLight text-quaest-teal font-black flex items-center justify-center text-lg shrink-0 shadow-sm mt-0.5">
+                                <i class="fa-solid fa-circle-question"></i>
+                            </div>
+                            <div class="space-y-1 text-xs text-slate-700">
+                                <h4 class="font-extrabold text-quaest-tealDark text-sm">O que é a Análise de Controle Sintético (BSTS)?</h4>
+                                <p class="leading-relaxed">
+                                    Esta modelagem estatística isola o efeito real de ações, crises ou eventos de comunicação. Ela cria um "dublê virtual" (trajetória contrafactual) para prever como o perfil performaria sem o evento, demonstrando estatisticamente se a variação foi causal ou apenas uma oscilação natural do mercado.
+                                </p>
+                            </div>
+                        </div>
+
                         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                             <div class="flex items-center gap-3">
                                 <div class="w-9 h-9 rounded-xl bg-quaest-tealLight border border-quaest-tealBorder flex items-center justify-center text-quaest-teal text-base font-black shrink-0">
@@ -2682,324 +3077,6 @@
                         </div>
                     </div>
 
-                    <hr class="border-slate-100" />
-
-                    <!-- 4. RADAR MENSAL E CARROSSEL -->
-                    <div class="space-y-6">
-                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                            <div>
-                                <span class="text-xs font-black text-quaest-teal uppercase tracking-widest">Equilíbrio Multidimensão</span>
-                                <h3 class="text-xl font-black text-slate-900 mt-1">Radar Mensal por Perfil</h3>
-                            </div>
-                            
-                            <div class="flex items-center gap-3">
-                                <div class="flex items-center gap-1.5 bg-slate-50 p-1 rounded-xl border border-slate-200">
-                                    <button onclick="exportarGraficoParaPNG('chart-radar-${ipdId}', 'Radar_Multidimensao_IPD')" class="px-2.5 py-1 rounded-lg bg-white hover:bg-slate-100 text-slate-600 border border-slate-200 font-bold text-xs shadow-sm transition flex items-center gap-1">
-                                        <i class="fa-solid fa-download text-quaest-teal"></i> PNG
-                                    </button>
-                                    <button onclick="exportarGraficoParaCSV(stateIPDs[${ipdId}].radarChart, 'Radar_Multidimensao_IPD')" class="px-2.5 py-1 rounded-lg bg-white hover:bg-slate-100 text-slate-600 border border-slate-200 font-bold text-xs shadow-sm transition flex items-center gap-1">
-                                        <i class="fa-solid fa-file-csv text-emerald-600"></i> CSV
-                                    </button>
-                                </div>
-
-                                <div class="flex items-center gap-2">
-                                    <label for="select-mes-radar-${ipdId}" class="text-xs font-bold text-slate-500">Mês do Radar:</label>
-                                    <select id="select-mes-radar-${ipdId}" onchange="atualizarRadarPorMes(${ipdId})" class="bg-slate-100 text-slate-800 text-xs font-bold px-3 py-1.5 rounded-xl border border-slate-200 outline-none focus:border-quaest-teal">
-                                    </select>
-                                </div>
-                                <button onclick="toggleMinimizarCard('box-radar-${ipdId}', this)" title="Minimizar Seção" class="p-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 transition">
-                                    <i class="fa-solid fa-chevron-up text-xs"></i>
-                                </button>
-                            </div>
-                        </div>
-
-                        <div id="box-radar-${ipdId}" class="space-y-6 transition-all">
-                            <div id="container-profiles-radar-${ipdId}" class="flex flex-col gap-1.5">
-                                <span class="text-xs font-bold text-slate-500">Adicionar/Remover no Radar:</span>
-                            </div>
-
-                            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
-                                <div class="lg:col-span-7 p-6 rounded-3xl bg-quaest-tealLight/40 border border-quaest-teal/20 flex items-center justify-center">
-                                    <div class="h-80 w-full max-w-md">
-                                        <canvas id="chart-radar-${ipdId}"></canvas>
-                                    </div>
-                                </div>
-
-                                <div class="lg:col-span-5 p-6 rounded-3xl bg-quaest-tealLight border border-quaest-tealBorder text-slate-900 space-y-5 shadow-sm relative overflow-hidden">
-                                    <div class="border-b border-quaest-tealBorder pb-3 flex items-center justify-between">
-                                        <div class="flex items-center gap-2">
-                                            <span class="w-2.5 h-2.5 rounded-full bg-quaest-teal"></span>
-                                            <span id="slide-label-perfil-${ipdId}" class="text-xs font-black uppercase tracking-wider text-quaest-tealDark truncate max-w-[180px]">Nenhum Perfil</span>
-                                        </div>
-                                        
-                                        <div id="nav-carrossel-${ipdId}" class="flex items-center gap-1.5">
-                                            <button onclick="mudarSlideCarrossel(${ipdId}, -1)" class="w-7 h-7 rounded-lg bg-white border border-quaest-tealBorder hover:bg-quaest-teal hover:text-white text-slate-600 font-bold transition flex items-center justify-center text-xs shadow-sm">
-                                                <i class="fa-solid fa-chevron-left"></i>
-                                            </button>
-                                            <span id="slide-indicador-num-${ipdId}" class="text-[10px] font-mono text-slate-500 px-1 font-bold">0/0</span>
-                                            <button onclick="mudarSlideCarrossel(${ipdId}, 1)" class="w-7 h-7 rounded-lg bg-white border border-quaest-tealBorder hover:bg-quaest-teal hover:text-white text-slate-600 font-bold transition flex items-center justify-center text-xs shadow-sm">
-                                                <i class="fa-solid fa-chevron-right"></i>
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    <div class="space-y-1">
-                                        <div class="flex items-baseline justify-between">
-                                            <span id="slide-tipo-titulo-${ipdId}" class="text-xs text-slate-500 font-medium block">IPD Média do Perfil</span>
-                                            <span id="slide-data-mes-${ipdId}" class="text-xs font-mono font-bold text-quaest-teal bg-white px-2 py-0.5 rounded-md border border-quaest-tealBorder shadow-sm">-</span>
-                                        </div>
-                                        <span id="slide-valor-ipd-${ipdId}" class="text-4xl font-black text-slate-900 tracking-tight block">0.00</span>
-                                    </div>
-
-                                    <div class="space-y-2 pt-2 border-t border-quaest-tealBorder">
-                                        <span class="text-[10px] text-slate-400 font-extrabold uppercase block tracking-wider">Desempenho por Dimensão</span>
-                                        <div id="slide-breakdown-dimensoes-${ipdId}" class="grid grid-cols-2 gap-2 text-xs">
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <hr class="border-slate-100" />
-
-                    <!-- MÓDULO: ANÁLISE TEMÁTICA E MATRIZ DE EFICIÊNCIA -->
-                    <div class="space-y-6">
-                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
-                            <div>
-                                <span class="text-xs font-black text-quaest-teal uppercase tracking-widest">Matriz de Eficiência Temática</span>
-                                <h3 class="text-xl font-black text-slate-900 mt-1">Análise Temática e Matriz de Retorno</h3>
-                                <p class="text-slate-500 text-xs mt-0.5">Cruze o volume de publicações (Total de Posts) contra o engajamento retornado (Média de Interações/Post).</p>
-                            </div>
-                            
-                            <div class="flex items-center gap-3">
-                                <div class="flex items-center gap-2">
-                                    <label for="select-mes-temas-${ipdId}" class="text-xs font-bold text-slate-500">Mês de Análise:</label>
-                                    <select id="select-mes-temas-${ipdId}" onchange="carregarTemasEngajamento(${ipdId})" class="bg-slate-100 text-slate-800 text-xs font-bold px-3 py-1.5 rounded-xl border border-slate-200 outline-none focus:border-quaest-teal cursor-pointer">
-                                    </select>
-                                </div>
-                                <button onclick="toggleMinimizarCard('box-temas-${ipdId}', this)" title="Minimizar Seção" class="p-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 transition">
-                                    <i class="fa-solid fa-chevron-up text-xs"></i>
-                                </button>
-                            </div>
-                        </div>
-
-                        <div id="box-temas-${ipdId}" class="space-y-6 transition-all">
-                            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
-                                
-                                <!-- MATRIZ GERAL -->
-                                <div class="lg:col-span-6 bg-slate-50 p-6 rounded-3xl border border-slate-200 flex flex-col justify-between space-y-4">
-                                    <div class="flex items-center justify-between border-b border-slate-200/80 pb-3">
-                                        <span class="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
-                                            <i class="fa-solid fa-table-cells text-quaest-teal"></i> Matriz Geral (Projeto)
-                                        </span>
-                                        <div class="flex items-center gap-1.5">
-                                            <button onclick="exportarGraficoParaPNG('chart-matrix-geral-${ipdId}', 'Matriz_Tematica_Geral')" class="px-2 py-1 rounded-lg bg-white hover:bg-slate-100 text-slate-600 border font-bold text-[10px] shadow-sm transition"><i class="fa-solid fa-download text-quaest-teal"></i> PNG</button>
-                                            <button onclick="exportarGraficoParaCSV(mapTemasCharts['matrix_geral_${ipdId}'], 'Matriz_Tematica_Geral')" class="px-2 py-1 rounded-lg bg-white hover:bg-slate-100 text-slate-600 border font-bold text-[10px] shadow-sm transition"><i class="fa-solid fa-file-csv text-emerald-600"></i> CSV</button>
-                                        </div>
-                                    </div>
-
-                                    <div class="h-60 w-full relative">
-                                        <canvas id="chart-matrix-geral-${ipdId}"></canvas>
-                                    </div>
-
-                                    <!-- LEGENDA EXCLUSIVA DO GRÁFICO GERAL -->
-                                    <div id="legend-matrix-geral-${ipdId}" class="py-1"></div>
-
-                                    <div class="overflow-y-auto h-48 ranking-scroll pt-2 border-t border-slate-200/60">
-                                        <table id="tbl-full-geral-${ipdId}" class="w-full text-left text-xs">
-                                            <thead class="sticky top-0 bg-slate-50 z-10">
-                                                <tr class="text-slate-400 font-extrabold border-b border-slate-200 uppercase text-[9px]">
-                                                    <th class="pb-2">Tema</th>
-                                                    <th class="pb-2 text-right">Posts (Total/%)</th>
-                                                    <th class="pb-2 text-right">Interações Total</th>
-                                                    <th class="pb-2 text-right">Média/Post</th>
-                                                
-                                                </tr>
-                                            </thead>
-                                            <tbody id="tbl-temas-geral-${ipdId}" class="divide-y divide-slate-200/60 font-medium text-slate-700">
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-
-                                <!-- MATRIZ POR PERFIL -->
-                                <div class="lg:col-span-6 bg-slate-50 p-6 rounded-3xl border border-slate-200 flex flex-col justify-between space-y-4">
-                                    <div class="flex items-center justify-between border-b border-slate-200/80 pb-3">
-                                        <div class="flex items-center gap-1.5">
-                                            <select id="select-perfil-temas-${ipdId}" onchange="renderizarMatrizPerfilTemas(${ipdId})" class="bg-white text-slate-800 text-xs font-bold px-2 py-1 rounded-lg border border-slate-200 outline-none focus:border-quaest-teal cursor-pointer">
-                                            </select>
-                                        </div>
-                                        <div class="flex items-center gap-1.5">
-                                            <button onclick="exportarGraficoParaPNG('chart-matrix-perfil-${ipdId}', 'Matriz_Tematica_Perfil')" class="px-2 py-1 rounded-lg bg-white hover:bg-slate-100 text-slate-600 border font-bold text-[10px] shadow-sm transition"><i class="fa-solid fa-download text-quaest-teal"></i> PNG</button>
-                                            <button onclick="exportarGraficoParaCSV(mapTemasCharts['matrix_perfil_${ipdId}'], 'Matriz_Tematica_Perfil')" class="px-2 py-1 rounded-lg bg-white hover:bg-slate-100 text-slate-600 border font-bold text-[10px] shadow-sm transition"><i class="fa-solid fa-file-csv text-emerald-600"></i> CSV</button>
-                                        </div>
-                                    </div>
-
-                                    <div class="h-60 w-full relative">
-                                        <canvas id="chart-matrix-perfil-${ipdId}"></canvas>
-                                    </div>
-
-                                    <!-- LEGENDA EXCLUSIVA DO GRÁFICO POR PERFIL -->
-                                    <div id="legend-matrix-perfil-${ipdId}" class="py-1"></div>
-
-                                    <div class="overflow-y-auto h-48 ranking-scroll pt-2 border-t border-slate-200/60">
-                                        <table id="tbl-full-perfil-${ipdId}" class="w-full text-left text-xs">
-                                            <thead class="sticky top-0 bg-slate-50 z-10">
-                                                <tr class="text-slate-400 font-extrabold border-b border-slate-200 uppercase text-[9px]">
-                                                    <th class="pb-2">Tema</th>
-                                                    <th class="pb-2 text-right">Posts (Total/%)</th>
-                                                    <th class="pb-2 text-right">Interações Total</th>
-                                                    <th class="pb-2 text-right">Média/Post</th>
-                                                   
-                                                </tr>
-                                            </thead>
-                                            <tbody id="tbl-temas-perfil-${ipdId}" class="divide-y divide-slate-200/60 font-medium text-slate-700">
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-
-                            </div>
-
-                            <!-- COMPARATIVO MULTIPERFIL -->
-                            <div class="bg-slate-50 p-6 rounded-3xl border border-slate-200 space-y-4">
-                                <div class="border-b border-slate-200/80 pb-3 space-y-2">
-                                    <div class="flex items-center justify-between">
-                                        <span class="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
-                                            <i class="fa-solid fa-code-compare text-indigo-600"></i> Eficiência Temática Comparativa (Interações por Post)
-                                        </span>
-                                        <div class="flex items-center gap-1.5">
-                                            <button onclick="exportarGraficoParaPNG('chart-bar-comparativo-${ipdId}', 'Eficiencia_Tematica_Comparativa')" class="px-2.5 py-1 rounded-lg bg-white hover:bg-slate-100 text-slate-600 border border-slate-200 font-bold text-[11px] shadow-sm transition"><i class="fa-solid fa-download text-quaest-teal"></i> PNG</button>
-                                            <button onclick="exportarGraficoParaCSV(mapTemasCharts['bar_comp_${ipdId}'], 'Eficiencia_Tematica_Comparativa')" class="px-2.5 py-1 rounded-lg bg-white hover:bg-slate-100 text-slate-600 border border-slate-200 font-bold text-[11px] shadow-sm transition"><i class="fa-solid fa-file-csv text-emerald-600"></i> CSV</button>
-                                        </div>
-                                    </div>
-                                    
-                                    <div id="container-comp-profiles-${ipdId}" class="flex flex-col gap-1.5 pt-1">
-                                    </div>
-                                </div>
-
-                                <div class="h-64 w-full relative">
-                                    <canvas id="chart-bar-comparativo-${ipdId}"></canvas>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <hr class="border-slate-100" />
-
-                    <!-- 5. MÓDULO DE POSTAGENS: TOP 3 POSTS -->
-                    <div class="space-y-6">
-                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
-                            <div>
-                                <span class="text-xs font-black text-quaest-teal uppercase tracking-widest">Métricas de Conteúdo</span>
-                                <h3 class="text-xl font-black text-slate-900 mt-1">Análise de Conteúdo & Top 3 Publicações</h3>
-                            </div>
-                            
-                            <div class="flex flex-wrap items-center gap-2">
-                                <select id="select-profile-postages-${ipdId}" class="bg-slate-100 text-slate-800 text-xs font-bold px-3 py-1.5 rounded-xl border border-slate-200 outline-none focus:border-quaest-teal cursor-pointer">
-                                    ${optionsPerfilHtml}
-                                </select>
-                                <select id="select-mes-postages-${ipdId}" class="bg-slate-100 text-slate-800 text-xs font-bold px-3 py-1.5 rounded-xl border border-slate-200 outline-none focus:border-quaest-teal cursor-pointer">
-                                </select>
-                                <button onclick="carregarMetricasConteudo(${ipdId})" class="bg-quaest-teal hover:bg-quaest-tealDark text-white text-xs font-bold px-3.5 py-1.5 rounded-xl shadow-sm transition">
-                                    <i class="fa-solid fa-magnifying-glass mr-1"></i> Filtrar
-                                </button>
-                                <button onclick="toggleMinimizarCard('box-postagens-${ipdId}', this)" title="Minimizar Seção" class="p-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 transition ml-1">
-                                    <i class="fa-solid fa-chevron-up text-xs"></i>
-                                </button>
-                            </div>
-                        </div>
-
-                        <div id="box-postagens-${ipdId}" class="space-y-6 transition-all">
-                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                <div class="p-4 rounded-2xl bg-white border border-slate-200 border-l-4 border-l-quaest-teal shadow-sm">
-                                    <span class="text-[10px] text-slate-400 font-extrabold uppercase block">Média de Curtidas / Post</span>
-                                    <span id="val-media-likes-${ipdId}" class="text-xl font-black text-slate-900 mt-0.5 block">0</span>
-                                </div>
-                                <div class="p-4 rounded-2xl bg-white border border-slate-200 border-l-4 border-l-emerald-500 shadow-sm">
-                                    <span class="text-[10px] text-slate-400 font-extrabold uppercase block">Média de Comentários / Post</span>
-                                    <span id="val-media-comentarios-${ipdId}" class="text-xl font-black text-slate-900 mt-0.5 block">0</span>
-                                </div>
-                                <div class="p-4 rounded-2xl bg-white border border-slate-200 border-l-4 border-l-amber-500 shadow-sm">
-                                    <span class="text-[10px] text-slate-400 font-extrabold uppercase block">Total de Publicações no Mês</span>
-                                    <span id="val-total-posts-${ipdId}" class="text-xl font-black text-slate-900 mt-0.5 block">0</span>
-                                </div>
-                            </div>
-
-                            <div class="p-6 rounded-3xl bg-slate-50 border border-slate-200 space-y-4">
-                                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200/80 pb-3">
-                                    <div class="flex items-center gap-2 font-black text-slate-900 text-sm">
-                                        <i class="fa-solid fa-fire text-rose-500"></i> Top Publicações do Mês
-                                    </div>
-                                    
-                                    <div id="container-abas-top-posts-${ipdId}" class="inline-flex p-1 bg-slate-200/60 rounded-xl border border-slate-200 text-xs font-bold gap-1">
-                                        <button id="btn-top-1-${ipdId}" onclick="selecionarTopPostAba(${ipdId}, 0)" class="px-3 py-1 rounded-lg bg-white text-quaest-teal shadow-sm transition">1º Destaque</button>
-                                        <button id="btn-top-2-${ipdId}" onclick="selecionarTopPostAba(${ipdId}, 1)" class="px-3 py-1 rounded-lg text-slate-600 hover:text-slate-900 transition">2º Destaque</button>
-                                        <button id="btn-top-3-${ipdId}" onclick="selecionarTopPostAba(${ipdId}, 2)" class="px-3 py-1 rounded-lg text-slate-600 hover:text-slate-900 transition">3º Destaque</button>
-                                    </div>
-                                </div>
-
-                                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-                                    <div class="lg:col-span-7 bg-white p-4 rounded-2xl border border-slate-200 space-y-3">
-                                        <div class="flex items-center justify-between text-xs text-slate-500 border-b border-slate-100 pb-2">
-                                            <span><strong>Data:</strong> <span id="top-post-data-${ipdId}">-</span></span>
-                                            <a id="top-post-link-${ipdId}" href="#" target="_blank" class="text-quaest-teal font-bold hover:underline">
-                                                Link Original <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
-                                            </a>
-                                        </div>
-
-                                        <div class="grid grid-cols-1 sm:grid-cols-12 gap-4 items-center">
-                                            <div class="sm:col-span-6 space-y-2">
-                                                <div class="flex items-center gap-3 text-xs py-1 border-b border-slate-100">
-                                                    <span class="text-slate-800 font-extrabold"><i class="fa-solid fa-heart text-rose-500 mr-1"></i> <span id="top-post-likes-${ipdId}">0</span></span>
-                                                    <span class="text-slate-800 font-extrabold"><i class="fa-solid fa-comment text-emerald-500 mr-1"></i> <span id="top-post-comentarios-${ipdId}">0</span></span>
-                                                </div>
-
-                                                <div id="top-post-texto-${ipdId}" class="text-xs text-slate-600 leading-relaxed max-h-32 overflow-y-auto whitespace-pre-line bg-slate-50 p-2.5 rounded-xl border border-slate-100 ranking-scroll">
-                                                    Selecione um perfil e mês acima para carregar os conteúdos.
-                                                </div>
-                                            </div>
-
-                                            <div class="sm:col-span-6 flex justify-center items-center h-48 bg-slate-50 p-2 rounded-xl border border-slate-200 overflow-hidden" id="embed-box-${ipdId}">
-                                                <p class="text-xs text-slate-400 italic text-center">O player do post será exibido aqui...</p>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div class="lg:col-span-5 space-y-3">
-                                        <div class="text-xs font-black text-slate-400 uppercase tracking-wider flex items-center justify-between">
-                                            <span><i class="fa-solid fa-lightbulb text-amber-500 mr-1"></i> Insights da Publicação</span>
-                                            <span id="badge-posicao-post-${ipdId}" class="text-[10px] bg-quaest-tealLight text-quaest-teal px-2 py-0.5 rounded-md font-extrabold border border-quaest-teal/20">1º Mais Curtido</span>
-                                        </div>
-
-                                        <div class="p-3.5 rounded-2xl bg-white border border-slate-200 space-y-1 shadow-sm">
-                                            <span class="text-[10px] text-slate-400 font-bold uppercase block">Desempenho da Postagem vs. Média do Perfil</span>
-                                            <div id="insight-performance-relativa-${ipdId}" class="text-sm font-black text-slate-800 flex items-center gap-1.5">
-                                                <span class="text-slate-400 text-xs font-normal">Aguardando dados...</span>
-                                            </div>
-                                        </div>
-
-                                        <div class="p-3.5 rounded-2xl bg-white border border-slate-200 space-y-1 shadow-sm">
-                                            <span class="text-[10px] text-slate-400 font-bold uppercase block">Razão de Comentários / Curtidas</span>
-                                            <div id="insight-razao-engajamento-${ipdId}" class="text-sm font-black text-slate-800">
-                                                <span class="text-slate-400 text-xs font-normal">Aguardando dados...</span>
-                                            </div>
-                                        </div>
-
-                                        <div class="p-3.5 rounded-2xl bg-white border border-slate-200 space-y-1 shadow-sm">
-                                            <span class="text-[10px] text-slate-400 font-bold uppercase block">Consistência de Publicação no Perfil</span>
-                                            <div id="insight-ritmo-postagens-${ipdId}" class="text-xs font-extrabold text-slate-700">
-                                                <span class="text-slate-400 text-xs font-normal">Aguardando dados...</span>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                </div>
-                            </div>
-                        </div>
-
-                    </div>        
                 `;
 
                 container.appendChild(ipdSection);
@@ -3019,7 +3096,7 @@
                 ipdObj: ipdObj,
                 periodoHistorico: 'mes',
                 mesSelecionadoRadar: null,
-                profilesSelecionadosRanking: new Set(todosPerfisIpd), // Marcados todos por padrão
+                profilesSelecionadosRanking: new Set(todosPerfisIpd),
                 profilesSelecionadosRadar: new Set(todosPerfisIpd.slice(0, 2)),
                 perfilDestacadoRanking: null,
                 slidesCarrosselData: [],
@@ -3440,7 +3517,14 @@
         async function executarPrevisaoIPD(ipdId) {
             const semanasInput = document.getElementById(`previsao-semanas-${ipdId}`);
             const semanasFrente = semanasInput ? semanasInput.value : 4;
-
+            if (isNaN(semanasFrente) || semanasFrente < 2) {
+                    semanasFrente = 2;
+                } else if (semanasFrente > 8) {
+                    semanasFrente = 8;
+                }
+            if (semanasInput) {
+        semanasInput.value = semanasFrente;
+    }
             const boxLoading = document.getElementById(`previsao-loading-${ipdId}`);
             const boxErro = document.getElementById(`previsao-erro-${ipdId}`);
             const boxResultados = document.getElementById(`previsao-resultados-${ipdId}`);
@@ -3664,6 +3748,7 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    clip: false,
                     interaction: { mode: 'index', intersect: false },
                     plugins: {
                         legend: {
