@@ -331,7 +331,7 @@
 
             <div id="container-relatorios-ipd" class="space-y-12">
                 <div class="text-center py-12 text-slate-400 text-sm">
-                    <i class="fa-solid fa-spinner animate-spin mr-2"></i> Mapeando e processando os relatorios dos IPDs...
+                    <i class="fa-solid fa-spinner animate-spin mr-2"></i> Mapeando e processando os relatórios dos IPDs...
                 </div>
             </div>
 
@@ -492,7 +492,6 @@
            FUNÇÕES GLOBAIS DE SELEÇÃO TOTAL E DESMARCAÇÃO DE PROFILES
            ========================================================= */
 
-        // 0. RANKING BARRAS DADOS
         function selecionarTodosRanking(ipdId) {
             const ref = stateIPDs[ipdId];
             if (!ref) return;
@@ -510,7 +509,6 @@
             atualizarRankingIpdModulo(ipdId, selectMes ? selectMes.value : null);
         }
 
-        // 1. EVOLUÇÃO HISTÓRICA DO IPD
         function selecionarTodosHistorico(ipdId) {
             const ref = stateIPDs[ipdId];
             if (!ref) return;
@@ -552,7 +550,6 @@
             montarBotoesHistorico(ipdId);
         }
 
-        // 2. RADAR MENSAL
         function selecionarTodosRadar(ipdId) {
             const ref = stateIPDs[ipdId];
             if (!ref) return;
@@ -574,7 +571,6 @@
             atualizarRadarPorMes(ipdId);
         }
 
-        // 3. MATRIZ DE EFICIÊNCIA TEMÁTICA COMPARATIVA
         function selecionarTodosTemasComp(ipdId) {
             const ref = stateIPDs[ipdId];
             if (!ref || !stateTemasMetricas[ipdId]) return;
@@ -596,12 +592,11 @@
             renderizarComparativoPerfis(ipdId);
         }
 
-        // 4. MÓDULO PREDITIVO
         function selecionarTodosPrevisao(ipdId) {
             const state = statePrevisaoPreditiva[ipdId];
-            if (!state || !state.dadosSemanais) return;
+            if (!state || !state.dadosMensais) return;
 
-            const todosPerfis = [...new Set(state.dadosSemanais.flatMap(s => (s.ranking_perfis || []).map(p => p.profile)))].sort((a,b) => a.localeCompare(b, 'pt-BR'));
+            const todosPerfis = [...new Set(state.dadosMensais.flatMap(m => (m.ranking_perfis || []).map(p => p.profile)))].sort((a,b) => a.localeCompare(b, 'pt-BR'));
             state.perfisAtivos = new Set(todosPerfis);
 
             montarBotoesFiltroPrevisao(ipdId, todosPerfis);
@@ -610,9 +605,9 @@
 
         function desmarcarTodosPrevisao(ipdId) {
             const state = statePrevisaoPreditiva[ipdId];
-            if (!state || !state.dadosSemanais) return;
+            if (!state || !state.dadosMensais) return;
 
-            const todosPerfis = [...new Set(state.dadosSemanais.flatMap(s => (s.ranking_perfis || []).map(p => p.profile)))].sort((a,b) => a.localeCompare(b, 'pt-BR'));
+            const todosPerfis = [...new Set(state.dadosMensais.flatMap(m => (m.ranking_perfis || []).map(p => p.profile)))].sort((a,b) => a.localeCompare(b, 'pt-BR'));
             state.perfisAtivos.clear();
 
             montarBotoesFiltroPrevisao(ipdId, todosPerfis);
@@ -793,105 +788,105 @@
         }
 
         function renderizarEmbedConteudo(ipdId, postUrl) {
-    const container = document.getElementById(`embed-box-${ipdId}`);
-    if (!container) return;
+            const container = document.getElementById(`embed-box-${ipdId}`);
+            if (!container) return;
 
-    if (!postUrl || typeof postUrl !== 'string' || !postUrl.startsWith('http')) {
-        container.innerHTML = `
-            <div class="text-center p-4 text-xs text-slate-400 italic">
-                <i class="fa-solid fa-link-slash text-slate-300 text-lg mb-1 block"></i>
-                Link de publicação indisponível.
-            </div>`;
-        return;
-    }
+            if (!postUrl || typeof postUrl !== 'string' || !postUrl.startsWith('http')) {
+                container.innerHTML = `
+                    <div class="text-center p-4 text-xs text-slate-400 italic">
+                        <i class="fa-solid fa-link-slash text-slate-300 text-lg mb-1 block"></i>
+                        Link de publicação indisponível.
+                    </div>`;
+                return;
+            }
 
-    container.innerHTML = '';
-    const urlLimpa = postUrl.trim();
+            container.innerHTML = '';
+            const urlLimpa = postUrl.trim();
 
-    if (urlLimpa.includes('facebook.com') || urlLimpa.includes('fb.watch')) {
-        const urlEncoded = encodeURIComponent(urlLimpa);
-        container.innerHTML = `
-            <div class="w-full h-full flex justify-center items-center overflow-hidden rounded-xl">
-                <iframe 
-                    src="https://www.facebook.com/plugins/video.php?height=300&href=${urlEncoded}&show_text=false&width=560&t=0" 
-                    width="100%" 
-                    height="300" 
-                    style="border:none; overflow:hidden; max-width:480px; max-height:300px;" 
-                    scrolling="no" 
-                    frameborder="0" 
-                    allowfullscreen="true" 
-                    allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share">
-                </iframe>
-            </div>`;
-    } else if (urlLimpa.includes('instagram.com')) {
-        container.innerHTML = `
-            <div class="w-full max-h-[320px] overflow-y-auto ranking-scroll flex justify-center">
-                <blockquote class="instagram-media" data-instgrm-captioned data-instgrm-permalink="${urlLimpa}" data-instgrm-version="14" style="background:#FFF; border:0; border-radius:12px; box-shadow:0 0 1px 0 rgba(0,0,0,0.5),0 1px 10px 0 rgba(0,0,0,0.15); margin: 1px; max-width:400px; min-width:260px; padding:0; width:99.375%;">
-                    <div style="padding:12px;"> 
-                        <a href="${urlLimpa}" style="background:#FFFFFF; line-height:0; padding:0 0; text-align:center; text-decoration:none; width:100%;" target="_blank"> 
-                            <div style="color:#3897f0; font-family:Arial,sans-serif; font-size:13px; font-weight:550;">Ver essa publicação no Instagram</div>
-                        </a>
-                    </div>
-                </blockquote>
-            </div>`;
+            if (urlLimpa.includes('facebook.com') || urlLimpa.includes('fb.watch')) {
+                const urlEncoded = encodeURIComponent(urlLimpa);
+                container.innerHTML = `
+                    <div class="w-full h-full flex justify-center items-center overflow-hidden rounded-xl">
+                        <iframe 
+                            src="https://www.facebook.com/plugins/video.php?height=300&href=${urlEncoded}&show_text=false&width=560&t=0" 
+                            width="100%" 
+                            height="300" 
+                            style="border:none; overflow:hidden; max-width:480px; max-height:300px;" 
+                            scrolling="no" 
+                            frameborder="0" 
+                            allowfullscreen="true" 
+                            allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share">
+                        </iframe>
+                    </div>`;
+            } else if (urlLimpa.includes('instagram.com')) {
+                container.innerHTML = `
+                    <div class="w-full max-h-[320px] overflow-y-auto ranking-scroll flex justify-center">
+                        <blockquote class="instagram-media" data-instgrm-captioned data-instgrm-permalink="${urlLimpa}" data-instgrm-version="14" style="background:#FFF; border:0; border-radius:12px; box-shadow:0 0 1px 0 rgba(0,0,0,0.5),0 1px 10px 0 rgba(0,0,0,0.15); margin: 1px; max-width:400px; min-width:260px; padding:0; width:99.375%;">
+                            <div style="padding:12px;"> 
+                                <a href="${urlLimpa}" style="background:#FFFFFF; line-height:0; padding:0 0; text-align:center; text-decoration:none; width:100%;" target="_blank"> 
+                                    <div style="color:#3897f0; font-family:Arial,sans-serif; font-size:13px; font-weight:550;">Ver essa publicação no Instagram</div>
+                                </a>
+                            </div>
+                        </blockquote>
+                    </div>`;
 
-        if (window.instgrm && window.instgrm.Embeds) {
-            window.instgrm.Embeds.process();
-        } else {
-            let script = document.createElement('script');
-            script.src = "https://www.instagram.com/embed.js";
-            script.async = true;
-            document.body.appendChild(script);
+                if (window.instgrm && window.instgrm.Embeds) {
+                    window.instgrm.Embeds.process();
+                } else {
+                    let script = document.createElement('script');
+                    script.src = "https://www.instagram.com/embed.js";
+                    script.async = true;
+                    document.body.appendChild(script);
+                }
+            } else if (urlLimpa.includes('tiktok.com')) {
+                let videoId = urlLimpa.includes('/video/') ? urlLimpa.split('/video/')[1]?.split('?')[0] || '' : '';
+                container.innerHTML = `
+                    <div class="w-full max-h-[320px] overflow-y-auto ranking-scroll flex justify-center">
+                        <blockquote class="tiktok-embed" cite="${urlLimpa}" data-video-id="${videoId}" style="max-width: 320px; min-width: 260px; margin: 0 auto;">
+                            <section><a target="_blank" title="TikTok" href="${urlLimpa}">Carregando vídeo do TikTok...</a></section>
+                        </blockquote>
+                    </div>`;
+                
+                const oldScript = document.getElementById('tiktok-embed-script');
+                if (oldScript) oldScript.remove();
+
+                const script = document.createElement('script');
+                script.id = 'tiktok-embed-script';
+                script.src = 'https://www.tiktok.com/embed.js';
+                script.async = true;
+                document.body.appendChild(script);
+            } else if (urlLimpa.includes('twitter.com') || urlLimpa.includes('x.com')) {
+                container.innerHTML = `
+                    <div class="w-full max-h-[320px] overflow-y-auto ranking-scroll">
+                        <blockquote class="twitter-tweet" data-dnt="true" align="center"><a href="${urlLimpa}"></a></blockquote>
+                    </div>`;
+                if (window.twttr && window.twttr.widgets) window.twttr.widgets.load(container);
+                else {
+                    let script = document.createElement('script');
+                    script.src = "https://platform.twitter.com/widgets.js";
+                    document.body.appendChild(script);
+                }
+            } else if (urlLimpa.includes('youtube.com') || urlLimpa.includes('youtu.be')) {
+                let videoId = '';
+                if (urlLimpa.includes('/shorts/')) videoId = urlLimpa.split('/shorts/')[1]?.split('?')[0];
+                else if (urlLimpa.includes('youtu.be/')) videoId = urlLimpa.split('youtu.be/')[1]?.split('?')[0];
+                else if (urlLimpa.includes('watch?v=')) videoId = urlLimpa.split('watch?v=')[1]?.split('&')[0];
+
+                if (videoId) {
+                    container.innerHTML = `
+                        <div class="w-full h-[300px] max-w-lg mx-auto rounded-xl overflow-hidden shadow-sm">
+                            <iframe class="w-full h-full" src="https://www.youtube.com/embed/${videoId}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+                        </div>`;
+                } else {
+                    container.innerHTML = `<a href="${urlLimpa}" target="_blank" class="px-4 py-2 rounded-xl bg-red-50 text-red-600 font-bold text-xs border border-red-200"><i class="fa-brands fa-youtube mr-1"></i> Abrir no YouTube</a>`;
+                }
+            } else {
+                container.innerHTML = `
+                    <a href="${urlLimpa}" target="_blank" class="px-4 py-2 rounded-xl bg-quaest-tealLight text-quaest-teal font-bold text-xs border border-quaest-teal/30 hover:bg-quaest-teal/10 transition">
+                        Abrir Publicação Externa <i class="fa-solid fa-arrow-up-right-from-square ml-1"></i>
+                    </a>`;
+            }
         }
-    } else if (urlLimpa.includes('tiktok.com')) {
-        let videoId = urlLimpa.includes('/video/') ? urlLimpa.split('/video/')[1]?.split('?')[0] || '' : '';
-        container.innerHTML = `
-            <div class="w-full max-h-[320px] overflow-y-auto ranking-scroll flex justify-center">
-                <blockquote class="tiktok-embed" cite="${urlLimpa}" data-video-id="${videoId}" style="max-width: 320px; min-width: 260px; margin: 0 auto;">
-                    <section><a target="_blank" title="TikTok" href="${urlLimpa}">Carregando vídeo do TikTok...</a></section>
-                </blockquote>
-            </div>`;
-        
-        const oldScript = document.getElementById('tiktok-embed-script');
-        if (oldScript) oldScript.remove();
-
-        const script = document.createElement('script');
-        script.id = 'tiktok-embed-script';
-        script.src = 'https://www.tiktok.com/embed.js';
-        script.async = true;
-        document.body.appendChild(script);
-    } else if (urlLimpa.includes('twitter.com') || urlLimpa.includes('x.com')) {
-        container.innerHTML = `
-            <div class="w-full max-h-[320px] overflow-y-auto ranking-scroll">
-                <blockquote class="twitter-tweet" data-dnt="true" align="center"><a href="${urlLimpa}"></a></blockquote>
-            </div>`;
-        if (window.twttr && window.twttr.widgets) window.twttr.widgets.load(container);
-        else {
-            let script = document.createElement('script');
-            script.src = "https://platform.twitter.com/widgets.js";
-            document.body.appendChild(script);
-        }
-    } else if (urlLimpa.includes('youtube.com') || urlLimpa.includes('youtu.be')) {
-        let videoId = '';
-        if (urlLimpa.includes('/shorts/')) videoId = urlLimpa.split('/shorts/')[1]?.split('?')[0];
-        else if (urlLimpa.includes('youtu.be/')) videoId = urlLimpa.split('youtu.be/')[1]?.split('?')[0];
-        else if (urlLimpa.includes('watch?v=')) videoId = urlLimpa.split('watch?v=')[1]?.split('&')[0];
-
-        if (videoId) {
-            container.innerHTML = `
-                <div class="w-full h-[300px] max-w-lg mx-auto rounded-xl overflow-hidden shadow-sm">
-                    <iframe class="w-full h-full" src="https://www.youtube.com/embed/${videoId}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
-                </div>`;
-        } else {
-            container.innerHTML = `<a href="${urlLimpa}" target="_blank" class="px-4 py-2 rounded-xl bg-red-50 text-red-600 font-bold text-xs border border-red-200"><i class="fa-brands fa-youtube mr-1"></i> Abrir no YouTube</a>`;
-        }
-    } else {
-        container.innerHTML = `
-            <a href="${urlLimpa}" target="_blank" class="px-4 py-2 rounded-xl bg-quaest-tealLight text-quaest-teal font-bold text-xs border border-quaest-teal/30 hover:bg-quaest-teal/10 transition">
-                Abrir Publicação Externa <i class="fa-solid fa-arrow-up-right-from-square ml-1"></i>
-            </a>`;
-    }
-}
 
         async function carregarTemasEngajamento(ipdId) {
             const selectMes = document.getElementById(`select-mes-temas-${ipdId}`);
@@ -1458,9 +1453,16 @@
             const profileName = selectProfile.value;
             const mesAnoRaw = selectMes.value;
 
+            const dimKeys = ['share', 'debate', 'foco', 'consist'];
+
             if (!profileName || !mesAnoRaw) {
                 const elTexto = document.getElementById(`top-post-texto-${ipdId}`);
                 if (elTexto) elTexto.innerText = "Selecione o perfil e o mês para consultar.";
+                
+                dimKeys.forEach(dim => {
+                    const elVal = document.getElementById(`badge-val-${dim}-${ipdId}`);
+                    if (elVal) elVal.innerText = "--";
+                });
                 return;
             }
 
@@ -1471,16 +1473,12 @@
                 const response = await fetch(url);
                 const data = await response.json();
 
-                const dimKeys = ['fama', 'engaj', 'mob', 'valencia', 'interesse'];
-
                 if (!response.ok || data.error) {
                     const msgErro = data.error || "Erro ao consultar métricas do período.";
                     
                     dimKeys.forEach(dim => {
                         const elVal = document.getElementById(`badge-val-${dim}-${ipdId}`);
-                        const elGrp = document.getElementById(`badge-grp-${dim}-${ipdId}`);
                         if (elVal) elVal.innerText = "--";
-                        if (elGrp) elGrp.innerText = "--";
                     });
 
                     document.getElementById(`top-post-texto-${ipdId}`).innerHTML = `<span class="text-rose-600 font-bold"><i class="fa-solid fa-triangle-exclamation mr-1"></i> ${msgErro}</span>`;
@@ -1489,32 +1487,40 @@
                     return;
                 }
 
-                const mPerfil = data.metricas_perfil || {};
-                const mGrupo = data.media_grupo || {};
+                const cPerfil = data.conteudo_perfil || {};
+                const cNotas = data.notas_normalizadas_mes || {};
 
-                const mapDimensoes = [
-                    { key: 'fama', valP: mPerfil.fama, valG: mGrupo.fama },
-                    { key: 'engaj', valP: mPerfil.engajamento, valG: mGrupo.engajamento },
-                    { key: 'mob', valP: mPerfil.mobilizacao, valG: mGrupo.mobilizacao },
-                    { key: 'valencia', valP: mPerfil.valencia, valG: mGrupo.valencia },
-                    { key: 'interesse', valP: mPerfil.interesse, valG: mGrupo.interesse }
-                ];
+                // 1. Share
+                const elShare = document.getElementById(`badge-val-share-${ipdId}`);
+                const elClassShare = document.getElementById(`badge-class-share-${ipdId}`);
+                if(elShare) elShare.innerText = cPerfil.performance_bruta?.share_pct !== undefined ? `${cPerfil.performance_bruta.share_pct.toFixed(1)}%` : '--%';
+                if(elClassShare) elClassShare.innerText = cNotas.share_mercado?.classificacao || '--';
 
-                mapDimensoes.forEach(item => {
-                    const elVal = document.getElementById(`badge-val-${item.key}-${ipdId}`);
-                    const elGrp = document.getElementById(`badge-grp-${item.key}-${ipdId}`);
-                    
-                    if (elVal) elVal.innerText = item.valP !== undefined && item.valP !== null ? Number(item.valP).toFixed(2) : '--';
-                    if (elGrp) elGrp.innerText = item.valG !== undefined && item.valG !== null ? Number(item.valG).toFixed(2) : '--';
-                });
+                // 2. Consistência
+                const elConsist = document.getElementById(`badge-val-consist-${ipdId}`);
+                const elClassConsist = document.getElementById(`badge-class-consist-${ipdId}`);
+                if(elConsist) elConsist.innerText = cNotas.consistencia?.nota !== undefined ? cNotas.consistencia.nota.toFixed(1) : '--';
+                if(elClassConsist) elClassConsist.innerText = cNotas.consistencia?.classificacao || '--';
+
+                // 3. Debate
+                const elDebate = document.getElementById(`badge-val-debate-${ipdId}`);
+                const elClassDebate = document.getElementById(`badge-class-debate-${ipdId}`);
+                if(elDebate) elDebate.innerText = cNotas.poder_debate?.nota !== undefined ? cNotas.poder_debate.nota.toFixed(1) : '--';
+                if(elClassDebate) elClassDebate.innerText = cNotas.poder_debate?.classificacao || '--';
+
+                // 4. Foco Narrativo
+                const elFoco = document.getElementById(`badge-val-foco-${ipdId}`);
+                const elSubFoco = document.getElementById(`badge-sub-foco-${ipdId}`);
+                if(elFoco) elFoco.innerText = cPerfil.estrategia_temas?.tema_principal || 'N/A';
+                if(elSubFoco) elSubFoco.innerText = cPerfil.estrategia_temas?.taxa_concentracao_pct !== undefined ? `${cPerfil.estrategia_temas.taxa_concentracao_pct.toFixed(1)}%` : '--';
 
                 let listaTopPosts = data.top_posts || [];
 
                 cacheTopPostsPorModulo[ipdId] = {
                     listaPosts: listaTopPosts,
-                    mediaCurtidas: mPerfil.engajamento || 0,
-                    mediaComentarios: 0,
-                    totalPosts: 0
+                    mediaCurtidas: cPerfil.medias_por_post?.curtidas || 0,
+                    mediaComentarios: cPerfil.medias_por_post?.comentarios || 0,
+                    totalPosts: cPerfil.totais?.posts || 0
                 };
 
                 selecionarTopPostAba(ipdId, 0);
@@ -2686,93 +2692,90 @@
                         </div>
 
                         <div id="box-postagens-${ipdId}" class="space-y-6 transition-all">
-                          <!-- CARDS DAS 5 DIMENSÕES DO IPD -->
-<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
-    <!-- Card 1: Fama -->
-    <div class="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm relative overflow-hidden group hover:border-amber-500/30 transition flex flex-col justify-between gap-3">
-        <div class="flex items-center justify-between">
-            <span class="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider flex items-center gap-1.5">
-                <i class="fa-solid fa-star text-amber-500"></i> Fama
-            </span>
-        </div>
-        <div>
-            <span class="text-[10px] text-slate-400 font-bold uppercase block">Perfil</span>
-            <span id="badge-val-fama-${ipdId}" class="text-3xl font-black text-slate-900 tracking-tight">--</span>
-        </div>
-        <div class="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
-            <span class="text-slate-500 font-medium">Média Grupo:</span>
-            <span id="badge-grp-fama-${ipdId}" class="font-extrabold text-slate-700">--</span>
-        </div>
-    </div>
+                          <!-- CARDS DAS DIMENSÕES DE CONTEÚDO -->
+                          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+                              
+                              <!-- Card 1: Share de Atenção -->
+                              <div class="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm relative overflow-hidden flex flex-col justify-between gap-3">
+                                  <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+                                      <span class="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider flex items-center gap-1.5">
+                                          <i class="fa-solid fa-chart-pie text-indigo-500"></i> Market Share
+                                      </span>
+                                      <span id="badge-class-share-${ipdId}" class="text-[9px] font-black bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded border border-indigo-200">--</span>
+                                  </div>
+                                  <div>
+                                      <span class="text-[10px] text-slate-400 font-bold uppercase block mb-1">Domínio de Interações</span>
+                                      <div class="flex items-end gap-1">
+                                          <span id="badge-val-share-${ipdId}" class="text-3xl font-black text-slate-900 tracking-tight">--</span>
+                                      </div>
+                                  </div>
+                                  <div class="text-[9px] text-slate-500 leading-tight">
+                                      Fatia do engajamento total do projeto que pertence a este perfil no período analisado.
+                                  </div>
+                              </div>
 
-    <!-- Card 2: Engajamento -->
-    <div class="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm relative overflow-hidden group hover:border-rose-500/30 transition flex flex-col justify-between gap-3">
-        <div class="flex items-center justify-between">
-            <span class="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider flex items-center gap-1.5">
-                <i class="fa-solid fa-heart text-rose-500"></i> Engajamento
-            </span>
-        </div>
-        <div>
-            <span class="text-[10px] text-slate-400 font-bold uppercase block">Perfil</span>
-            <span id="badge-val-engaj-${ipdId}" class="text-3xl font-black text-slate-900 tracking-tight">--</span>
-        </div>
-        <div class="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
-            <span class="text-slate-500 font-medium">Média Grupo:</span>
-            <span id="badge-grp-engaj-${ipdId}" class="font-extrabold text-slate-700">--</span>
-        </div>
-    </div>
+                              <!-- Card 2: Consistência Editorial -->
+                              <div class="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm relative overflow-hidden flex flex-col justify-between gap-3">
+                                  <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+                                      <span class="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider flex items-center gap-1.5">
+                                          <i class="fa-solid fa-wave-square text-quaest-teal"></i> Consistência
+                                      </span>
+                                      <span id="badge-class-consist-${ipdId}" class="text-[9px] font-black bg-teal-50 text-teal-700 px-2 py-0.5 rounded border border-teal-200">--</span>
+                                  </div>
+                                  <div>
+                                      <span class="text-[10px] text-slate-400 font-bold uppercase block mb-1">Nota de Retenção</span>
+                                      <div class="flex items-end gap-1">
+                                          <span id="badge-val-consist-${ipdId}" class="text-3xl font-black text-slate-900 tracking-tight">--</span>
+                                          <span class="text-sm font-bold text-slate-500 mb-1">/ 10</span>
+                                      </div>
+                                  </div>
+                                  <div class="text-[9px] text-slate-500 leading-tight">
+                                      Avalia a estabilidade do público. Notas altas indicam audiência fiel; notas baixas refletem dependência de picos virais.
+                                  </div>
+                              </div>
 
-    <!-- Card 3: Mobilização -->
-    <div class="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm relative overflow-hidden group hover:border-quaest-teal/30 transition flex flex-col justify-between gap-3">
-        <div class="flex items-center justify-between">
-            <span class="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider flex items-center gap-1.5">
-                <i class="fa-solid fa-share-nodes text-quaest-teal"></i> Mobilização
-            </span>
-        </div>
-        <div>
-            <span class="text-[10px] text-slate-400 font-bold uppercase block">Perfil</span>
-            <span id="badge-val-mob-${ipdId}" class="text-3xl font-black text-slate-900 tracking-tight">--</span>
-        </div>
-        <div class="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
-            <span class="text-slate-500 font-medium">Média Grupo:</span>
-            <span id="badge-grp-mob-${ipdId}" class="font-extrabold text-slate-700">--</span>
-        </div>
-    </div>
+                              <!-- Card 3: Profundidade de Debate -->
+                              <div class="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm relative overflow-hidden flex flex-col justify-between gap-3">
+                                  <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+                                      <span class="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider flex items-center gap-1.5">
+                                          <i class="fa-solid fa-comments text-emerald-500"></i> Poder de Debate
+                                      </span>
+                                      <span id="badge-class-debate-${ipdId}" class="text-[9px] font-black bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded border border-emerald-200">--</span>
+                                  </div>
+                                  <div>
+                                      <span class="text-[10px] text-slate-400 font-bold uppercase block mb-1">Qualidade do Engajamento</span>
+                                      <div class="flex items-end gap-1">
+                                          <span id="badge-val-debate-${ipdId}" class="text-3xl font-black text-slate-900 tracking-tight">--</span>
+                                          <span class="text-sm font-bold text-slate-500 mb-1">/ 10</span>
+                                      </div>
+                                  </div>
+                                  <div class="text-[9px] text-slate-500 leading-tight">
+                                      Mede a capacidade do perfil em engajar a audiência em discussões ativas e aprofundadas em vez de apenas reações passivas.
+                                  </div>
+                              </div>
 
-    <!-- Card 4: Valência -->
-    <div class="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm relative overflow-hidden group hover:border-emerald-500/30 transition flex flex-col justify-between gap-3">
-        <div class="flex items-center justify-between">
-            <span class="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider flex items-center gap-1.5">
-                <i class="fa-solid fa-scale-balanced text-emerald-500"></i> Valência
-            </span>
-        </div>
-        <div>
-            <span class="text-[10px] text-slate-400 font-bold uppercase block">Perfil</span>
-            <span id="badge-val-valencia-${ipdId}" class="text-3xl font-black text-slate-900 tracking-tight">--</span>
-        </div>
-        <div class="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
-            <span class="text-slate-500 font-medium">Média Grupo:</span>
-            <span id="badge-grp-valencia-${ipdId}" class="font-extrabold text-slate-700">--</span>
-        </div>
-    </div>
+                              <!-- Card 4: Foco Narrativo -->
+                              <div class="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm relative overflow-hidden flex flex-col justify-between gap-3">
+                                  <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+                                      <span class="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider flex items-center gap-1.5">
+                                          <i class="fa-solid fa-bullseye text-amber-500"></i> Editorial
+                                      </span>
+                                  </div>
+                                  <div>
+                                      <span class="text-[10px] text-slate-400 font-bold uppercase block mb-1">Tema Principal</span>
+                                      <div class="text-lg font-black text-slate-900 tracking-tight leading-none mb-1 break-words" id="badge-val-foco-${ipdId}">
+                                          --
+                                      </div>
+                                  </div>
+                                  <div class="flex items-center justify-between mt-auto border-t border-slate-100 pt-2">
+                                      <span class="text-[9px] text-slate-500">Concentração:</span>
+                                      <span class="text-[10px] font-bold text-amber-700 bg-amber-50 py-0.5 px-2 rounded-md border border-amber-200" id="badge-sub-foco-${ipdId}">
+                                          --
+                                      </span>
+                                  </div>
+                              </div>
 
-    <!-- Card 5: Interesse -->
-    <div class="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm relative overflow-hidden group hover:border-indigo-500/30 transition flex flex-col justify-between gap-3">
-        <div class="flex items-center justify-between">
-            <span class="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider flex items-center gap-1.5">
-                <i class="fa-solid fa-magnifying-glass-chart text-indigo-500"></i> Interesse
-            </span>
-        </div>
-        <div>
-            <span class="text-[10px] text-slate-400 font-bold uppercase block">Perfil</span>
-            <span id="badge-val-interesse-${ipdId}" class="text-3xl font-black text-slate-900 tracking-tight">--</span>
-        </div>
-        <div class="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
-            <span class="text-slate-500 font-medium">Média Grupo:</span>
-            <span id="badge-grp-interesse-${ipdId}" class="font-extrabold text-slate-700">--</span>
-        </div>
-    </div>
-</div>
+                          </div>
 
                             <div class="p-6 rounded-3xl bg-slate-50 border border-slate-200 space-y-4">
                                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200/80 pb-3">
@@ -2814,9 +2817,8 @@
                                             </div>
                                         </div>
 
-                                       <div class="lg:col-span-8 flex justify-center items-center min-h-[320px] max-h-[360px] bg-slate-50 p-2 rounded-2xl border border-slate-200 overflow-hidden" id="embed-box-${ipdId}">
-    <p class="text-xs text-slate-400 italic text-center">O player do post será exibido aqui...</p>
-</div>
+                                        <div class="lg:col-span-8 flex justify-center items-center min-h-[320px] max-h-[360px] bg-slate-50 p-2 rounded-2xl border border-slate-200 overflow-hidden" id="embed-box-${ipdId}">
+                                            <p class="text-xs text-slate-400 italic text-center">O player do post será exibido aqui...</p>
                                         </div>
                                     </div>
                                 </div>
@@ -2826,7 +2828,7 @@
 
                     <hr class="border-slate-100" />
 
-                    <!-- 6º SEÇÃO: PREVISÃO IPD (MOVIDA PARA DEPOIS DAS POSTAGENS) COM EXPLICAÇÃO -->
+                    <!-- 6º SEÇÃO: PREVISÃO IPD MENSAL -->
                     <div class="space-y-6">
                         <!-- BANNER EXPLICATIVO DA PREVISÃO -->
                         <div class="p-5 rounded-2xl bg-purple-50/70 border border-purple-200/80 flex items-start gap-4">
@@ -2834,9 +2836,9 @@
                                 <i class="fa-solid fa-lightbulb"></i>
                             </div>
                             <div class="space-y-1 text-xs text-slate-700">
-                                <h4 class="font-extrabold text-purple-900 text-sm">Entenda o Módulo de Previsão de Performance</h4>
+                                <h4 class="font-extrabold text-purple-900 text-sm">Entenda o Módulo de Previsão Mensal de Performance</h4>
                                 <p class="leading-relaxed">
-                                    O modelo preditivo analisa as trajetórias históricas e a dinâmica relacional do grupo para projetar a tendência de pontuação do IPD nas próximas semanas. A simulação calcula a margem provável de variação e estima possíveis trocas de liderança ou empates técnicos.
+                                    O modelo preditivo analisa as trajetórias históricas mensais, lags semanais intra-mês e a dinâmica relacional do grupo para projetar a tendência de pontuação do IPD nos próximos meses. A simulação calcula a margem provável de variação e estima possíveis trocas de liderança ou empates técnicos.
                                 </p>
                             </div>
                         </div>
@@ -2848,7 +2850,7 @@
                                 </div>
                                 <div>
                                     <span class="text-[10px] font-black text-purple-600 uppercase tracking-widest block">Inteligência Preditiva</span>
-                                    <h3 class="text-xl font-black text-slate-900">Previsão e Ranking Semanal do IPD (${nomeIpd})</h3>
+                                    <h3 class="text-xl font-black text-slate-900">Previsão e Ranking Mensal do IPD (${nomeIpd})</h3>
                                 </div>
                             </div>
                             <div class="flex items-center gap-3">
@@ -2873,19 +2875,17 @@
                         <div id="box-previsao-${ipdId}" class="space-y-6 transition-all">
                             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-slate-50/80 p-5 rounded-2xl border border-slate-200 items-end">
                                 <div class="sm:col-span-2">
-    <label for="previsao-semanas-${ipdId}" class="flex items-center justify-between text-xs font-bold text-slate-600 uppercase mb-1">
-        <span>Horizonte de Projeção (Semanas à Frente)</span>
-        <span class="text-[9px] bg-purple-100 text-purple-700 px-2 py-0.5 rounded border border-purple-200 tracking-wider">Ideal: 4</span>
-    </label>
-    
-    <!-- O SEGREDO ESTÁ AQUI NOS EVENTOS oninput E onblur -->
-    <input type="number" id="previsao-semanas-${ipdId}" value="4" min="2" max="8" 
-           oninput="if(this.value > 8) this.value = 8;" 
-           onblur="if(this.value < 2 || this.value === '') this.value = 2;"
-           class="w-full bg-white text-slate-800 text-xs font-bold px-3 py-2 rounded-xl border border-slate-200 outline-none focus:border-purple-500">
-           
-    <p class="text-[10px] text-slate-400 mt-1 font-medium"><i class="fa-solid fa-circle-info text-purple-400 mr-1"></i> Limite máximo de 8 semanas para manter a precisão do modelo estatístico.</p>
-</div>
+                                    <label for="previsao-meses-${ipdId}" class="flex items-center justify-between text-xs font-bold text-slate-600 uppercase mb-1">
+                                        <span>Horizonte de Projeção (Meses à Frente)</span>
+                                        <span class="text-[9px] bg-purple-100 text-purple-700 px-2 py-0.5 rounded border border-purple-200 tracking-wider">Ideal: 4</span>
+                                    </label>
+                                    <input type="number" id="previsao-meses-${ipdId}" value="4" min="1" max="4" 
+                                           oninput="if(this.value > 4) this.value = 4;" 
+                                           onblur="if(this.value < 1 || this.value === '') this.value = 1;"
+                                           class="w-full bg-white text-slate-800 text-xs font-bold px-3 py-2 rounded-xl border border-slate-200 outline-none focus:border-purple-500">
+                                            
+                                    <p class="text-[10px] text-slate-400 mt-1 font-medium"><i class="fa-solid fa-circle-info text-purple-400 mr-1"></i> Limite ideal de até 1 a 4 meses para manter a precisão do modelo estatístico.</p>
+                                </div>
 
                                 <div>
                                     <button type="button" onclick="executarPrevisaoIPD(${ipdId})" class="w-full bg-purple-600 hover:bg-purple-700 text-white text-xs font-black py-2.5 px-4 rounded-xl shadow-sm transition flex items-center justify-center gap-2 cursor-pointer">
@@ -2959,7 +2959,7 @@
 
                     <hr class="border-slate-100" />
 
-                    <!-- 7º SEÇÃO: CONTROLE SINTÉTICO / ANÁLISE DE IMPACTO CAUSAL (NO FINAL DO MÓDULO) COM EXPLICAÇÃO -->
+                    <!-- 7º SEÇÃO: CONTROLE SINTÉTICO / ANÁLISE DE IMPACTO CAUSAL -->
                     <div class="space-y-6">
                         <!-- BANNER EXPLICATIVO DO CONTROLE SINTÉTICO -->
                         <div class="p-5 rounded-2xl bg-teal-50/70 border border-quaest-tealBorder flex items-start gap-4">
@@ -3515,16 +3515,17 @@
         }
 
         async function executarPrevisaoIPD(ipdId) {
-            const semanasInput = document.getElementById(`previsao-semanas-${ipdId}`);
-            const semanasFrente = semanasInput ? semanasInput.value : 4;
-            if (isNaN(semanasFrente) || semanasFrente < 2) {
-                    semanasFrente = 2;
-                } else if (semanasFrente > 8) {
-                    semanasFrente = 8;
-                }
-            if (semanasInput) {
-        semanasInput.value = semanasFrente;
-    }
+            const mesesInput = document.getElementById(`previsao-meses-${ipdId}`);
+            let mesesFrente = mesesInput ? parseInt(mesesInput.value, 10) : 4;
+            if (isNaN(mesesFrente) || mesesFrente < 1) {
+                mesesFrente = 1;
+            } else if (mesesFrente > 12) {
+                mesesFrente = 12;
+            }
+            if (mesesInput) {
+                mesesInput.value = mesesFrente;
+            }
+
             const boxLoading = document.getElementById(`previsao-loading-${ipdId}`);
             const boxErro = document.getElementById(`previsao-erro-${ipdId}`);
             const boxResultados = document.getElementById(`previsao-resultados-${ipdId}`);
@@ -3533,7 +3534,7 @@
             boxErro.classList.add('hidden');
             boxResultados.classList.add('hidden');
 
-            const url = `/api/ipd/previsao-semanal/?projeto_id=${ipdId}&semanas_frente=${semanasFrente}`;
+            const url = `/api/ipd/previsao-mensal/?projeto_id=${ipdId}&meses_frente=${mesesFrente}`;
 
             try {
                 const response = await fetch(url);
@@ -3547,20 +3548,20 @@
                     return;
                 }
 
-                const semanasList = data.previsoes_semanais || [];
-                if (semanasList.length === 0) {
+                const mesesList = data.previsoes_mensais || [];
+                if (mesesList.length === 0) {
                     document.getElementById(`previsao-erro-msg-${ipdId}`).innerText = 'Sem projeções no período.';
                     boxErro.classList.remove('hidden');
                     return;
                 }
 
                 statePrevisaoPreditiva[ipdId] = {
-                    dadosSemanais: semanasList,
+                    dadosMensais: mesesList,
                     perfisDisponiveis: data.meta?.total_perfis_avaliados || 0,
                     perfisAtivos: new Set()
                 };
 
-                const todosPerfis = [...new Set(semanasList.flatMap(s => (s.ranking_perfis || []).map(p => p.profile)))].sort((a,b) => a.localeCompare(b, 'pt-BR'));
+                const todosPerfis = [...new Set(mesesList.flatMap(m => (m.ranking_perfis || []).map(p => p.profile)))].sort((a,b) => a.localeCompare(b, 'pt-BR'));
 
                 todosPerfis.slice(0, 2).forEach(p => statePrevisaoPreditiva[ipdId].perfisAtivos.add(p));
 
@@ -3622,19 +3623,19 @@
 
         function renderizarGraficoEStatsPrevisao(ipdId) {
             const state = statePrevisaoPreditiva[ipdId];
-            if (!state || !state.dadosSemanais) return;
+            if (!state || !state.dadosMensais) return;
 
             const refIPD = stateIPDs[ipdId];
-            if (!refIPD || !refIPD.profilesDataSemana) return;
+            if (!refIPD || !refIPD.profilesDataMes) return;
 
-            const datasHistoricoReais = refIPD.profilesDataSemana.datas || [];
+            const datasHistoricoReais = refIPD.profilesDataMes.datas || [];
             const ultimasDatasReais = datasHistoricoReais.slice(-6);
 
-            const semanasProjetadas = state.dadosSemanais || [];
-            const datasProjetadas = semanasProjetadas.map(s => s.data_inicio_semana);
+            const mesesProjetados = state.dadosMensais || [];
+            const datasProjetadas = mesesProjetados.map(m => m.data_inicio_mes);
 
             const eixoXDatas = [...ultimasDatasReais, ...datasProjetadas];
-            const eixoXLabels = eixoXDatas.map(d => formatarDataAnoCurto(d));
+            const eixoXLabels = eixoXDatas.map(d => formatarDataAnoCurto(d, true));
 
             const perfisAtivos = Array.from(state.perfisAtivos);
 
@@ -3648,7 +3649,7 @@
 
             perfisAtivos.forEach((profileName, idx) => {
                 const color = paletaCores[idx % paletaCores.length];
-                const pInfoHist = refIPD.profilesDataSemana.profiles[profileName];
+                const pInfoHist = refIPD.profilesDataMes.profiles[profileName];
 
                 const serieHistorica = ultimasDatasReais.map(d => {
                     if (pInfoHist && pInfoHist.registrosPorData[d]) {
@@ -3657,7 +3658,7 @@
                     return null;
                 });
 
-                const serieHistoricaFull = [...serieHistorica, ...Array(semanasProjetadas.length).fill(null)];
+                const serieHistoricaFull = [...serieHistorica, ...Array(mesesProjetados.length).fill(null)];
 
                 datasets.push({
                     label: `${profileName} (Histórico)`,
@@ -3673,18 +3674,18 @@
 
                 const ultimoValorReal = serieHistorica[serieHistorica.length - 1];
 
-                const serieProjetadaValues = semanasProjetadas.map(s => {
-                    const item = (s.ranking_perfis || []).find(p => p.profile === profileName);
+                const serieProjetadaValues = mesesProjetados.map(m => {
+                    const item = (m.ranking_perfis || []).find(p => p.profile === profileName);
                     return item ? item.ipd_previsto : null;
                 });
 
-                const serieMinimaValues = semanasProjetadas.map(s => {
-                    const item = (s.ranking_perfis || []).find(p => p.profile === profileName);
+                const serieMinimaValues = mesesProjetados.map(m => {
+                    const item = (m.ranking_perfis || []).find(p => p.profile === profileName);
                     return item ? item.ipd_minimo_provavel : null;
                 });
 
-                const serieMaximaValues = semanasProjetadas.map(s => {
-                    const item = (s.ranking_perfis || []).find(p => p.profile === profileName);
+                const serieMaximaValues = mesesProjetados.map(m => {
+                    const item = (m.ranking_perfis || []).find(p => p.profile === profileName);
                     return item ? item.ipd_maximo_provavel : null;
                 });
 
@@ -3780,10 +3781,10 @@
                                     const idxProj = c.dataIndex - ultimasDatasReais.length;
 
                                     if (isProjecao && idxProj >= 0) {
-                                        const semanaObj = semanasProjetadas[idxProj];
-                                        if (semanaObj) {
+                                        const mesObj = mesesProjetados[idxProj];
+                                        if (mesObj) {
                                             const profileClean = labelName.replace(' (Projeção)', '');
-                                            const itemP = (semanaObj.ranking_perfis || []).find(p => p.profile === profileClean);
+                                            const itemP = (mesObj.ranking_perfis || []).find(p => p.profile === profileClean);
                                             if (itemP) {
                                                 return [
                                                     ` 🔮 ${profileClean}: ${itemP.ipd_previsto} pts (${itemP.posicao}º no Ranking)`,
@@ -3818,16 +3819,16 @@
             const boxBtn = document.getElementById(`box-btn-explicacao-ia-${ipdId}`);
             if (boxBtn) boxBtn.classList.remove('hidden');
 
-            const ultSemana = semanasProjetadas[semanasProjetadas.length - 1];
-            if (ultSemana) {
-                document.getElementById(`previsao-ult-ipd-${ipdId}`).innerText = `${ultSemana.lider_previsto || '--'}`;
-                document.getElementById(`previsao-ult-data-${ipdId}`).innerText = `${ultSemana.rotulo_semana} (${ultSemana.intervalo_datas})`;
+            const ultMes = mesesProjetados[mesesProjetados.length - 1];
+            if (ultMes) {
+                document.getElementById(`previsao-ult-ipd-${ipdId}`).innerText = `${ultMes.lider_previsto || '--'}`;
+                document.getElementById(`previsao-ult-data-${ipdId}`).innerText = `${ultMes.rotulo_mes}`;
             }
         }
 
         async function solicitarExplicacaoIARanking(ipdId) {
             const state = statePrevisaoPreditiva[ipdId];
-            if (!state || !state.dadosSemanais || state.dadosSemanais.length === 0) {
+            if (!state || !state.dadosMensais || state.dadosMensais.length === 0) {
                 alert("Calcule a previsão do gráfico primeiro antes de gerar a explicação.");
                 return;
             }
@@ -3857,7 +3858,7 @@
                     },
                     body: JSON.stringify({
                         projeto_id: ipdId,
-                        previsoes_semanais: state.dadosSemanais
+                        previsoes_mensais: state.dadosMensais
                     })
                 });
 

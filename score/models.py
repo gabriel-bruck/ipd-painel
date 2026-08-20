@@ -22,11 +22,7 @@ class IPD(models.Model):
         on_delete=models.CASCADE, 
         related_name='medicoes_ipd'
     )
-    projeto_cliente = models.ForeignKey(
-        ProjetoCliente, 
-        on_delete=models.CASCADE, 
-        related_name='medicoes_ipd'
-    )
+    
     
     # Hash automático para substituição/update na importação da planilha
     hash_indice = models.CharField(max_length=64, unique=True, editable=False)

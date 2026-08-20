@@ -48,22 +48,17 @@ class IPDResource(resources.ModelResource):
     projeto_ipd = fields.Field(
         column_name='projeto_ipd',
         attribute='projeto_ipd',
-        widget=SmartForeignKeyWidget(ProjetoIPD, field='id')
+        widget=ForeignKeyWidget(ProjetoIPD, field='id')
     )
-    projeto_cliente = fields.Field(
-        column_name='projeto_cliente',
-        attribute='projeto_cliente',
-        widget=SmartForeignKeyWidget(ProjetoCliente, field='id')
-    )
-
+    
     class Meta:
         model = IPD
         skip_unchanged = False
         report_skipped = True
         ignore_unknown_fields = True
         
+        # Declaramos exatamente os campos que importam (sem projeto_cliente)
         fields = (
-            'projeto_cliente',
             'projeto_ipd',
             'profile',
             'fama',
@@ -77,15 +72,14 @@ class IPDResource(resources.ModelResource):
 
     def before_import_row(self, row, **kwargs):
         """Prepara e traduz mapeamentos alternativos de colunas antes de importar."""
+        # Tradução de colunas de Projeto IPD
         if 'pd' in row and ('projeto_ipd' not in row or not row['projeto_ipd']):
             row['projeto_ipd'] = row['pd']
             
         if 'projeto_ipd_id' in row and ('projeto_ipd' not in row or not row['projeto_ipd']):
             row['projeto_ipd'] = row['projeto_ipd_id']
-            
-        if 'projeto_cliente_id' in row and ('projeto_cliente' not in row or not row['projeto_cliente']):
-            row['projeto_cliente'] = row['projeto_cliente_id']
 
+        # Tradução de colunas de Perfil
         if 'perfil' in row and ('profile' not in row or not row['profile']):
             row['profile'] = row['perfil']
 
@@ -101,10 +95,12 @@ class IPDResource(resources.ModelResource):
                 if '/' in data_str:
                     partes = data_str.split('/')
                     if len(partes) == 3:
+                        # Converte DD/MM/YYYY para YYYY-MM-DD
                         data_str = f"{partes[2]}-{partes[1]}-{partes[0]}"
                 row['data'] = data_str
 
     def get_instance(self, instance_loader, row):
+        """Busca se a medição já existe para atualizar, em vez de duplicar."""
         proj_ipd_val = row.get('projeto_ipd') or row.get('pd')
         profile = row.get('profile')
         data = row.get('data')
@@ -123,16 +119,33 @@ class IPDResource(resources.ModelResource):
                 ).first()
         return None
 
+    def before_save_instance(self, instance, *args, **kwargs):
+        """
+        GATILHO DE SEGURANÇA:
+        Como 'projeto_cliente' foi removido da planilha, verificamos se o banco 
+        ainda o exige. Se exigir e estiver vazio, vinculamos automaticamente 
+        ao primeiro cliente do 'projeto_ipd' para evitar erro 500.
+        """
+        # Verifica se o model possui o atributo projeto_cliente e se está vazio
+        if hasattr(instance, 'projeto_cliente_id') and not instance.projeto_cliente_id:
+            if instance.projeto_ipd_id:
+                # Pega o primeiro cliente vinculado a este IPD
+                primeiro_cliente = instance.projeto_ipd.projetos_cliente.first()
+                if primeiro_cliente:
+                    instance.projeto_cliente = primeiro_cliente
+
+        # Chama a implementação da classe pai repassando os argumentos de forma segura
+        super().before_save_instance(instance, *args, **kwargs)
+
 
 @admin.register(IPD)
 class IPDAdmin(ImportExportModelAdmin):
     resource_classes = [IPDResource]
-    list_display = ('profile', 'data', 'ipd', 'projeto_ipd', 'projeto_cliente', 'data_registro')
-    list_filter = ('projeto_ipd', 'projeto_cliente', 'data')
+    list_display = ('profile', 'data', 'ipd', 'projeto_ipd', 'data_registro')
+    list_filter = ('projeto_ipd', 'data')
     search_fields = ('profile', 'hash_indice')
     readonly_fields = ('hash_indice', 'data_registro')
     ordering = ('-data',)
-
 
 # =============================================================================
 # RECURSOS E ADMIN DO MODEL CONTEUDO (POSTS)
