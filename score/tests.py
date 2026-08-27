@@ -320,7 +320,7 @@ def classificar_tabela_centroids(
 # 6. EXECUÇÃO DO SCRIPT
 # -----------------------------------------------------------------------------
 if __name__ == "__main__":
-    caminho_entrada = r"C:\Users\gabri\Downloads\data.xlsx"
+    caminho_entrada = r"C:\Users\gabri\Desktop\itau.xlsx"
     df_input = pd.read_excel(caminho_entrada)
 
     df_resultado = classificar_tabela_centroids(
@@ -332,6 +332,6 @@ if __name__ == "__main__":
         n_componentes_reducao=30  # Reduz a dimensão para 15 componentes antes do K-Means
     )
 
-    caminho_saida_csv = "planilha_categorizada_centroids.csv"
-    df_resultado.to_csv(caminho_saida_csv, index=False, encoding='utf-8-sig', sep=';')
+    caminho_saida_csv = "planilha_categorizada.csv"
+    df_resultado.to_csv(caminho_saida_csv, index=False, encoding='utf-8-sig', sep=',')
     print(f"📁 Arquivo salvo em: {caminho_saida_csv}")

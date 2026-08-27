@@ -225,22 +225,19 @@ def analise_causal_impact_view(request, projeto_id):
     return JsonResponse(resultado, status=200)
 
 
-# ==============================================================================
-# 4. API VIEW: MÉDIA DE MÉTRICAS DE CONTEÚDO
+# =====
 import math
 import calendar
 from datetime import datetime
-from django.db.models import Avg, Sum, Count, F
-from django.db.models.aggregates import StdDev
+
 from django.shortcuts import get_object_or_404
+from django.db.models import Avg, Sum, Count, StdDev, F
+
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 
-# Substitua pelas importações corretas do seu projeto
-# from .models import IPD, Conteudo, ProjetoIPD
-# from .utils import usuario_tem_acesso_ao_projeto
 
 class MediaMetricasIPDView(APIView):
     permission_classes = [IsAuthenticated]
@@ -256,7 +253,6 @@ class MediaMetricasIPDView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Validação de Permissão
         projeto_ipd = get_object_or_404(ProjetoIPD, pk=projeto_ipd_id)
         projetos_cliente = projeto_ipd.projetos_cliente.all()
 
@@ -269,6 +265,9 @@ class MediaMetricasIPDView(APIView):
                 status=status.HTTP_403_FORBIDDEN,
             )
 
+        # ==========================================
+        # JANELA TEMPORAL MENSAL
+        # ==========================================
         try:
             data_obj = datetime.strptime(ano_mes, '%Y-%m')
             ano = data_obj.year
@@ -284,40 +283,40 @@ class MediaMetricasIPDView(APIView):
             )
 
         # ==========================================
-        # FUNÇÕES ESTATÍSTICAS (Z-SCORE)
+        # FUNÇÕES ESTATÍSTICAS (ESCALA 1.0 A 10.0)
         # ==========================================
         def calc_mean_std(values):
             if not values: 
-                return 0, 0
+                return 0.0, 0.0
             mean = sum(values) / len(values)
             variance = sum((x - mean) ** 2 for x in values) / len(values)
             std = math.sqrt(variance)
             return mean, std
 
-        def z_to_score_and_class(val, mean, std, reverse=False):
+        def z_to_score_and_class(val, mean, std, posts_count=10, reverse=False):
             if std == 0:
-                z = 0
+                z = 0.0
             else:
                 z = (val - mean) / std
                 
-            # Se for uma métrica onde "menor é melhor" (ex: coeficiente de variação), invertemos o Z
             if reverse:
                 z = -z
                 
-            # Limitar entre -2 e +2 Desvios Padrões (onde ficam 95% dos dados na curva de Gauss)
             z = max(-2.0, min(2.0, z))
+            nota = 5.5 + (z * 2.25)
+            nota = max(1.0, min(10.0, nota))
             
-            # Média (Z=0) = Nota 5.0 | +2 DP = Nota 10 | -2 DP = Nota 0
-            nota = 5.0 + (z * 2.5)
-            
-            # Classificação baseada nos desvios
-            if z >= 1.5:
+            # Trava Hard Cap: Menos de 3 posts no mês trava no teto de 5.5 ("Na Média")
+            if posts_count < 3:
+                nota = min(5.5, nota)
+
+            if nota >= 8.875:
                 classif = "Excepcional"
-            elif z >= 0.5:
+            elif nota >= 6.625:
                 classif = "Alta Performance"
-            elif z >= -0.5:
+            elif nota >= 4.375:
                 classif = "Na Média"
-            elif z >= -1.5:
+            elif nota >= 2.125:
                 classif = "Abaixo da Média"
             else:
                 classif = "Crítico"
@@ -325,7 +324,7 @@ class MediaMetricasIPDView(APIView):
             return round(nota, 1), classif
 
         # ==========================================
-        # 1. MÉTRICAS IPD (Existentes)
+        # 1. MÉTRICAS IPD MENSAL
         # ==========================================
         base_mes_ipd = IPD.objects.filter(
             projeto_ipd_id=projeto_ipd_id,
@@ -343,88 +342,172 @@ class MediaMetricasIPDView(APIView):
         )
 
         # ==========================================
-        # 2. MÉTRICAS DE CONTEÚDO E NORMALIZAÇÃO
+        # 2. CONTEÚDO MENSAL DO GRUPO
         # ==========================================
         conteudos_grupo = Conteudo.objects.filter(
             projeto_ipd__id=projeto_ipd_id,
             data__range=[data_inicio, data_fim]
         )
 
+        # Calculando o desvio padrão sobre Curtidas + Comentários (Interações Totais)
         stats_por_perfil = conteudos_grupo.values('profile').annotate(
             t_curtidas=Sum('curtidas'),
             t_comentarios=Sum('comentarios'),
             t_posts=Count('id_post'),
-            std_curtidas=StdDev('curtidas')
+            std_interacoes=StdDev(F('curtidas') + F('comentarios'))
         )
+
+        total_interacoes_grupo = 0
+        total_posts_grupo = 0
+        total_comentarios_grupo = 0
+
+        for st in stats_por_perfil:
+            c = st['t_curtidas'] or 0
+            com = st['t_comentarios'] or 0
+            total_comentarios_grupo += com
+            total_interacoes_grupo += (c + com)
+            total_posts_grupo += (st['t_posts'] or 0)
+
+        # Se ninguém postou no período selecionado
+        if not stats_por_perfil or total_posts_grupo == 0:
+            def fmt_zero(val):
+                return round(float(val), 2) if val is not None else 0.0
+
+            return Response(
+                {
+                    "projeto_ipd": int(projeto_ipd_id) if str(projeto_ipd_id).isdigit() else projeto_ipd_id,
+                    "profile": profile,
+                    "periodo": ano_mes,
+                    "data_inicio": data_inicio,
+                    "data_fim": data_fim,
+                    "message": "Nenhuma publicação encontrada no período selecionado.",
+                    "metricas_perfil_ipd": {
+                        "fama": fmt_zero(media_perfil['fama']),
+                        "engajamento": fmt_zero(media_perfil['engaj']),
+                        "valencia": fmt_zero(media_perfil['valencia']),
+                        "mobilizacao": fmt_zero(media_perfil['mob']),
+                        "interesse": fmt_zero(media_perfil['interesse']),
+                        "ipd_geral": fmt_zero(media_perfil['ipd']),
+                    },
+                    "media_grupo_ipd": {
+                        "fama": fmt_zero(media_grupo['fama']),
+                        "engajamento": fmt_zero(media_grupo['engaj']),
+                        "valencia": fmt_zero(media_grupo['valencia']),
+                        "mobilizacao": fmt_zero(media_grupo['mob']),
+                        "interesse": fmt_zero(media_grupo['interesse']),
+                        "ipd_geral": fmt_zero(media_grupo['ipd']),
+                    },
+                    "conteudo_perfil": {
+                        "totais": {"posts": 0, "curtidas": 0, "comentarios": 0, "interacoes": 0},
+                        "estrategia_temas": {"qtd_temas_distintos": 0, "tema_principal": "Nenhum", "taxa_concentracao_pct": 0.0},
+                        "performance_bruta": {
+                            "share_pct": 0.0, "taxa_debate_pct": 0.0, "media_ints_post": 0.0,
+                            "variacao_cv": 0.0, "fator_atividade": 0.0, "icq_bruto_mes": 0.0, "pdb_bruto_mes": 0.0
+                        }
+                    },
+                    "notas_normalizadas_mes": {
+                        "share_mercado": {"nota": 1.0, "classificacao": "Crítico"},
+                        "poder_debate": {"nota": 1.0, "classificacao": "Crítico"},
+                        "eficiencia_post": {"nota": 1.0, "classificacao": "Crítico"},
+                        "consistencia_qualidade": {"nota": 1.0, "classificacao": "Crítico"}
+                    },
+                    "top_posts": [],
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        META_POSTS_MINIMO = 10.0
+
+        media_interacao_geral_grupo = total_interacoes_grupo / total_posts_grupo
+        prop_debate_grupo = (total_comentarios_grupo / total_interacoes_grupo) if total_interacoes_grupo > 0 else 0.0
 
         list_tracao = []
         list_debate = []
-        list_cv = []
         list_share = []
-        total_interacoes_grupo = 0
+        list_icq = []
 
-        # Primeiro passo: Somar o total de interações do grupo para calcular o Share
-        for st in stats_por_perfil:
-            total_interacoes_grupo += (st['t_curtidas'] or 0) + (st['t_comentarios'] or 0)
-
-        # Segundo passo: Montar os arrays estatísticos do Grupo
         for st in stats_por_perfil:
             c = st['t_curtidas'] or 0
             com = st['t_comentarios'] or 0
             posts = st['t_posts'] or 0
-            std_c = st['std_curtidas'] or 0
+            std_inter = st['std_interacoes'] or 0.0
             inter = c + com
             
-            tracao = inter / posts if posts > 0 else 0
-            debate = (com / c * 100) if c > 0 else 0
-            media_c = c / posts if posts > 0 else 0
-            cv = (std_c / media_c) if media_c > 0 else 0  # Coeficiente de Variação (Oscilação)
-            share = (inter / total_interacoes_grupo * 100) if total_interacoes_grupo > 0 else 0
+            tracao_mes = (inter / posts) if posts > 0 else 0.0
+            
+            # Coeficiente de Variação (CV) baseado na oscilação de INTERAÇÕES TOTAIS
+            cv_mes = (std_inter / tracao_mes) if tracao_mes > 0 else 0.0
+            share_mes = ((inter / total_interacoes_grupo) * 100) if total_interacoes_grupo > 0 else 0.0
 
-            list_tracao.append(tracao)
-            list_debate.append(debate)
-            list_cv.append(cv)
-            list_share.append(share)
+            # Fator de Atividade
+            fator_volume = min(1.0, posts / META_POSTS_MINIMO) if posts > 0 else 0.0
 
-        # Extrair Médias e Desvios Padrões de todo o Universo (Grupo)
+            # 1. ICQ (Qualidade x Estabilidade do Total de Interações x Volume)
+            razao_qualidade = (tracao_mes / media_interacao_geral_grupo) if media_interacao_geral_grupo > 0 else 0.0
+            fator_estabilidade = 1.0 / (1.0 + cv_mes)
+            icq_mes = razao_qualidade * fator_estabilidade * fator_volume
+
+            # 2. PDB (Proporção Comentários/Interações do Perfil x Mercado)
+            prop_debate_perfil = (com / inter) if inter > 0 else 0.0
+            razao_debate = (prop_debate_perfil / prop_debate_grupo) if prop_debate_grupo > 0 else 0.0
+            razao_debate = min(3.0, razao_debate)
+            pdb_mes = razao_debate * fator_volume
+
+            list_tracao.append(tracao_mes)
+            list_debate.append(pdb_mes)
+            list_share.append(share_mes)
+            list_icq.append(icq_mes)
+
         mean_tracao, std_tracao = calc_mean_std(list_tracao)
         mean_debate, std_debate = calc_mean_std(list_debate)
-        mean_cv, std_cv = calc_mean_std(list_cv)
         mean_share, std_share = calc_mean_std(list_share)
+        mean_icq, std_icq = calc_mean_std(list_icq)
 
         # ==========================================
-        # 3. CONTEÚDO DO PERFIL ESPECÍFICO
+        # 3. CONTEÚDO MENSAL DO PERFIL ESPECÍFICO
         # ==========================================
         conteudos_perfil = conteudos_grupo.filter(profile__iexact=profile.strip())
 
         perfil_agregado = conteudos_perfil.aggregate(
             t_curtidas=Sum('curtidas'),
             t_comentarios=Sum('comentarios'),
-            std_curtidas=StdDev('curtidas'),
-            std_comentarios=StdDev('comentarios'),
+            std_interacoes=StdDev(F('curtidas') + F('comentarios')),
             t_posts=Count('id_post')
         )
 
         p_curtidas = perfil_agregado['t_curtidas'] or 0
         p_comentarios = perfil_agregado['t_comentarios'] or 0
         p_posts = perfil_agregado['t_posts'] or 0
-        p_std_curtidas = perfil_agregado['std_curtidas'] or 0
+        p_std_interacoes = perfil_agregado['std_interacoes'] or 0.0
         p_interacoes = p_curtidas + p_comentarios
 
-        # Indicadores Brutos do Perfil
-        p_tracao = p_interacoes / p_posts if p_posts else 0
-        p_debate = (p_comentarios / p_curtidas * 100) if p_curtidas else 0
-        p_media_c = p_curtidas / p_posts if p_posts else 0
-        p_cv = (p_std_curtidas / p_media_c) if p_media_c > 0 else 0
-        p_share = (p_interacoes / total_interacoes_grupo * 100) if total_interacoes_grupo > 0 else 0
+        p_tracao_mes = (p_interacoes / p_posts) if p_posts > 0 else 0.0
+        p_taxa_debate_bruta_pct = ((p_comentarios / p_interacoes) * 100) if p_interacoes > 0 else 0.0
+        
+        # CV do perfil específico usando o Desvio Padrão das Interações Totais
+        p_cv_mes = (p_std_interacoes / p_tracao_mes) if p_tracao_mes > 0 else 0.0
+        p_share_mes = ((p_interacoes / total_interacoes_grupo) * 100) if total_interacoes_grupo > 0 else 0.0
 
-        # Transformar Brutos em Notas e Classificações (Z-Score)
-        nota_tracao, class_tracao = z_to_score_and_class(p_tracao, mean_tracao, std_tracao)
-        nota_debate, class_debate = z_to_score_and_class(p_debate, mean_debate, std_debate)
-        nota_share, class_share = z_to_score_and_class(p_share, mean_share, std_share)
-        nota_consist, class_consist = z_to_score_and_class(p_cv, mean_cv, std_cv, reverse=True)
+        p_fator_volume = min(1.0, p_posts / META_POSTS_MINIMO) if p_posts > 0 else 0.0
 
-        # Temas - Diversificação e Concentração
+        # ICQ do Perfil
+        p_razao_qualidade = (p_tracao_mes / media_interacao_geral_grupo) if media_interacao_geral_grupo > 0 else 0.0
+        p_fator_estabilidade = 1.0 / (1.0 + p_cv_mes)
+        p_icq_mes = p_razao_qualidade * p_fator_estabilidade * p_fator_volume
+
+        # PDB do Perfil
+        p_prop_debate = (p_comentarios / p_interacoes) if p_interacoes > 0 else 0.0
+        p_razao_debate = (p_prop_debate / prop_debate_grupo) if prop_debate_grupo > 0 else 0.0
+        p_razao_debate = min(3.0, p_razao_debate)
+        p_pdb_mes = p_razao_debate * p_fator_volume
+
+        # Conversão Z-Score (1.0 a 10.0) com verificação do mínimo de 3 posts
+        nota_tracao, class_tracao = z_to_score_and_class(p_tracao_mes, mean_tracao, std_tracao, posts_count=p_posts)
+        nota_debate, class_debate = z_to_score_and_class(p_pdb_mes, mean_debate, std_debate, posts_count=p_posts, reverse=False)
+        nota_share, class_share = z_to_score_and_class(p_share_mes, mean_share, std_share, posts_count=p_posts)
+        nota_consist, class_consist = z_to_score_and_class(p_icq_mes, mean_icq, std_icq, posts_count=p_posts, reverse=False)
+
+        # Estratégia Temática
         temas_perfil = conteudos_perfil.values('categoria_tema').annotate(total=Count('id_post')).order_by('-total')
 
         p_diversificacao_qtd = len(temas_perfil)
@@ -433,10 +516,10 @@ class MediaMetricasIPDView(APIView):
 
         if p_diversificacao_qtd > 0 and p_posts > 0:
             p_tema_principal = temas_perfil[0]['categoria_tema']
-            p_concentracao_pct = (temas_perfil[0]['total'] / p_posts) * 100
+            p_concentracao_pct = (temas_perfil[0]['total'] / p_posts) * 100.0
 
         # ==========================================
-        # 4. TOP POSTS (Existente)
+        # 4. TOP POSTS DO MÊS
         # ==========================================
         top_posts_objs = conteudos_perfil.order_by('-curtidas', '-comentarios')[:3]
         top_posts_data = [
@@ -462,7 +545,6 @@ class MediaMetricasIPDView(APIView):
                 "data_inicio": data_inicio,
                 "data_fim": data_fim,
 
-                # IPD ORIGINAL
                 "metricas_perfil_ipd": {
                     "fama": fmt(media_perfil['fama']),
                     "engajamento": fmt(media_perfil['engaj']),
@@ -480,7 +562,6 @@ class MediaMetricasIPDView(APIView):
                     "ipd_geral": fmt(media_grupo['ipd']),
                 },
 
-                # NOVAS MÉTRICAS DE CONTEÚDO
                 "conteudo_perfil": {
                     "totais": {
                         "posts": p_posts,
@@ -494,19 +575,21 @@ class MediaMetricasIPDView(APIView):
                         "taxa_concentracao_pct": fmt(p_concentracao_pct)
                     },
                     "performance_bruta": {
-                        "share_pct": fmt(p_share),
-                        "taxa_debate_pct": fmt(p_debate),
-                        "media_ints_post": fmt(p_tracao),
-                        "variacao_cv": fmt(p_cv)
+                        "share_pct": fmt(p_share_mes),
+                        "taxa_debate_pct": fmt(p_taxa_debate_bruta_pct),
+                        "media_ints_post": fmt(p_tracao_mes),
+                        "variacao_cv": fmt(p_cv_mes),
+                        "fator_atividade": fmt(p_fator_volume),
+                        "icq_bruto_mes": fmt(p_icq_mes),
+                        "pdb_bruto_mes": fmt(p_pdb_mes)
                     }
                 },
 
-                # NOTAS NORMALIZADAS PELA CURVA DE GAUSS
                 "notas_normalizadas_mes": {
                     "share_mercado": {"nota": fmt(nota_share), "classificacao": class_share},
                     "poder_debate": {"nota": fmt(nota_debate), "classificacao": class_debate},
                     "eficiencia_post": {"nota": fmt(nota_tracao), "classificacao": class_tracao},
-                    "consistencia": {"nota": fmt(nota_consist), "classificacao": class_consist}
+                    "consistencia_qualidade": {"nota": fmt(nota_consist), "classificacao": class_consist}
                 },
 
                 "top_posts": top_posts_data,

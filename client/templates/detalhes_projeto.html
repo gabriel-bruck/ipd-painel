@@ -392,6 +392,7 @@
     <!-- LÓGICA JAVASCRIPT INTEGRADA -->
     <script>
         let mapPrevisaoCharts = {};
+        let mapRankingPrevisaoCharts = {};
         let statePrevisaoPreditiva = {};
         let mapRankingCharts = {};
         const PROJETO_ID = "{{ projeto.id|default:'1' }}";
@@ -405,10 +406,257 @@
 
         const dimensoesRadar = ['Fama', 'Engajamento', 'Mobilização', 'Valência', 'Interesse'];
         const paletaCores = [
-            '#1FA4B6', '#10B981', '#F59E0B', '#6366F1', '#EC4899', 
-            '#8B5CF6', '#14B8A6', '#F97316', '#06B6D4', '#84CC16',
-            '#E11D48', '#D97706', '#4F46E5', '#059669', '#0284C7'
+            '#0072B2', // azul
+            '#E69F00', // laranja
+            '#009E73', // verde
+            '#CC3377', // magenta
+            '#7B2CBF', // roxo
+            '#6B4F3A', // marrom
+            '#E63946', // vermelho
+            '#8A8F00', // oliva
+            '#00A6D6', // ciano
+            '#3F3F46', // grafite
+            '#D55E00', // laranja queimado
+            '#6A994E', // verde oliva
+            '#3A0CA3', // índigo
+            '#A23E48', // vinho
+            '#008C95', // teal escuro
+            '#AF52DE', // violeta
+            '#C75B12', // cobre
+            '#2F6690', // azul aço
+            '#B85C8A', // rosa escuro
+            '#647A00'  // lima escuro
         ];
+
+        const mapaCoresPerfis = new Map();
+        const mapaCoresPerfisPadrao = new Map();
+        const mapaCoresPerfisPersonalizadas = new Map();
+        const CHAVE_CORES_PERFIS = 'ipd_cores_perfis_personalizadas';
+
+        try {
+            const coresSalvas = JSON.parse(localStorage.getItem(CHAVE_CORES_PERFIS) || '{}');
+            Object.entries(coresSalvas).forEach(([perfil, cor]) => {
+                if (/^#[0-9a-f]{6}$/i.test(String(cor))) {
+                    mapaCoresPerfisPersonalizadas.set(perfil, String(cor).toUpperCase());
+                }
+            });
+        } catch (error) {
+            console.warn('Não foi possível recuperar as cores personalizadas.', error);
+        }
+
+        function normalizarNomePerfil(nomePerfil) {
+            return String(nomePerfil || '').trim().toLocaleLowerCase('pt-BR');
+        }
+
+        function registrarCoresPerfis(nomesPerfis = []) {
+            const nomesUnicosOrdenados = [...new Set(
+                nomesPerfis
+                    .map(nome => String(nome || '').trim())
+                    .filter(Boolean)
+            )].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+
+            const coresEmUso = new Set(mapaCoresPerfis.values());
+
+            nomesUnicosOrdenados.forEach(nomePerfil => {
+                const chave = normalizarNomePerfil(nomePerfil);
+                if (mapaCoresPerfis.has(chave)) return;
+
+                const corLivre = paletaCores.find(cor => !coresEmUso.has(cor));
+                const cor = corLivre || paletaCores[mapaCoresPerfis.size % paletaCores.length];
+                mapaCoresPerfis.set(chave, cor);
+                mapaCoresPerfisPadrao.set(chave, cor);
+                coresEmUso.add(cor);
+            });
+        }
+
+        function obterCorPerfil(nomePerfil) {
+            const nomeNormalizado = normalizarNomePerfil(nomePerfil);
+            if (!nomeNormalizado) return paletaCores[0];
+
+            if (!mapaCoresPerfis.has(nomeNormalizado)) {
+                registrarCoresPerfis([nomePerfil]);
+            }
+
+            return mapaCoresPerfisPersonalizadas.get(nomeNormalizado)
+                || mapaCoresPerfis.get(nomeNormalizado)
+                || paletaCores[0];
+        }
+
+        function salvarCoresPerfisPersonalizadas() {
+            try {
+                localStorage.setItem(
+                    CHAVE_CORES_PERFIS,
+                    JSON.stringify(Object.fromEntries(mapaCoresPerfisPersonalizadas))
+                );
+            } catch (error) {
+                console.warn('Não foi possível salvar as cores personalizadas.', error);
+            }
+        }
+
+        function atualizarCorPerfilNosGraficos(nomePerfil, novaCor) {
+            Object.entries(stateIPDs).forEach(([ipdId, ref]) => {
+                if (ref?.lineChart) {
+                    ref.lineChart.data.datasets.forEach(dataset => {
+                        if (dataset.label === nomePerfil) {
+                            dataset.borderColor = novaCor;
+                            dataset.backgroundColor = novaCor + '15';
+                        }
+                    });
+                    ref.lineChart.update('none');
+                }
+
+                if (ref?.radarChart) {
+                    ref.radarChart.data.datasets.forEach(dataset => {
+                        if (dataset.label === nomePerfil) {
+                            dataset.borderColor = novaCor;
+                            dataset.backgroundColor = novaCor + '30';
+                        }
+                    });
+                    ref.radarChart.update('none');
+                }
+
+                let slideAtualizado = false;
+                (ref?.slidesCarrosselData || []).forEach(slide => {
+                    if (slide.titulo === nomePerfil) {
+                        slide.corTexto = novaCor;
+                        slideAtualizado = true;
+                    }
+                });
+                if (slideAtualizado) renderizarSlideCard(ipdId);
+            });
+
+            Object.values(mapTemasCharts).forEach(chart => {
+                if (!chart?.data?.datasets) return;
+                chart.data.datasets.forEach(dataset => {
+                    if (dataset.label === nomePerfil) {
+                        dataset.borderColor = novaCor;
+                        dataset.backgroundColor = novaCor;
+                    }
+                });
+                chart.update('none');
+            });
+
+            Object.values(mapPrevisaoCharts).forEach(chart => {
+                if (!chart?.data?.datasets) return;
+                chart.data.datasets.forEach(dataset => {
+                    if (dataset.label === `${nomePerfil} (Histórico)` || dataset.label === `${nomePerfil} (Projeção)`) {
+                        dataset.borderColor = novaCor;
+                        dataset.backgroundColor = novaCor;
+                    } else if (dataset.label === `${nomePerfil}_min`) {
+                        dataset.backgroundColor = novaCor + '25';
+                    }
+                });
+                chart.update('none');
+            });
+
+            Object.values(mapRankingPrevisaoCharts).forEach(chart => {
+                if (!chart?.data?.datasets) return;
+                chart.data.datasets.forEach(dataset => {
+                    if (dataset.label === nomePerfil) {
+                        dataset.borderColor = novaCor;
+                        dataset.backgroundColor = novaCor;
+                    }
+                });
+                chart.update('none');
+            });
+        }
+
+        function alterarCorPerfil(nomePerfil, novaCor) {
+            if (!/^#[0-9a-f]{6}$/i.test(String(novaCor))) return;
+
+            const chave = normalizarNomePerfil(nomePerfil);
+            const corNormalizada = String(novaCor).toUpperCase();
+            mapaCoresPerfisPersonalizadas.set(chave, corNormalizada);
+            salvarCoresPerfisPersonalizadas();
+
+            document.querySelectorAll('input[data-cor-perfil]').forEach(input => {
+                if (input.dataset.corPerfil === chave) input.value = corNormalizada;
+            });
+
+            atualizarCorPerfilNosGraficos(nomePerfil, corNormalizada);
+        }
+
+        function restaurarCoresPerfis() {
+            const perfisPersonalizados = [...mapaCoresPerfisPersonalizadas.keys()];
+            mapaCoresPerfisPersonalizadas.clear();
+            salvarCoresPerfisPersonalizadas();
+
+            perfisPersonalizados.forEach(chave => {
+                const corPadrao = mapaCoresPerfisPadrao.get(chave) || paletaCores[0];
+                const inputReferencia = [...document.querySelectorAll('input[data-cor-perfil]')]
+                    .find(input => input.dataset.corPerfil === chave);
+                const nomePerfil = inputReferencia?.dataset.nomePerfil || chave;
+                atualizarCorPerfilNosGraficos(nomePerfil, corPadrao);
+            });
+
+            document.querySelectorAll('input[data-cor-perfil]').forEach(input => {
+                input.value = obterCorPerfil(input.dataset.nomePerfil);
+            });
+        }
+
+        function montarPersonalizadorCores(ipdId, nomesPerfis = []) {
+            const container = document.getElementById(`personalizador-cores-${ipdId}`);
+            if (!container) return;
+
+            registrarCoresPerfis(nomesPerfis);
+            container.innerHTML = '';
+
+            const detalhes = document.createElement('details');
+            detalhes.className = 'group rounded-2xl border border-slate-200 bg-slate-50/80 overflow-hidden';
+
+            const resumo = document.createElement('summary');
+            resumo.className = 'flex items-center justify-between gap-3 px-4 py-3 cursor-pointer select-none list-none';
+            resumo.innerHTML = `
+                <span class="flex items-center gap-2 text-xs font-black text-slate-700 uppercase tracking-wider">
+                    <i class="fa-solid fa-palette text-quaest-teal"></i>
+                    Personalizar cores dos perfis
+                </span>
+                <span class="text-[11px] font-bold text-slate-400 group-open:hidden">Abrir</span>
+                <span class="text-[11px] font-bold text-slate-400 hidden group-open:inline">Fechar</span>
+            `;
+
+            const conteudo = document.createElement('div');
+            conteudo.className = 'border-t border-slate-200 bg-white px-4 py-4 space-y-3';
+
+            const topo = document.createElement('div');
+            topo.className = 'flex flex-col sm:flex-row sm:items-center justify-between gap-2';
+            topo.innerHTML = '<p class="text-xs text-slate-500">As escolhas são aplicadas aos gráficos com linhas ou barras diferenciadas e ficam salvas neste navegador.</p>';
+
+            const btnRestaurar = document.createElement('button');
+            btnRestaurar.type = 'button';
+            btnRestaurar.className = 'text-[11px] font-black text-quaest-teal hover:underline shrink-0';
+            btnRestaurar.innerHTML = '<i class="fa-solid fa-rotate-left mr-1"></i> Restaurar padrão';
+            btnRestaurar.onclick = restaurarCoresPerfis;
+            topo.appendChild(btnRestaurar);
+
+            const grade = document.createElement('div');
+            grade.className = 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2';
+
+            [...new Set(nomesPerfis)].sort((a, b) => a.localeCompare(b, 'pt-BR')).forEach(nomePerfil => {
+                const item = document.createElement('label');
+                item.className = 'flex items-center gap-2.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 cursor-pointer hover:border-slate-300 transition';
+
+                const input = document.createElement('input');
+                input.type = 'color';
+                input.value = obterCorPerfil(nomePerfil);
+                input.dataset.corPerfil = normalizarNomePerfil(nomePerfil);
+                input.dataset.nomePerfil = nomePerfil;
+                input.title = `Alterar cor de ${nomePerfil}`;
+                input.className = 'w-8 h-8 rounded-lg border-0 bg-transparent cursor-pointer shrink-0';
+                input.addEventListener('input', event => alterarCorPerfil(nomePerfil, event.target.value));
+
+                const texto = document.createElement('span');
+                texto.className = 'text-xs font-extrabold text-slate-700 truncate';
+                texto.textContent = nomePerfil;
+
+                item.append(input, texto);
+                grade.appendChild(item);
+            });
+
+            conteudo.append(topo, grade);
+            detalhes.append(resumo, conteudo);
+            container.appendChild(detalhes);
+        }
 
         let listaIPDsGlobais = [];
         let stateIPDs = {};
@@ -488,6 +736,130 @@
             }
         };
 
+        const pluginRotulosRankingPrevisao = {
+            id: 'pluginRotulosRankingPrevisao',
+            afterDatasetsDraw(chart) {
+                const { ctx, chartArea } = chart;
+                const caixasOcupadas = [];
+                const colide = (a, b) => !(
+                    a.right + 3 < b.left ||
+                    a.left - 3 > b.right ||
+                    a.bottom + 3 < b.top ||
+                    a.top - 3 > b.bottom
+                );
+                ctx.save();
+                ctx.font = '800 11px "Inter", sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+
+                chart.data.datasets.forEach((dataset, datasetIndex) => {
+                    if (!chart.isDatasetVisible(datasetIndex)) return;
+                    const meta = chart.getDatasetMeta(datasetIndex);
+                    meta.data.forEach((point, index) => {
+                        const valor = dataset.data[index];
+                        if (valor === null || valor === undefined) return;
+                        const infoRotulo = dataset.rotulosRanking?.[index];
+                        if (!infoRotulo?.mostrar) return;
+                        const texto = infoRotulo.texto;
+                        const largura = ctx.measureText(texto).width + 12;
+                        const altura = 20;
+                        const centroX = Math.max(chartArea.left + largura / 2, Math.min(chartArea.right - largura / 2, point.x));
+                        const deslocamentos = [-18, 18, -30, 30, -42, 42, -54, 54];
+                        let y = null;
+                        let caixa = null;
+
+                        for (const deslocamento of deslocamentos) {
+                            const candidatoY = Math.max(
+                                chartArea.top + altura / 2,
+                                Math.min(chartArea.bottom - altura / 2, point.y + deslocamento)
+                            );
+                            const candidata = {
+                                left: centroX - largura / 2,
+                                right: centroX + largura / 2,
+                                top: candidatoY - altura / 2,
+                                bottom: candidatoY + altura / 2
+                            };
+                            if (!caixasOcupadas.some(existente => colide(candidata, existente))) {
+                                y = candidatoY;
+                                caixa = candidata;
+                                break;
+                            }
+                        }
+
+                        // A altura dinâmica normalmente elimina colisões. Em um
+                        // empate exato, mantém o rótulo junto ao próprio ponto.
+                        if (!caixa || y === null) {
+                            y = Math.max(chartArea.top + altura / 2, Math.min(chartArea.bottom - altura / 2, point.y));
+                            caixa = {
+                                left: centroX - largura / 2,
+                                right: centroX + largura / 2,
+                                top: y - altura / 2,
+                                bottom: y + altura / 2
+                            };
+                        }
+                        caixasOcupadas.push(caixa);
+
+                        ctx.strokeStyle = dataset.borderColor;
+                        ctx.lineWidth = 1;
+                        ctx.beginPath();
+                        ctx.moveTo(point.x, point.y);
+                        ctx.lineTo(centroX, y > point.y ? y - altura / 2 : y + altura / 2);
+                        ctx.stroke();
+
+                        ctx.fillStyle = 'rgba(255,255,255,0.94)';
+                        ctx.lineWidth = 1;
+                        ctx.beginPath();
+                        ctx.roundRect(caixa.left, caixa.top, largura, altura, 5);
+                        ctx.fill();
+                        ctx.stroke();
+                        ctx.fillStyle = '#0F172A';
+                        ctx.fillText(texto, centroX, y);
+                    });
+                });
+                ctx.restore();
+            }
+        };
+
+        const pluginInicioPrevisao = {
+            id: 'pluginInicioPrevisao',
+            beforeDatasetsDraw(chart, args, pluginOptions) {
+                const indiceInicio = Number(pluginOptions?.indiceInicio);
+                const escalaX = chart.scales.x;
+                if (!escalaX || !Number.isFinite(indiceInicio) || indiceInicio <= 0) return;
+
+                const xAtual = escalaX.getPixelForValue(indiceInicio);
+                const xAnterior = escalaX.getPixelForValue(indiceInicio - 1);
+                const limite = (xAtual + xAnterior) / 2;
+                const { ctx, chartArea } = chart;
+
+                ctx.save();
+                ctx.fillStyle = 'rgba(139, 92, 246, 0.055)';
+                ctx.fillRect(limite, chartArea.top, chartArea.right - limite, chartArea.bottom - chartArea.top);
+                ctx.restore();
+            },
+            afterDraw(chart, args, pluginOptions) {
+                const indiceInicio = Number(pluginOptions?.indiceInicio);
+                const escalaX = chart.scales.x;
+                if (!escalaX || !Number.isFinite(indiceInicio) || indiceInicio <= 0) return;
+
+                const xAtual = escalaX.getPixelForValue(indiceInicio);
+                const xAnterior = escalaX.getPixelForValue(indiceInicio - 1);
+                const limite = (xAtual + xAnterior) / 2;
+                const { ctx, chartArea } = chart;
+
+                ctx.save();
+                ctx.strokeStyle = '#7C3AED';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([6, 5]);
+                ctx.beginPath();
+                ctx.moveTo(limite, chartArea.top);
+                ctx.lineTo(limite, chartArea.bottom);
+                ctx.stroke();
+                ctx.setLineDash([]);
+                ctx.restore();
+            }
+        };
+
         /* =========================================================
            FUNÇÕES GLOBAIS DE SELEÇÃO TOTAL E DESMARCAÇÃO DE PROFILES
            ========================================================= */
@@ -519,8 +891,8 @@
             const profiles = (ref.ipdObj?.profiles_usados || Object.keys(dataStruct.profiles)).sort((a, b) => a.localeCompare(b, 'pt-BR'));
             
             ref.lineChart.data.datasets = [];
-            profiles.forEach((profileName, idx) => {
-                const color = paletaCores[idx % paletaCores.length];
+            profiles.forEach((profileName) => {
+                const color = obterCorPerfil(profileName);
                 const pInfo = dataStruct.profiles[profileName];
                 const valores = pInfo ? dataStruct.datas.map(d => pInfo.registrosPorData[d] ? pInfo.registrosPorData[d].ipd : null) : [];
                 
@@ -531,14 +903,20 @@
                     backgroundColor: color + '15',
                     tension: 0.2,
                     borderWidth: 2,
-                    pointRadius: ref.periodoHistorico === 'diario' ? 0 : 4,
-                    pointHoverRadius: ref.periodoHistorico === 'diario' ? 6 : 7,
+                    pointRadius: 0,
+                    pointHoverRadius: 7,
                     pointHitRadius: 10
                 });
             });
 
             ref.lineChart.update();
             montarBotoesHistorico(ipdId);
+
+            const idxPonto = pontoSelecionadoGlobal[ipdId];
+            const box = document.getElementById(`box-diagnostico-ponto-${ipdId}`);
+            if (box && !box.classList.contains('hidden') && idxPonto !== null && idxPonto !== undefined) {
+                explicarAntesDepoisPonto(ipdId, idxPonto);
+            }
         }
 
         function desmarcarTodosHistorico(ipdId) {
@@ -548,6 +926,12 @@
             ref.lineChart.data.datasets = [];
             ref.lineChart.update();
             montarBotoesHistorico(ipdId);
+
+            const idxPonto = pontoSelecionadoGlobal[ipdId];
+            const box = document.getElementById(`box-diagnostico-ponto-${ipdId}`);
+            if (box && !box.classList.contains('hidden') && idxPonto !== null && idxPonto !== undefined) {
+                explicarAntesDepoisPonto(ipdId, idxPonto);
+            }
         }
 
         function selecionarTodosRadar(ipdId) {
@@ -597,7 +981,7 @@
             if (!state || !state.dadosMensais) return;
 
             const todosPerfis = [...new Set(state.dadosMensais.flatMap(m => (m.ranking_perfis || []).map(p => p.profile)))].sort((a,b) => a.localeCompare(b, 'pt-BR'));
-            state.perfisAtivos = new Set(todosPerfis);
+            state.perfisAtivosPontuacao = new Set(todosPerfis);
 
             montarBotoesFiltroPrevisao(ipdId, todosPerfis);
             renderizarGraficoEStatsPrevisao(ipdId);
@@ -608,7 +992,7 @@
             if (!state || !state.dadosMensais) return;
 
             const todosPerfis = [...new Set(state.dadosMensais.flatMap(m => (m.ranking_perfis || []).map(p => p.profile)))].sort((a,b) => a.localeCompare(b, 'pt-BR'));
-            state.perfisAtivos.clear();
+            state.perfisAtivosPontuacao.clear();
 
             montarBotoesFiltroPrevisao(ipdId, todosPerfis);
             renderizarGraficoEStatsPrevisao(ipdId);
@@ -633,6 +1017,7 @@
                             if (mapRankingCharts[idAtual]) mapRankingCharts[idAtual].resize();
                             if (mapCausalCharts[idAtual]) mapCausalCharts[idAtual].resize();
                             if (mapPrevisaoCharts[idAtual]) mapPrevisaoCharts[idAtual].resize();
+                            if (mapRankingPrevisaoCharts[idAtual]) mapRankingPrevisaoCharts[idAtual].resize();
                         }, 50);
                     } else {
                         articleEl.classList.add('hidden');
@@ -871,11 +1256,12 @@
                 if (urlLimpa.includes('/shorts/')) videoId = urlLimpa.split('/shorts/')[1]?.split('?')[0];
                 else if (urlLimpa.includes('youtu.be/')) videoId = urlLimpa.split('youtu.be/')[1]?.split('?')[0];
                 else if (urlLimpa.includes('watch?v=')) videoId = urlLimpa.split('watch?v=')[1]?.split('&')[0];
+                else if (urlLimpa.includes('/embed/')) videoId = urlLimpa.split('/embed/')[1]?.split('?')[0];
 
                 if (videoId) {
                     container.innerHTML = `
                         <div class="w-full h-[300px] max-w-lg mx-auto rounded-xl overflow-hidden shadow-sm">
-                            <iframe class="w-full h-full" src="https://www.youtube.com/embed/${videoId}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+                            <iframe class="w-full h-full" src="https://www.youtube.com/embed/${videoId}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
                         </div>`;
                 } else {
                     container.innerHTML = `<a href="${urlLimpa}" target="_blank" class="px-4 py-2 rounded-xl bg-red-50 text-red-600 font-bold text-xs border border-red-200"><i class="fa-brands fa-youtube mr-1"></i> Abrir no YouTube</a>`;
@@ -1402,8 +1788,8 @@
 
             const temasUnicos = [...new Set(todosPerfis.map(item => item.categoria_tema))];
 
-            const datasets = selecionados.map((pName, idx) => {
-                const cor = paletaCores[idx % paletaCores.length];
+            const datasets = selecionados.map((pName) => {
+                const cor = obterCorPerfil(pName);
                 const dadosPerfilTema = temasUnicos.map(tema => {
                     const achou = todosPerfis.find(p => p.profile === pName && p.categoria_tema === tema);
                     return achou ? achou.interacao_por_post || 0 : 0;
@@ -1496,11 +1882,11 @@
                 if(elShare) elShare.innerText = cPerfil.performance_bruta?.share_pct !== undefined ? `${cPerfil.performance_bruta.share_pct.toFixed(1)}%` : '--%';
                 if(elClassShare) elClassShare.innerText = cNotas.share_mercado?.classificacao || '--';
 
-                // 2. Consistência
+                // 2. Consistência & Qualidade (ICQ)
                 const elConsist = document.getElementById(`badge-val-consist-${ipdId}`);
                 const elClassConsist = document.getElementById(`badge-class-consist-${ipdId}`);
-                if(elConsist) elConsist.innerText = cNotas.consistencia?.nota !== undefined ? cNotas.consistencia.nota.toFixed(1) : '--';
-                if(elClassConsist) elClassConsist.innerText = cNotas.consistencia?.classificacao || '--';
+                if(elConsist) elConsist.innerText = cNotas.consistencia_qualidade?.nota !== undefined ? cNotas.consistencia_qualidade.nota.toFixed(1) : '--';
+                if(elClassConsist) elClassConsist.innerText = cNotas.consistencia_qualidade?.classificacao || '--';
 
                 // 3. Debate
                 const elDebate = document.getElementById(`badge-val-debate-${ipdId}`);
@@ -1748,14 +2134,12 @@
             renderizarCardsHighlights(ipdId, lider, maiorSubida, maiorEvolucao);
             montarBotoesRanking(ipdId);
 
-            const COR_QUAEST_TEAL = '#1FA4B6';
-            const COR_CINZA_SUAVE = '#E2E8F0';
-
+            const COR_RANKING_GERAL = '#1FA4B6';
+            const COR_RANKING_INATIVO = '#E2E8F0';
             const perfilAtivo = ref.perfilDestacadoRanking;
-            const colors = rankingFiltrado.map(item => {
-                if (!perfilAtivo) return COR_QUAEST_TEAL;
-                return item.profile === perfilAtivo ? COR_QUAEST_TEAL : COR_CINZA_SUAVE;
-            });
+            const colors = rankingFiltrado.map(item =>
+                !perfilAtivo || item.profile === perfilAtivo ? COR_RANKING_GERAL : COR_RANKING_INATIVO
+            );
 
             const labels = rankingFiltrado.map(item => item.profile);
             const dataScores = rankingFiltrado.map(item => item.score);
@@ -1792,12 +2176,11 @@
                             
                             ref.perfilDestacadoRanking = (ref.perfilDestacadoRanking === perfilClicado) ? null : perfilClicado;
 
-                            const novasCores = rankingFiltrado.map(item => {
-                                if (!ref.perfilDestacadoRanking) return COR_QUAEST_TEAL;
-                                return item.profile === ref.perfilDestacadoRanking ? COR_QUAEST_TEAL : COR_CINZA_SUAVE;
-                            });
-
-                            mapRankingCharts[ipdId].data.datasets[0].backgroundColor = novasCores;
+                            mapRankingCharts[ipdId].data.datasets[0].backgroundColor = rankingFiltrado.map(item =>
+                                !ref.perfilDestacadoRanking || item.profile === ref.perfilDestacadoRanking
+                                    ? COR_RANKING_GERAL
+                                    : COR_RANKING_INATIVO
+                            );
                             mapRankingCharts[ipdId].update('none');
                         }
                     },
@@ -1889,265 +2272,275 @@
             `;
         }
 
-        async function executarCalculoCausal(ipdId) {
-            const perfil = document.getElementById(`causal-perfil-${ipdId}`).value;
-            const dataInicio = document.getElementById(`causal-inicio-${ipdId}`).value;
-            const dataFim = document.getElementById(`causal-fim-${ipdId}`).value;
+       async function executarCalculoCausal(ipdId) {
+    const perfil = document.getElementById(`causal-perfil-${ipdId}`).value;
+    const dataInicio = document.getElementById(`causal-inicio-${ipdId}`).value;
+    const dataFim = document.getElementById(`causal-fim-${ipdId}`).value;
 
-            const boxLoading = document.getElementById(`causal-loading-${ipdId}`);
-            const boxErro = document.getElementById(`causal-erro-${ipdId}`);
-            const boxResultados = document.getElementById(`causal-resultados-${ipdId}`);
+    const boxLoading = document.getElementById(`causal-loading-${ipdId}`);
+    const boxErro = document.getElementById(`causal-erro-${ipdId}`);
+    const boxResultados = document.getElementById(`causal-resultados-${ipdId}`);
 
-            boxLoading.classList.remove('hidden');
-            boxErro.classList.add('hidden');
-            boxResultados.classList.add('hidden');
+    boxLoading.classList.remove('hidden');
+    boxErro.classList.add('hidden');
+    boxResultados.classList.add('hidden');
 
-            const url = `/projetos/${PROJETO_ID}/causal-impact/?perfil=${encodeURIComponent(perfil)}&data_inicio_evento=${dataInicio}&data_fim_evento=${dataFim}`;
+    const url = `/projetos/${PROJETO_ID}/causal-impact/?perfil=${encodeURIComponent(perfil)}&data_inicio_evento=${dataInicio}&data_fim_evento=${dataFim}`;
 
-            try {
-                const response = await fetch(url);
-                const data = await response.json();
+    try {
+        const response = await fetch(url);
+        const data = await response.json();
 
-                boxLoading.classList.add('hidden');
+        boxLoading.classList.add('hidden');
 
-                if (!response.ok || !data.sucesso) {
-                    document.getElementById(`causal-erro-etapa-${ipdId}`).innerHTML = `<i class="fa-solid fa-triangle-exclamation text-amber-600"></i> ${data.etapa_erro || 'Erro de Validação'}`;
-                    document.getElementById(`causal-erro-msg-${ipdId}`).innerText = data.error || 'Ocorreu um erro ao calcular a análise causal.';
-                    boxErro.classList.remove('hidden');
-                    return;
-                }
+        if (!response.ok || !data.sucesso) {
+            document.getElementById(`causal-erro-etapa-${ipdId}`).innerHTML = `<i class="fa-solid fa-triangle-exclamation text-amber-600"></i> ${data.etapa_erro || 'Erro de Validação'}`;
+            document.getElementById(`causal-erro-msg-${ipdId}`).innerText = data.error || 'Ocorreu um erro ao calcular a análise causal.';
+            boxErro.classList.remove('hidden');
+            return;
+        }
 
-                document.getElementById(`causal-pvalue-${ipdId}`).innerText = data.p_value;
-                document.getElementById(`causal-janela-${ipdId}`).innerText = `${data.periodo_pos[0]} a ${data.periodo_pos[1]}`;
+        document.getElementById(`causal-pvalue-${ipdId}`).innerText = data.p_value;
+        document.getElementById(`causal-janela-${ipdId}`).innerText = `${data.periodo_pos[0]} a ${data.periodo_pos[1]}`;
 
-                const dadosPos = data.serie_temporal.filter(item => item.data >= data.periodo_pos[0] && item.data <= data.periodo_pos[1]);
-                
-                let pctVal = 0;
-                let acumuladoVal = data.efeito_acumulado_total;
+        // Cálculo dos indicadores feito com a série completa do Backend
+        const dadosPos = data.serie_temporal.filter(item => item.data >= data.periodo_pos[0] && item.data <= data.periodo_pos[1]);
+        
+        let pctVal = 0;
+        let acumuladoVal = data.efeito_acumulado_total;
 
-                if (dadosPos.length > 0) {
-                    const somaObservada = dadosPos.reduce((acc, item) => acc + (item.ipd_observado || 0), 0);
-                    const somaPrevista = dadosPos.reduce((acc, item) => acc + (item.ipd_sintetico_previsto || 0), 0);
-                    
-                    if (acumuladoVal === undefined || acumuladoVal === null) {
-                        const ultimoRegistro = dadosPos[dadosPos.length - 1];
-                        if (ultimoRegistro && ultimoRegistro.efeito_acumulado !== undefined && ultimoRegistro.efeito_acumulado !== null) {
-                            acumuladoVal = ultimoRegistro.efeito_acumulado;
-                        } else {
-                            acumuladoVal = somaObservada - somaPrevista;
-                        }
-                    }
-
-                    if (somaPrevista !== 0) {
-                        pctVal = ((somaObservada - somaPrevista) / somaPrevista) * 100;
-                    }
-                }
-
-                const elTamanho = document.getElementById(`causal-tamanho-${ipdId}`);
-                if (elTamanho) {
-                    if (pctVal > 0) {
-                        elTamanho.innerHTML = `<span class="text-emerald-600 font-black"><i class="fa-solid fa-arrow-trend-up mr-1"></i>+${pctVal.toFixed(2)}%</span>`;
-                    } else if (pctVal < 0) {
-                        elTamanho.innerHTML = `<span class="text-rose-600 font-black"><i class="fa-solid fa-arrow-trend-down mr-1"></i>${pctVal.toFixed(2)}%</span>`;
-                    } else {
-                        elTamanho.innerText = '0.00%';
-                    }
-                }
-
-                const elAcumulado = document.getElementById(`causal-acumulado-${ipdId}`);
-                if (elAcumulado) {
-                    const numAcumulado = Number(acumuladoVal || 0);
-                    if (numAcumulado > 0) {
-                        elAcumulado.innerHTML = `<span class="text-emerald-600 font-black"><i class="fa-solid fa-arrow-trend-up mr-1 text-base"></i>${numAcumulado.toFixed(2)} pts</span>`;
-                    } else if (numAcumulado < 0) {
-                        elAcumulado.innerHTML = `<span class="text-rose-600 font-black"><i class="fa-solid fa-arrow-trend-down mr-1 text-base"></i>${numAcumulado.toFixed(2)} pts</span>`;
-                    } else {
-                        elAcumulado.innerText = '0.00 pts';
-                    }
-                }
-
-                const badgeSig = document.getElementById(`causal-significativo-${ipdId}`);
-                if (data.estatisticamente_significativo) {
-                    badgeSig.innerHTML = `<span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800"><i class="fa-solid fa-check-circle mr-1"></i> Impacto Relevante</span>`;
+        if (dadosPos.length > 0) {
+            const somaObservada = dadosPos.reduce((acc, item) => acc + (item.ipd_observado || 0), 0);
+            const somaPrevista = dadosPos.reduce((acc, item) => acc + (item.ipd_sintetico_previsto || 0), 0);
+            
+            if (acumuladoVal === undefined || acumuladoVal === null) {
+                const ultimoRegistro = dadosPos[dadosPos.length - 1];
+                if (ultimoRegistro && ultimoRegistro.efeito_acumulado !== undefined && ultimoRegistro.efeito_acumulado !== null) {
+                    acumuladoVal = ultimoRegistro.efeito_acumulado;
                 } else {
-                    badgeSig.innerHTML = `<span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800"><i class="fa-solid fa-info-circle mr-1"></i> Sem Significância</span>`;
+                    acumuladoVal = somaObservada - somaPrevista;
                 }
+            }
 
-                const posInicio = data.periodo_pos[0];
-                const posFim = data.periodo_pos[1];
-
-                const labels = data.serie_temporal.map(item => formatarDataAnoCurto(item.data));
-                const observados = data.serie_temporal.map(item => item.ipd_observado);
-                const previstos = data.serie_temporal.map(item => item.ipd_sintetico_previsto);
-                
-                const limiteInferior = data.serie_temporal.map(item => {
-                    if (item.data >= posInicio && item.data <= posFim) return item.limite_inferior;
-                    return null;
-                });
-
-                const limiteSuperior = data.serie_temporal.map(item => {
-                    if (item.data >= posInicio && item.data <= posFim) return item.limite_superior;
-                    return null;
-                });
-
-                const canvasElement = document.getElementById(`chartCausalImpactCanvas-${ipdId}`);
-                if (!canvasElement) {
-                    console.error(`Elemento canvas chartCausalImpactCanvas-${ipdId} não encontrado.`);
-                    boxResultados.classList.remove('hidden');
-                    return;
-                }
-
-                const ctx = canvasElement.getContext('2d');
-
-                if (mapCausalCharts[ipdId]) {
-                    mapCausalCharts[ipdId].destroy();
-                }
-
-                const verticalLinePlugin = {
-                    id: 'eventVerticalLine',
-                    afterDraw: (chart) => {
-                        const eventIndex = data.serie_temporal.findIndex(item => item.data === posInicio);
-                        if (eventIndex !== -1) {
-                            const meta = chart.getDatasetMeta(0);
-                            if (meta.data[eventIndex]) {
-                                const x = meta.data[eventIndex].x;
-                                const topY = chart.scales.y.top;
-                                const bottomY = chart.scales.y.bottom;
-                                const chartCtx = chart.ctx;
-                                const chartWidth = chart.width;
-
-                                chartCtx.save();
-                                chartCtx.beginPath();
-                                chartCtx.moveTo(x, topY);
-                                chartCtx.lineTo(x, bottomY);
-                                chartCtx.lineWidth = 1.5;
-                                chartCtx.setLineDash([4, 4]);
-                                chartCtx.strokeStyle = '#F43F5E';
-                                chartCtx.stroke();
-
-                                const texto = "Início Evento";
-                                chartCtx.font = 'bold 10px "Inter", sans-serif';
-                                const textMetrics = chartCtx.measureText(texto);
-                                const textWidth = textMetrics.width;
-
-                                let textX = x + 6;
-                                chartCtx.textAlign = 'left';
-
-                                if (x + textWidth + 12 > chartWidth) {
-                                    textX = x - 6;
-                                    chartCtx.textAlign = 'right';
-                                }
-
-                                const bgPadding = 3;
-                                const rectWidth = textWidth + (bgPadding * 2);
-                                const rectHeight = 14;
-                                const rectX = chartCtx.textAlign === 'right' ? textX - textWidth - bgPadding : textX - bgPadding;
-                                const rectY = topY + 4;
-
-                                chartCtx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-                                chartCtx.fillRect(rectX, rectY, rectWidth, rectHeight);
-                                
-                                chartCtx.fillStyle = '#F43F5E';
-                                chartCtx.fillText(texto, textX, topY + 15);
-                                chartCtx.restore();
-                            }
-                        }
-                    }
-                };
-
-                mapCausalCharts[ipdId] = new Chart(ctx, {
-                    type: 'line',
-                    data: {
-                        labels: labels,
-                        datasets: [
-                            {
-                                label: `IPD Real (${data.perfil_alvo || perfil})`,
-                                data: observados,
-                                borderColor: '#1FA4B6',
-                                backgroundColor: '#1FA4B6',
-                                borderWidth: 2.5,
-                                pointRadius: 2,
-                                tension: 0.1
-                            },
-                            {
-                                label: 'Projeção Contrafactual',
-                                data: previstos,
-                                borderColor: '#F43F5E',
-                                borderDash: [4, 4],
-                                borderWidth: 2,
-                                pointRadius: 0,
-                                tension: 0.1
-                            },
-                            {
-                                label: 'IC 95% Superior',
-                                data: limiteSuperior,
-                                borderColor: 'transparent',
-                                backgroundColor: 'rgba(244, 63, 94, 0.12)',
-                                pointRadius: 0,
-                                fill: '+1'
-                            },
-                            {
-                                label: 'IC 95% Inferior',
-                                data: limiteInferior,
-                                borderColor: 'transparent',
-                                backgroundColor: 'transparent',
-                                pointRadius: 0,
-                                fill: false
-                            }
-                        ]
-                    },
-                    plugins: [verticalLinePlugin],
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        clip: false,
-                        layout: {
-                            padding: {
-                                top: 20,
-                                right: 25,
-                                left: 15,
-                                bottom: 10
-                            }
-                        },
-                        interaction: { mode: 'index', intersect: false },
-                        plugins: {
-                            legend: {
-                                position: 'top',
-                                labels: {
-                                    filter: item => !item.text.includes('IC 95%'),
-                                    font: { weight: 'bold', size: 11, family: 'Inter' }
-                                }
-                            }
-                        },
-                        scales: {
-                            x: { 
-                                grid: { color: '#E2E8F0' }, 
-                                ticks: { 
-                                    font: { weight: 'bold', size: 10, family: 'Inter' },
-                                    autoSkip: true,
-                                    maxTicksLimit: 12,
-                                    maxRotation: 0
-                                } 
-                            },
-                            y: { 
-                                min: 0, 
-                                max: 100,
-                                grid: { color: '#E2E8F0' }, 
-                                ticks: { font: { weight: 'bold', size: 10, family: 'Inter' } } 
-                            }
-                        }
-                    }
-                });
-
-                boxResultados.classList.remove('hidden');
-
-            } catch (err) {
-                boxLoading.classList.add('hidden');
-                document.getElementById(`causal-erro-etapa-${ipdId}`).innerHTML = `<i class="fa-solid fa-triangle-exclamation text-amber-600"></i> Falha de Conexão`;
-                document.getElementById(`causal-erro-msg-${ipdId}`).innerText = "Erro na comunicação com o servidor Django: " + err.message;
-                boxErro.classList.remove('hidden');
+            if (somaPrevista !== 0) {
+                pctVal = ((somaObservada - somaPrevista) / somaPrevista) * 100;
             }
         }
+
+        const elTamanho = document.getElementById(`causal-tamanho-${ipdId}`);
+        if (elTamanho) {
+            if (pctVal > 0) {
+                elTamanho.innerHTML = `<span class="text-emerald-600 font-black"><i class="fa-solid fa-arrow-trend-up mr-1"></i>+${pctVal.toFixed(2)}%</span>`;
+            } else if (pctVal < 0) {
+                elTamanho.innerHTML = `<span class="text-rose-600 font-black"><i class="fa-solid fa-arrow-trend-down mr-1"></i>${pctVal.toFixed(2)}%</span>`;
+            } else {
+                elTamanho.innerText = '0.00%';
+            }
+        }
+
+        const elAcumulado = document.getElementById(`causal-acumulado-${ipdId}`);
+        if (elAcumulado) {
+            const numAcumulado = Number(acumuladoVal || 0);
+            if (numAcumulado > 0) {
+                elAcumulado.innerHTML = `<span class="text-emerald-600 font-black"><i class="fa-solid fa-arrow-trend-up mr-1 text-base"></i>${numAcumulado.toFixed(2)} pts</span>`;
+            } else if (numAcumulado < 0) {
+                elAcumulado.innerHTML = `<span class="text-rose-600 font-black"><i class="fa-solid fa-arrow-trend-down mr-1 text-base"></i>${numAcumulado.toFixed(2)} pts</span>`;
+            } else {
+                elAcumulado.innerText = '0.00 pts';
+            }
+        }
+
+        const badgeSig = document.getElementById(`causal-significativo-${ipdId}`);
+        if (data.estatisticamente_significativo) {
+            badgeSig.innerHTML = `<span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800"><i class="fa-solid fa-check-circle mr-1"></i> Impacto Relevante</span>`;
+        } else {
+            badgeSig.innerHTML = `<span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800"><i class="fa-solid fa-info-circle mr-1"></i> Sem Significância</span>`;
+        }
+
+        const posInicio = data.periodo_pos[0];
+        const posFim = data.periodo_pos[1];
+
+        // --- CORTE DA SÉRIE EXCLUSIVAMENTE PARA RENDERIZAÇÃO DO GRÁFICO ---
+        const dtInicioEvento = new Date(posInicio + 'T00:00:00');
+        dtInicioEvento.setMonth(dtInicioEvento.getMonth() - 3);
+        const strDataCorte3Meses = dtInicioEvento.toISOString().split('T')[0];
+
+        // Filtra a série do gráfico para manter apenas de 3 meses antes até o final
+        const serieExibicao = data.serie_temporal.filter(item => item.data >= strDataCorte3Meses);
+
+        const labels = serieExibicao.map(item => formatarDataAnoCurto(item.data));
+        const observados = serieExibicao.map(item => item.ipd_observado);
+        const previstos = serieExibicao.map(item => item.ipd_sintetico_previsto);
+        
+        const limiteInferior = serieExibicao.map(item => {
+            if (item.data >= posInicio && item.data <= posFim) return item.limite_inferior;
+            return null;
+        });
+
+        const limiteSuperior = serieExibicao.map(item => {
+            if (item.data >= posInicio && item.data <= posFim) return item.limite_superior;
+            return null;
+        });
+
+        const canvasElement = document.getElementById(`chartCausalImpactCanvas-${ipdId}`);
+        if (!canvasElement) {
+            console.error(`Elemento canvas chartCausalImpactCanvas-${ipdId} não encontrado.`);
+            boxResultados.classList.remove('hidden');
+            return;
+        }
+
+        const ctx = canvasElement.getContext('2d');
+
+        if (mapCausalCharts[ipdId]) {
+            mapCausalCharts[ipdId].destroy();
+        }
+
+        // Plugin ajustado para encontrar o índice do evento dentro da série recortada
+        const verticalLinePlugin = {
+            id: 'eventVerticalLine',
+            afterDraw: (chart) => {
+                const eventIndex = serieExibicao.findIndex(item => item.data === posInicio);
+                if (eventIndex !== -1) {
+                    const meta = chart.getDatasetMeta(0);
+                    if (meta.data[eventIndex]) {
+                        const x = meta.data[eventIndex].x;
+                        const topY = chart.scales.y.top;
+                        const bottomY = chart.scales.y.bottom;
+                        const chartCtx = chart.ctx;
+                        const chartWidth = chart.width;
+
+                        chartCtx.save();
+                        chartCtx.beginPath();
+                        chartCtx.moveTo(x, topY);
+                        chartCtx.lineTo(x, bottomY);
+                        chartCtx.lineWidth = 1.5;
+                        chartCtx.setLineDash([4, 4]);
+                        chartCtx.strokeStyle = '#F43F5E';
+                        chartCtx.stroke();
+
+                        const texto = "Início Evento";
+                        chartCtx.font = 'bold 10px "Inter", sans-serif';
+                        const textMetrics = chartCtx.measureText(texto);
+                        const textWidth = textMetrics.width;
+
+                        let textX = x + 6;
+                        chartCtx.textAlign = 'left';
+
+                        if (x + textWidth + 12 > chartWidth) {
+                            textX = x - 6;
+                            chartCtx.textAlign = 'right';
+                        }
+
+                        const bgPadding = 3;
+                        const rectWidth = textWidth + (bgPadding * 2);
+                        const rectHeight = 14;
+                        const rectX = chartCtx.textAlign === 'right' ? textX - textWidth - bgPadding : textX - bgPadding;
+                        const rectY = topY + 4;
+
+                        chartCtx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+                        chartCtx.fillRect(rectX, rectY, rectWidth, rectHeight);
+                        
+                        chartCtx.fillStyle = '#F43F5E';
+                        chartCtx.fillText(texto, textX, topY + 15);
+                        chartCtx.restore();
+                    }
+                }
+            }
+        };
+
+        mapCausalCharts[ipdId] = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: `IPD Real (${data.perfil_alvo || perfil})`,
+                        data: observados,
+                        borderColor: '#1FA4B6',
+                        backgroundColor: '#1FA4B6',
+                        borderWidth: 2.5,
+                        pointRadius: 2,
+                        tension: 0.1
+                    },
+                    {
+                        label: 'Projeção Contrafactual',
+                        data: previstos,
+                        borderColor: '#F43F5E',
+                        borderDash: [4, 4],
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        tension: 0.1
+                    },
+                    {
+                        label: 'IC 95% Superior',
+                        data: limiteSuperior,
+                        borderColor: 'transparent',
+                        backgroundColor: 'rgba(244, 63, 94, 0.12)',
+                        pointRadius: 0,
+                        fill: '+1'
+                    },
+                    {
+                        label: 'IC 95% Inferior',
+                        data: limiteInferior,
+                        borderColor: 'transparent',
+                        backgroundColor: 'transparent',
+                        pointRadius: 0,
+                        fill: false
+                    }
+                ]
+            },
+            plugins: [verticalLinePlugin],
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                clip: false,
+                layout: {
+                    padding: {
+                        top: 20,
+                        right: 25,
+                        left: 15,
+                        bottom: 10
+                    }
+                },
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        labels: {
+                            filter: item => !item.text.includes('IC 95%'),
+                            font: { weight: 'bold', size: 11, family: 'Inter' }
+                        }
+                    }
+                },
+                scales: {
+                    x: { 
+                        grid: { color: '#E2E8F0' }, 
+                        ticks: { 
+                            font: { weight: 'bold', size: 10, family: 'Inter' },
+                            autoSkip: true,
+                            maxTicksLimit: 12,
+                            maxRotation: 0
+                        } 
+                    },
+                    y: { 
+                        min: 0, 
+                        max: 100,
+                        grid: { color: '#E2E8F0' }, 
+                        ticks: { font: { weight: 'bold', size: 10, family: 'Inter' } } 
+                    }
+                }
+            }
+        });
+
+        boxResultados.classList.remove('hidden');
+
+    } catch (err) {
+        boxLoading.classList.add('hidden');
+        document.getElementById(`causal-erro-etapa-${ipdId}`).innerHTML = `<i class="fa-solid fa-triangle-exclamation text-amber-600"></i> Falha de Conexão`;
+        document.getElementById(`causal-erro-msg-${ipdId}`).innerText = "Erro na comunicação com o servidor Django: " + err.message;
+        boxErro.classList.remove('hidden');
+    }
+}
 
         function inicializarSeletorMesesResumo(meses) {
             const select = document.getElementById('select-mes-resumo-ia');
@@ -2267,6 +2660,8 @@
                 if (data.ipds) listaIPDsGlobais = data.ipds;
                 else if (data.ipd_id) listaIPDsGlobais = [data];
 
+                registrarCoresPerfis(listaIPDsGlobais.flatMap(ipd => ipd.profiles_usados || []));
+
                 renderizarRelatoriosExecutivos();
 
                 const conjuntoMeses = new Set();
@@ -2359,6 +2754,8 @@
                                 <span class="text-[11px] text-slate-500 font-bold uppercase tracking-wider">Escala do Índice</span>
                             </div>
                         </div>
+
+                        <div id="personalizador-cores-${ipdId}"></div>
                     </div>
 
                     <!-- 1º SEÇÃO: RANKING MENSAL DO IPD -->
@@ -2449,7 +2846,7 @@
                             </div>
 
                             <div class="p-6 rounded-2xl bg-slate-50 border border-slate-200 space-y-4">
-                                <div class="h-72 w-full cursor-pointer relative">
+                                <div class="h-80 w-full cursor-pointer relative">
                                     <canvas id="chart-line-${ipdId}"></canvas>
                                 </div>
 
@@ -2714,23 +3111,23 @@
                                   </div>
                               </div>
 
-                              <!-- Card 2: Consistência Editorial -->
+                              <!-- Card 2: Consistência e Qualidade (ICQ) -->
                               <div class="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm relative overflow-hidden flex flex-col justify-between gap-3">
                                   <div class="flex items-center justify-between border-b border-slate-100 pb-2">
                                       <span class="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider flex items-center gap-1.5">
-                                          <i class="fa-solid fa-wave-square text-quaest-teal"></i> Consistência
+                                          <i class="fa-solid fa-chart-line text-quaest-teal"></i> Consistência & Qualidade
                                       </span>
                                       <span id="badge-class-consist-${ipdId}" class="text-[9px] font-black bg-teal-50 text-teal-700 px-2 py-0.5 rounded border border-teal-200">--</span>
                                   </div>
                                   <div>
-                                      <span class="text-[10px] text-slate-400 font-bold uppercase block mb-1">Nota de Retenção</span>
+                                      <span class="text-[10px] text-slate-400 font-bold uppercase block mb-1">Índice ICQ</span>
                                       <div class="flex items-end gap-1">
                                           <span id="badge-val-consist-${ipdId}" class="text-3xl font-black text-slate-900 tracking-tight">--</span>
                                           <span class="text-sm font-bold text-slate-500 mb-1">/ 10</span>
                                       </div>
                                   </div>
                                   <div class="text-[9px] text-slate-500 leading-tight">
-                                      Avalia a estabilidade do público. Notas altas indicam audiência fiel; notas baixas refletem dependência de picos virais.
+                                      Combina a tração média do perfil vs. o mercado (Qualidade) com a estabilidade do engajamento entre as postagens (Consistência).
                                   </div>
                               </div>
 
@@ -2908,20 +3305,6 @@
                             </div>
 
                             <div id="previsao-resultados-${ipdId}" class="hidden space-y-6">
-                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                    <div class="p-4 rounded-2xl bg-white border border-purple-200 bg-purple-50/30 shadow-sm space-y-1">
-                                        <span class="text-[10px] text-purple-600 font-extrabold uppercase block">Líder Previsto no Final do Período</span>
-                                        <div id="previsao-ult-ipd-${ipdId}" class="text-2xl font-black text-purple-700">--</div>
-                                        <span id="previsao-ult-data-${ipdId}" class="text-[10px] text-slate-500 font-mono">--</span>
-                                    </div>
-
-                                    <div class="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-1">
-                                        <span class="text-[10px] text-slate-400 font-extrabold uppercase block">Universo Avaliado</span>
-                                        <div class="text-2xl font-black text-slate-900">${profiles.length} Perfis</div>
-                                        <span class="text-[10px] text-slate-500">Classificação relacional automatizada</span>
-                                    </div>
-                                </div>
-
                                 <div id="box-btn-explicacao-ia-${ipdId}" class="flex items-center justify-end">
                                     <button id="btn-explicar-ia-${ipdId}" onclick="solicitarExplicacaoIARanking(${ipdId})" class="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-extrabold text-xs px-5 py-2.5 rounded-xl shadow-md shadow-purple-500/20 transition flex items-center gap-2 cursor-pointer">
                                         <i class="fa-solid fa-wand-magic-sparkles text-amber-300"></i>
@@ -2942,15 +3325,52 @@
                                 </div>
 
                                 <div id="container-profiles-previsao-${ipdId}" class="flex flex-col gap-1.5">
-                                    <span class="text-xs font-bold text-slate-500">Exibir no Gráfico Futurista:</span>
+                                    <span class="text-xs font-bold text-slate-500">Perfis do gráfico de pontuação:</span>
                                 </div>
 
                                 <div class="p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
                                     <div class="flex items-center justify-between">
-                                        <h4 class="text-xs font-black text-slate-900 uppercase tracking-wider">Tendência e Evolução de Ranking por Perfil</h4>
+                                        <div>
+                                            <h4 class="text-xs font-black text-slate-900 uppercase tracking-wider">Pontuação IPD: histórico e projeção</h4>
+                                            <p class="text-[10px] text-slate-500 mt-0.5">Linha contínua = valor observado · linha tracejada = valor previsto · faixa = intervalo provável.</p>
+                                        </div>
                                     </div>
                                     <div class="h-80 w-full">
                                         <canvas id="chartPrevisaoCanvas-${ipdId}"></canvas>
+                                    </div>
+                                </div>
+
+                                <div class="p-5 rounded-2xl bg-white border border-purple-200 space-y-4 shadow-sm">
+                                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                        <div>
+                                            <div class="flex items-center gap-2">
+                                                <i class="fa-solid fa-arrow-up-wide-short text-purple-600"></i>
+                                                <h4 class="text-xs font-black text-slate-900 uppercase tracking-wider">Trajetória prevista — Top 10</h4>
+                                            </div>
+                                            <p class="text-[10px] text-slate-500 mt-1">Acompanha automaticamente quem aparece no Top 10. Os rótulos surgem na entrada e quando a posição muda.</p>
+                                        </div>
+                                        <button onclick="exportarGraficoParaPNG('chartRankingPrevisaoCanvas-${ipdId}', 'Mudanca_Ranking_Prevista_IPD')"
+                                                class="px-2.5 py-1.5 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200 font-bold text-xs shadow-sm transition flex items-center gap-1 w-fit">
+                                            <i class="fa-solid fa-download text-purple-600"></i> PNG ranking
+                                        </button>
+                                    </div>
+                                    <div class="flex flex-wrap gap-2 text-[10px] font-bold">
+                                        <span class="px-2.5 py-1 rounded-full bg-slate-50 text-slate-600 border border-slate-200">
+                                            <i class="fa-solid fa-ranking-star mr-1 text-purple-500"></i>Top 10 automático · sem seleção manual
+                                        </span>
+                                    </div>
+                                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-[10px] font-black uppercase tracking-wide">
+                                        <span id="label-ultimo-real-ranking-${ipdId}" class="inline-flex items-center gap-1.5 text-slate-600">
+                                            <i class="fa-solid fa-circle-check text-slate-400"></i> Último dado real
+                                        </span>
+                                        <span id="label-inicio-previsao-ranking-${ipdId}" class="inline-flex items-center gap-1.5 text-purple-700">
+                                            <i class="fa-solid fa-wand-magic-sparkles text-purple-500"></i> Início da previsão
+                                        </span>
+                                    </div>
+                                    <div id="scroll-ranking-previsao-${ipdId}" class="overflow-auto ranking-scroll border-t border-slate-100 pt-3" style="max-height: 680px;">
+                                        <div id="wrapper-ranking-previsao-${ipdId}" class="w-full" style="min-height: 460px;">
+                                            <canvas id="chartRankingPrevisaoCanvas-${ipdId}"></canvas>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -3080,6 +3500,7 @@
                 `;
 
                 container.appendChild(ipdSection);
+                montarPersonalizadorCores(ipdId, profiles);
                 inicializarStateIPD(ipdObj, ipdId);
             });
         }
@@ -3162,6 +3583,14 @@
                     responsive: true,
                     maintainAspectRatio: false,
                     interaction: { mode: 'index', intersect: false },
+                    layout: { padding: { top: 18, bottom: 12, left: 6, right: 8 } },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => `${context.dataset.label}: ${Number(context.raw).toFixed(2)} pts`
+                            }
+                        }
+                    },
                     onClick: (e, elements, chart) => {
                         let dataIndex = null;
                         if (elements && elements.length > 0) {
@@ -3226,6 +3655,16 @@
             }
         }
 
+        function obterNumeroMedicao(medicao, campos, padrao = 0) {
+            for (const campo of campos) {
+                const valor = medicao?.[campo];
+                if (valor === null || valor === undefined || valor === '') continue;
+                const numero = typeof valor === 'number' ? valor : Number(String(valor).replace(',', '.'));
+                if (Number.isFinite(numero)) return numero;
+            }
+            return padrao;
+        }
+
         function processarMapeamentoPeriodo(listaMedicoes, tipoPeriodo) {
             const map = {};
             const conjuntoDatas = new Set();
@@ -3233,8 +3672,17 @@
             if (tipoPeriodo === 'semana') campoData = 'semana';
             else if (tipoPeriodo === 'diario') campoData = 'data' in (listaMedicoes[0] || {}) ? 'data' : 'dia';
 
+            const obterChavePeriodo = medicao => {
+                const chaveOriginal = medicao[campoData] || medicao.data || medicao.dia || medicao.semana || medicao.mes;
+                if (!chaveOriginal) return null;
+                // O mensal deve sempre compartilhar uma única chave YYYY-MM,
+                // mesmo se o backend enviar o primeiro dia do mês ou timestamp.
+                if (tipoPeriodo === 'mes') return formatarDataParaAnoMes(chaveOriginal);
+                return String(chaveOriginal).split('T')[0];
+            };
+
             listaMedicoes.forEach(m => {
-                const key = m[campoData] || m.data || m.dia || m.semana || m.mes;
+                const key = obterChavePeriodo(m);
                 if (key) conjuntoDatas.add(key);
             });
 
@@ -3248,16 +3696,34 @@
                     map[p] = { registrosPorData: {} };
                 }
 
-                const keyData = m[campoData] || m.data || m.dia || m.semana || m.mes;
+                const keyData = obterChavePeriodo(m);
+                if (!keyData) return;
 
-                map[p].registrosPorData[keyData] = {
-                    ipd: parseFloat(m.media_ipd || m.ipd || 0),
-                    fama: parseFloat(m.media_fama || m.fama || 0),
-                    engaj: parseFloat(m.media_engaj || m.engaj || 0),
-                    mob: parseFloat(m.media_mob || m.mob || 0),
-                    valencia: parseFloat(m.media_valencia || m.valencia || 0),
-                    interesse: parseFloat(m.media_interesse || m.interesse || 0)
+                const novoRegistro = {
+                    ipd: obterNumeroMedicao(m, ['media_ipd', 'ipd_medio', 'media_ipd_mensal', 'ipd_mensal', 'ipd', 'score_ipd', 'valor_ipd']),
+                    fama: obterNumeroMedicao(m, ['media_fama', 'fama']),
+                    engaj: obterNumeroMedicao(m, ['media_engaj', 'engaj']),
+                    mob: obterNumeroMedicao(m, ['media_mob', 'mob']),
+                    valencia: obterNumeroMedicao(m, ['media_valencia', 'valencia']),
+                    interesse: obterNumeroMedicao(m, ['media_interesse', 'interesse']),
+                    _quantidadeAgregada: 1
                 };
+
+                const registroExistente = map[p].registrosPorData[keyData];
+                if (!registroExistente) {
+                    map[p].registrosPorData[keyData] = novoRegistro;
+                } else {
+                    // Se mais de uma medição chegar para o mesmo perfil/mês,
+                    // calcula a média em vez de sobrescrever pelo último item.
+                    const quantidadeAnterior = registroExistente._quantidadeAgregada || 1;
+                    const novaQuantidade = quantidadeAnterior + 1;
+                    ['ipd', 'fama', 'engaj', 'mob', 'valencia', 'interesse'].forEach(campo => {
+                        registroExistente[campo] = (
+                            registroExistente[campo] * quantidadeAnterior + novoRegistro[campo]
+                        ) / novaQuantidade;
+                    });
+                    registroExistente._quantidadeAgregada = novaQuantidade;
+                }
             });
 
             return { profiles: map, datas: datasOrdenadas };
@@ -3274,6 +3740,17 @@
             if (btnDiario) btnDiario.className = `px-3 py-1.5 rounded-lg transition ${novoPeriodo === 'diario' ? 'bg-white text-quaest-teal shadow-sm font-bold' : 'text-slate-600 hover:text-slate-900'}`;
             if (btnSemana) btnSemana.className = `px-3 py-1.5 rounded-lg transition ${novoPeriodo === 'semana' ? 'bg-white text-quaest-teal shadow-sm font-bold' : 'text-slate-600 hover:text-slate-900'}`;
             if (btnMes) btnMes.className = `px-3 py-1.5 rounded-lg transition ${novoPeriodo === 'mes' ? 'bg-white text-quaest-teal shadow-sm font-bold' : 'text-slate-600 hover:text-slate-900'}`;
+
+            if (ref.lineChart.options.scales?.y) {
+                ref.lineChart.options.scales.y.min = 0;
+                ref.lineChart.options.scales.y.max = 100;
+            }
+            if (ref.lineChart.options.scales?.x?.ticks) {
+                ref.lineChart.options.scales.x.ticks.autoSkip = true;
+                ref.lineChart.options.scales.x.ticks.minRotation = 0;
+                ref.lineChart.options.scales.x.ticks.maxRotation = 0;
+                ref.lineChart.options.scales.x.ticks.maxTicksLimit = novoPeriodo === 'diario' ? 10 : 14;
+            }
 
             pontoSelecionadoGlobal[ipdId] = null;
             fecharBoxDiagnostico(ipdId);
@@ -3310,9 +3787,9 @@
 
             const subContainer = document.getElementById(`botoes-line-list-${ipdId}`);
 
-            profiles.forEach((profileName, idx) => {
+            profiles.forEach((profileName) => {
                 const isAtivo = ativos.has(profileName);
-                const color = paletaCores[idx % paletaCores.length];
+                const color = obterCorPerfil(profileName);
 
                 const btn = document.createElement('button');
                 btn.className = `${isAtivo ? 'bg-quaest-teal text-white border-quaest-teal' : 'bg-white text-slate-600 border-slate-300'} px-3 py-1 rounded-lg text-xs font-bold border shadow-sm transition flex items-center gap-1.5 cursor-pointer`;
@@ -3332,13 +3809,19 @@
                             backgroundColor: color + '15',
                             tension: 0.2,
                             borderWidth: 2,
-                            pointRadius: ref.periodoHistorico === 'diario' ? 0 : 4,
-                            pointHoverRadius: ref.periodoHistorico === 'diario' ? 6 : 7,
+                            pointRadius: 0,
+                            pointHoverRadius: 7,
                             pointHitRadius: 10
                         });
                     }
                     ref.lineChart.update();
                     montarBotoesHistorico(ipdId);
+
+                    const idxPonto = pontoSelecionadoGlobal[ipdId];
+                    const box = document.getElementById(`box-diagnostico-ponto-${ipdId}`);
+                    if (box && !box.classList.contains('hidden') && idxPonto !== null && idxPonto !== undefined) {
+                        explicarAntesDepoisPonto(ipdId, idxPonto);
+                    }
                 };
 
                 subContainer.appendChild(btn);
@@ -3356,24 +3839,20 @@
                 dataStruct = ref.profilesDataMes;
             }
 
-            const isDiario = ref.periodoHistorico === 'diario';
-            const raioPonto = isDiario ? 0 : 4;
-            const raioHover = isDiario ? 6 : 7;
+            const raioPonto = 0;
+            const raioHover = 7;
 
             ref.lineChart.data.labels = dataStruct.datas.map(d => formatarDataAnoCurto(d, ref.periodoHistorico === 'mes'));
 
             if (ref.lineChart.options.scales.x) {
-                ref.lineChart.options.scales.x.ticks.maxTicksLimit = isDiario ? 10 : 14;
+                ref.lineChart.options.scales.x.ticks.maxTicksLimit = ref.periodoHistorico === 'diario' ? 10 : 14;
             }
 
             ref.lineChart.data.datasets = [];
             const profiles = (ref.ipdObj?.profiles_usados || Object.keys(dataStruct.profiles)).sort((a, b) => a.localeCompare(b, 'pt-BR'));
-            let colorIdx = 0;
-
             profiles.forEach((profileName, idx) => {
                 const isAtivo = idx < 2;
-                const color = paletaCores[colorIdx % paletaCores.length];
-                colorIdx++;
+                const color = obterCorPerfil(profileName);
 
                 if (isAtivo) {
                     const pInfo = dataStruct.profiles[profileName];
@@ -3475,11 +3954,8 @@
             const profilesMap = ref.profilesDataMes.profiles;
             const selecionados = Array.from(ref.profilesSelecionadosRadar).sort((a, b) => a.localeCompare(b, 'pt-BR'));
 
-            let colorIdx = 0;
-
             selecionados.forEach(profileName => {
-                const color = paletaCores[colorIdx % paletaCores.length];
-                colorIdx++;
+                const color = obterCorPerfil(profileName);
 
                 const pData = profilesMap[profileName];
                 const regMes = pData && pData.registrosPorData[mesEscolhido] ? pData.registrosPorData[mesEscolhido] : null;
@@ -3558,17 +4034,21 @@
                 statePrevisaoPreditiva[ipdId] = {
                     dadosMensais: mesesList,
                     perfisDisponiveis: data.meta?.total_perfis_avaliados || 0,
-                    perfisAtivos: new Set()
+                    perfisAtivosPontuacao: new Set()
                 };
 
                 const todosPerfis = [...new Set(mesesList.flatMap(m => (m.ranking_perfis || []).map(p => p.profile)))].sort((a,b) => a.localeCompare(b, 'pt-BR'));
+                registrarCoresPerfis(todosPerfis);
+                const perfisModulo = stateIPDs[ipdId]?.ipdObj?.profiles_usados || [];
+                montarPersonalizadorCores(ipdId, [...new Set([...perfisModulo, ...todosPerfis])]);
 
-                todosPerfis.slice(0, 2).forEach(p => statePrevisaoPreditiva[ipdId].perfisAtivos.add(p));
-
-                montarBotoesFiltroPrevisao(ipdId, todosPerfis);
-                renderizarGraficoEStatsPrevisao(ipdId);
+                todosPerfis.slice(0, 2).forEach(p => {
+                    statePrevisaoPreditiva[ipdId].perfisAtivosPontuacao.add(p);
+                });
 
                 boxResultados.classList.remove('hidden');
+                montarBotoesFiltroPrevisao(ipdId, todosPerfis);
+                renderizarGraficoEStatsPrevisao(ipdId);
 
             } catch (err) {
                 boxLoading.classList.add('hidden');
@@ -3578,12 +4058,13 @@
         }
 
         function montarBotoesFiltroPrevisao(ipdId, perfis) {
+            const listaId = `botoes-previsao-list-${ipdId}`;
             const container = document.getElementById(`container-profiles-previsao-${ipdId}`);
             if (!container) return;
 
             container.innerHTML = `
                 <div class="flex items-center justify-between w-full mb-1">
-                    <span class="text-xs font-bold text-slate-500">Exibir no Gráfico Futurista:</span>
+                    <span class="text-xs font-bold text-slate-500">Perfis do gráfico de pontuação:</span>
                     <div class="flex items-center gap-2">
                         <button onclick="selecionarTodosPrevisao(${ipdId})" class="text-[11px] font-bold text-purple-600 hover:underline flex items-center gap-1 cursor-pointer">
                             <i class="fa-solid fa-check-double text-[10px]"></i> Selecionar Tudo
@@ -3594,11 +4075,11 @@
                         </button>
                     </div>
                 </div>
-                <div id="botoes-previsao-list-${ipdId}" class="flex flex-wrap items-center gap-1.5"></div>
+                <div id="${listaId}" class="flex flex-wrap items-center gap-1.5"></div>
             `;
 
-            const subContainer = document.getElementById(`botoes-previsao-list-${ipdId}`);
-            const perfisAtivos = statePrevisaoPreditiva[ipdId].perfisAtivos;
+            const subContainer = document.getElementById(listaId);
+            const perfisAtivos = statePrevisaoPreditiva[ipdId].perfisAtivosPontuacao;
 
             perfis.forEach((profileName) => {
                 const isAtivo = perfisAtivos.has(profileName);
@@ -3637,7 +4118,7 @@
             const eixoXDatas = [...ultimasDatasReais, ...datasProjetadas];
             const eixoXLabels = eixoXDatas.map(d => formatarDataAnoCurto(d, true));
 
-            const perfisAtivos = Array.from(state.perfisAtivos);
+            const perfisAtivos = Array.from(state.perfisAtivosPontuacao || []);
 
             const canvas = document.getElementById(`chartPrevisaoCanvas-${ipdId}`);
             if (!canvas) return;
@@ -3647,8 +4128,8 @@
 
             const datasets = [];
 
-            perfisAtivos.forEach((profileName, idx) => {
-                const color = paletaCores[idx % paletaCores.length];
+            perfisAtivos.forEach((profileName) => {
+                const color = obterCorPerfil(profileName);
                 const pInfoHist = refIPD.profilesDataMes.profiles[profileName];
 
                 const serieHistorica = ultimasDatasReais.map(d => {
@@ -3746,12 +4227,14 @@
             mapPrevisaoCharts[ipdId] = new Chart(ctx, {
                 type: 'line',
                 data: { labels: eixoXLabels, datasets: datasets },
+                plugins: [pluginInicioPrevisao],
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
                     clip: false,
                     interaction: { mode: 'index', intersect: false },
                     plugins: {
+                        pluginInicioPrevisao: { indiceInicio: ultimasDatasReais.length },
                         legend: {
                             position: 'top',
                             labels: {
@@ -3759,8 +4242,8 @@
                                 generateLabels: () => {
                                     return perfisAtivos.map((pName, idx) => ({
                                         text: pName,
-                                        fillStyle: paletaCores[idx % paletaCores.length],
-                                        strokeStyle: paletaCores[idx % paletaCores.length],
+                                        fillStyle: obterCorPerfil(pName),
+                                        strokeStyle: obterCorPerfil(pName),
                                         datasetIndex: idx * 4
                                     }));
                                 },
@@ -3816,14 +4299,175 @@
                 }
             });
 
+            renderizarRankingPrevisao(ipdId, mesesProjetados);
+
             const boxBtn = document.getElementById(`box-btn-explicacao-ia-${ipdId}`);
             if (boxBtn) boxBtn.classList.remove('hidden');
+        }
 
-            const ultMes = mesesProjetados[mesesProjetados.length - 1];
-            if (ultMes) {
-                document.getElementById(`previsao-ult-ipd-${ipdId}`).innerText = `${ultMes.lider_previsto || '--'}`;
-                document.getElementById(`previsao-ult-data-${ipdId}`).innerText = `${ultMes.rotulo_mes}`;
+        function obterPosicoesAtuaisPrevisao(ipdId) {
+            const ref = stateIPDs[ipdId];
+            const datas = ref?.profilesDataMes?.datas || [];
+            if (!datas.length) return new Map();
+
+            const ultimoMesReal = [...datas].sort().at(-1);
+            const rankingAtual = obterRankingModuloIpd(ipdId, ultimoMesReal);
+            return new Map(rankingAtual.map((item, index) => [item.profile, {
+                posicao: index + 1,
+                score: item.score,
+                data: ultimoMesReal
+            }]));
+        }
+
+        function renderizarRankingPrevisao(ipdId, mesesProjetados) {
+            const canvas = document.getElementById(`chartRankingPrevisaoCanvas-${ipdId}`);
+            if (!canvas) return;
+
+            const LIMITE_TOP = 10;
+            const posicoesAtuais = obterPosicoesAtuaisPrevisao(ipdId);
+            const todosPerfis = [...new Set([
+                ...Array.from(posicoesAtuais.keys()),
+                ...mesesProjetados.flatMap(m => (m.ranking_perfis || []).map(p => p.profile))
+            ])]
+                .sort((a, b) => a.localeCompare(b, 'pt-BR'));
+            const perfisNoTop = new Set();
+            posicoesAtuais.forEach((info, profileName) => {
+                if (info.posicao <= LIMITE_TOP) perfisNoTop.add(profileName);
+            });
+            mesesProjetados.forEach(mes => {
+                (mes.ranking_perfis || []).forEach(item => {
+                    if (Number(item.posicao) <= LIMITE_TOP) perfisNoTop.add(item.profile);
+                });
+            });
+            const perfisTop10 = Array.from(perfisNoTop).sort((a, b) => {
+                const melhorPosicao = profileName => {
+                    const posicoes = [
+                        posicoesAtuais.get(profileName)?.posicao,
+                        ...mesesProjetados.map(mes => (mes.ranking_perfis || []).find(item => item.profile === profileName)?.posicao)
+                    ].map(Number).filter(Number.isFinite);
+                    return posicoes.length ? Math.min(...posicoes) : 999;
+                };
+                return melhorPosicao(a) - melhorPosicao(b) || a.localeCompare(b, 'pt-BR');
+            });
+            const datasReaisRanking = stateIPDs[ipdId]?.profilesDataMes?.datas || [];
+            const ultimoMesRealRanking = [...datasReaisRanking].sort().at(-1);
+            const labelUltimoReal = ultimoMesRealRanking ? `${formatarDataAnoCurto(ultimoMesRealRanking, true)} · REAL` : 'ÚLTIMO DADO REAL';
+            const labels = [labelUltimoReal, ...mesesProjetados.map(m => `${m.rotulo_mes || formatarDataAnoCurto(m.data_inicio_mes, true)} · PREVISÃO`)];
+            const primeiroMesPrevisto = mesesProjetados[0];
+            const rotuloInicioPrevisao = primeiroMesPrevisto ? (primeiroMesPrevisto.rotulo_mes || formatarDataAnoCurto(primeiroMesPrevisto.data_inicio_mes, true)) : '--';
+            const labelRealExterno = document.getElementById(`label-ultimo-real-ranking-${ipdId}`);
+            const labelPrevisaoExterno = document.getElementById(`label-inicio-previsao-ranking-${ipdId}`);
+            if (labelRealExterno) labelRealExterno.innerHTML = `<i class="fa-solid fa-circle-check text-slate-400"></i> Último dado real: ${ultimoMesRealRanking ? formatarDataAnoCurto(ultimoMesRealRanking, true) : '--'}`;
+            if (labelPrevisaoExterno) labelPrevisaoExterno.innerHTML = `<i class="fa-solid fa-wand-magic-sparkles text-purple-500"></i> Início da previsão: ${rotuloInicioPrevisao}`;
+            const wrapperRanking = document.getElementById(`wrapper-ranking-previsao-${ipdId}`);
+
+            const datasetsRanking = perfisTop10.map(profileName => {
+                const posicaoAtualCompleta = posicoesAtuais.get(profileName)?.posicao ?? null;
+                const atual = posicaoAtualCompleta !== null && posicaoAtualCompleta <= LIMITE_TOP ? posicaoAtualCompleta : null;
+                const posicoesProjetadas = mesesProjetados.map(m => {
+                    const item = (m.ranking_perfis || []).find(p => p.profile === profileName);
+                    const posicao = item?.posicao;
+                    if (posicao === null || posicao === undefined || Number(posicao) > LIMITE_TOP) return null;
+                    return Number(posicao);
+                });
+                const seriePosicoes = [atual, ...posicoesProjetadas];
+                const rotulosRanking = seriePosicoes.map((posicao, index) => {
+                    if (posicao === null || posicao === undefined) return { mostrar: false, texto: '' };
+                    const anterior = index > 0 ? seriePosicoes[index - 1] : null;
+                    const seguinte = index < seriePosicoes.length - 1 ? seriePosicoes[index + 1] : posicao;
+
+                    if (index === 0) return { mostrar: true, texto: `${profileName} · ${posicao}º` };
+                    if (anterior === null || anterior === undefined) {
+                        return { mostrar: true, texto: `${profileName} · ${posicao}º · entrou` };
+                    }
+                    if (Number(anterior) !== Number(posicao)) {
+                        const saldo = Number(anterior) - Number(posicao);
+                        const movimento = saldo > 0 ? `▲${saldo}` : `▼${Math.abs(saldo)}`;
+                        return { mostrar: true, texto: `${profileName} · ${posicao}º ${movimento}` };
+                    }
+                    if (seguinte === null || seguinte === undefined) {
+                        return { mostrar: true, texto: `${profileName} · ${posicao}º · saiu` };
+                    }
+                    return { mostrar: false, texto: '' };
+                });
+                const color = obterCorPerfil(profileName);
+
+                return {
+                    label: profileName,
+                    data: seriePosicoes,
+                    rotulosRanking,
+                    borderColor: color,
+                    backgroundColor: color,
+                    borderWidth: 3,
+                    pointRadius: 5,
+                    pointHoverRadius: 8,
+                    pointBorderColor: '#FFFFFF',
+                    pointBorderWidth: 2,
+                    tension: 0.2,
+                    spanGaps: false
+                };
+            });
+
+            const escalaMin = 0.5;
+            const escalaMax = Math.min(LIMITE_TOP, Math.max(1, todosPerfis.length)) + 0.5;
+            const scrollRanking = document.getElementById(`scroll-ranking-previsao-${ipdId}`);
+            if (wrapperRanking) {
+                const alturaNecessaria = Math.max(560, Math.min(LIMITE_TOP, Math.max(1, todosPerfis.length)) * 58);
+                const larguraNecessaria = Math.max(scrollRanking?.clientWidth || 0, labels.length * 260);
+                wrapperRanking.style.height = `${alturaNecessaria}px`;
+                wrapperRanking.style.width = `${larguraNecessaria}px`;
             }
+
+            if (mapRankingPrevisaoCharts[ipdId]) mapRankingPrevisaoCharts[ipdId].destroy();
+            mapRankingPrevisaoCharts[ipdId] = new Chart(canvas.getContext('2d'), {
+                type: 'line',
+                data: { labels, datasets: datasetsRanking },
+                plugins: [pluginRotulosRankingPrevisao, pluginInicioPrevisao],
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    clip: false,
+                    layout: { padding: { top: 25, right: 10, left: 8 } },
+                    interaction: { mode: 'nearest', intersect: false },
+                    plugins: {
+                        pluginInicioPrevisao: { indiceInicio: 1 },
+                        legend: {
+                            position: 'top',
+                            labels: { usePointStyle: true, font: { weight: 'bold', size: 11, family: 'Inter' } }
+                        },
+                        tooltip: {
+                            padding: 12,
+                            cornerRadius: 10,
+                            callbacks: {
+                                label: context => {
+                                    const atual = posicoesAtuais.get(context.dataset.label)?.posicao;
+                                    const posicao = Number(context.raw);
+                                    if (!atual || context.dataIndex === 0) return `${context.dataset.label}: ${posicao}º lugar`;
+                                    const saldo = atual - posicao;
+                                    const movimento = saldo > 0 ? `subiu ${saldo}` : saldo < 0 ? `caiu ${Math.abs(saldo)}` : 'manteve a posição';
+                                    return `${context.dataset.label}: ${posicao}º lugar · ${movimento}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { color: '#E2E8F0' },
+                            ticks: { font: { weight: 'bold', size: 10, family: 'Inter' } }
+                        },
+                        y: {
+                            display: false,
+                            min: escalaMin,
+                            max: escalaMax,
+                            reverse: true,
+                            grid: { display: false },
+                            ticks: { display: false },
+                            title: { display: false }
+                        }
+                    }
+                }
+            });
+
         }
 
         async function solicitarExplicacaoIARanking(ipdId) {

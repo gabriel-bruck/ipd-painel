@@ -250,7 +250,7 @@ class ConteudoResource(resources.ModelResource):
 
         return None
 
-    def save_m2m(self, obj, data, using_historical_record, dry_run):
+    def save_m2m(self, obj, data, using_historical_record=False, dry_run=False, **kwargs):
         """
         Sobrescreve a sincronização M2M para ACUMULAR novos projetos.
         Atualiza todos os dados do Post normalmente, mas junta os projetos antigos com os novos.
@@ -258,12 +258,10 @@ class ConteudoResource(resources.ModelResource):
         # 1. Salva em memória os projetos que o post JÁ TINHA antes da importação
         projetos_antigos = list(obj.projeto_ipd.all()) if obj.pk else []
 
-        # 2. Chama o método original. Ele cuida de ler a planilha e salvar o NOVO projeto (ex: 2).
-        # (Neste momento, por baixo dos panos, a biblioteca sobrescreve o antigo)
-        super().save_m2m(obj, data, using_historical_record, dry_run)
+        # 2. Chama o método original repassando todos os parâmetros recebidos
+        super().save_m2m(obj, data, using_historical_record=using_historical_record, dry_run=dry_run, **kwargs)
 
-        # 3. Readiciona os projetos antigos junto com o novo que acabou de ser salvo (ex: junta 1 e 2).
-        # Fazemos isso apenas se não for dry_run (pré-visualização), para gravar de fato no banco.
+        # 3. Readiciona os projetos antigos junto com o novo que acabou de ser salvo
         if not dry_run and projetos_antigos:
             obj.projeto_ipd.add(*projetos_antigos)
     def after_import_row(self, row, row_result, **kwargs):
