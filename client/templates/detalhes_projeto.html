@@ -525,39 +525,66 @@
                 if (slideAtualizado) renderizarSlideCard(ipdId);
             });
 
-            Object.values(mapTemasCharts).forEach(chart => {
-                if (!chart?.data?.datasets) return;
-                chart.data.datasets.forEach(dataset => {
-                    if (dataset.label === nomePerfil) {
-                        dataset.borderColor = novaCor;
-                        dataset.backgroundColor = novaCor;
-                    }
-                });
-                chart.update('none');
+            // O comparativo temático é recriado para sincronizar barras e legenda.
+            Object.keys(stateTemasMetricas).forEach(ipdId => {
+                if (stateIPDs[ipdId]?.dadosTemas) renderizarComparativoPerfis(ipdId);
             });
 
             Object.values(mapPrevisaoCharts).forEach(chart => {
                 if (!chart?.data?.datasets) return;
-                chart.data.datasets.forEach(dataset => {
+                const datasetsPerfil = [];
+                chart.data.datasets.forEach((dataset, datasetIndex) => {
                     if (dataset.label === `${nomePerfil} (Histórico)` || dataset.label === `${nomePerfil} (Projeção)`) {
                         dataset.borderColor = novaCor;
                         dataset.backgroundColor = novaCor;
+                        dataset.pointBackgroundColor = novaCor;
+                        dataset.pointBorderColor = novaCor;
+                        dataset.pointHoverBackgroundColor = novaCor;
+                        dataset.pointHoverBorderColor = '#FFFFFF';
+                        datasetsPerfil.push(datasetIndex);
                     } else if (dataset.label === `${nomePerfil}_min`) {
                         dataset.backgroundColor = novaCor + '25';
                     }
                 });
                 chart.update('none');
+
+                // O Chart.js pode manter opções antigas nos pontos já materializados.
+                datasetsPerfil.forEach(datasetIndex => {
+                    const meta = chart.getDatasetMeta(datasetIndex);
+                    (meta?.data || []).forEach(point => {
+                        point.options.backgroundColor = novaCor;
+                        point.options.borderColor = novaCor;
+                        point.options.hoverBackgroundColor = novaCor;
+                        point.options.hoverBorderColor = '#FFFFFF';
+                    });
+                });
+                chart.draw();
             });
 
             Object.values(mapRankingPrevisaoCharts).forEach(chart => {
                 if (!chart?.data?.datasets) return;
-                chart.data.datasets.forEach(dataset => {
+                const datasetsPerfil = [];
+                chart.data.datasets.forEach((dataset, datasetIndex) => {
                     if (dataset.label === nomePerfil) {
                         dataset.borderColor = novaCor;
                         dataset.backgroundColor = novaCor;
+                        dataset.pointBackgroundColor = novaCor;
+                        dataset.pointHoverBackgroundColor = novaCor;
+                        datasetsPerfil.push(datasetIndex);
                     }
                 });
                 chart.update('none');
+
+                datasetsPerfil.forEach(datasetIndex => {
+                    const meta = chart.getDatasetMeta(datasetIndex);
+                    (meta?.data || []).forEach(point => {
+                        point.options.backgroundColor = novaCor;
+                        point.options.borderColor = '#FFFFFF';
+                        point.options.hoverBackgroundColor = novaCor;
+                        point.options.hoverBorderColor = '#FFFFFF';
+                    });
+                });
+                chart.draw();
             });
         }
 
@@ -4146,6 +4173,10 @@
                     data: serieHistoricaFull,
                     borderColor: color,
                     backgroundColor: color,
+                    pointBackgroundColor: color,
+                    pointBorderColor: color,
+                    pointHoverBackgroundColor: color,
+                    pointHoverBorderColor: '#FFFFFF',
                     borderWidth: 2.5,
                     pointRadius: 3,
                     pointHoverRadius: 6,
@@ -4214,6 +4245,10 @@
                     data: serieProjetadaFull,
                     borderColor: color,
                     backgroundColor: color,
+                    pointBackgroundColor: color,
+                    pointBorderColor: color,
+                    pointHoverBackgroundColor: color,
+                    pointHoverBorderColor: '#FFFFFF',
                     borderDash: [6, 6],
                     borderWidth: 2.5,
                     pointRadius: 4,
@@ -4398,6 +4433,8 @@
                     rotulosRanking,
                     borderColor: color,
                     backgroundColor: color,
+                    pointBackgroundColor: color,
+                    pointHoverBackgroundColor: color,
                     borderWidth: 3,
                     pointRadius: 5,
                     pointHoverRadius: 8,
