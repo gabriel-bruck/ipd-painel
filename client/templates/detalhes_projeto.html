@@ -425,6 +425,7 @@
         let statePrevisaoPreditiva = {};
         let mapRankingCharts = {};
         let mapVariacaoCharts = {};
+        let mapRankingHistoricoCharts = {};
         let relatorioFoiAberto = false;
         let carregamentoInicialConcluido = false;
         let dimensoesProjetoIPD = null;
@@ -458,6 +459,7 @@
                 ...Object.values(stateIPDs).flatMap(ref => [ref?.lineChart, ref?.radarChart]),
                 ...Object.values(mapRankingCharts),
                 ...Object.values(mapVariacaoCharts),
+                ...Object.values(mapRankingHistoricoCharts),
                 ...Object.values(mapTemasCharts),
                 ...Object.values(mapCausalCharts),
                 ...Object.values(mapPrevisaoCharts),
@@ -702,6 +704,10 @@
         if (ref?.lineChart) {
 
             atualizarGraficoHistorico(ipdId);
+        }
+
+        if (mapRankingHistoricoCharts[ipdId]) {
+            renderizarRankingHistoricoTop10(ipdId);
         }
 
 
@@ -1728,6 +1734,7 @@ function desmarcarTodosRanking(ipdId) {
                             }
                             if (mapRankingCharts[idAtual]) mapRankingCharts[idAtual].resize();
                                 if (mapVariacaoCharts[idAtual]) mapVariacaoCharts[idAtual].resize();
+                                if (mapRankingHistoricoCharts[idAtual]) mapRankingHistoricoCharts[idAtual].resize();
                             if (mapCausalCharts[idAtual]) mapCausalCharts[idAtual].resize();
                             if (mapPrevisaoCharts[idAtual]) mapPrevisaoCharts[idAtual].resize();
                             if (mapRankingPrevisaoCharts[idAtual]) mapRankingPrevisaoCharts[idAtual].resize();
@@ -5370,6 +5377,124 @@ function toggleComparacaoRanking(ipdId) {
 
                     <hr class="border-slate-100" />
 
+                    <!-- NOVA SEÇÃO: TRAJETÓRIA REAL DO TOP 10 -->
+                    <div class="space-y-6">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-9 h-9 rounded-xl bg-indigo-50 border border-indigo-200 flex items-center justify-center text-indigo-600 text-base font-black shrink-0">
+                                    <i class="fa-solid fa-arrow-up-wide-short"></i>
+                                </div>
+                                <div>
+                                    <span class="text-[10px] font-black text-indigo-600 uppercase tracking-widest block">Posição real no período</span>
+                                    <h3 class="text-xl font-black text-slate-900">Trajetória Histórica do Ranking — Top 10 (${nomeIpd})</h3>
+                                    <p class="text-slate-500 text-xs mt-0.5">
+                                        Escolha um período e acompanhe em linhas como cada perfil mudou de posição entre 1º e 10º lugar.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div class="flex items-center gap-2">
+                                <button onclick="exportarGraficoParaPNG('chart-ranking-historico-${ipdId}', 'Trajetoria_Ranking_Real_IPD')"
+                                        class="px-2.5 py-1 rounded-lg bg-white hover:bg-slate-100 text-slate-600 border border-slate-200 font-bold text-xs shadow-sm transition flex items-center gap-1">
+                                    <i class="fa-solid fa-download text-indigo-600"></i> PNG
+                                </button>
+                                <button onclick="exportarGraficoParaCSV(mapRankingHistoricoCharts[${ipdId}], 'Trajetoria_Ranking_Real_IPD')"
+                                        class="px-2.5 py-1 rounded-lg bg-white hover:bg-slate-100 text-slate-600 border border-slate-200 font-bold text-xs shadow-sm transition flex items-center gap-1">
+                                    <i class="fa-solid fa-file-csv text-emerald-600"></i> CSV
+                                </button>
+                                <button onclick="toggleMinimizarCard('box-ranking-historico-${ipdId}', this)"
+                                        class="p-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 transition">
+                                    <i class="fa-solid fa-chevron-up text-xs"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div id="box-ranking-historico-${ipdId}" class="space-y-4">
+
+                            <div class="rounded-2xl border border-indigo-200 bg-white p-4 space-y-4">
+                                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-end">
+                                    <label class="text-[11px] font-bold text-slate-500">
+                                        Início
+                                        <input id="ranking-historico-inicio-${ipdId}" type="date"
+                                               class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs outline-none focus:border-indigo-500">
+                                    </label>
+
+                                    <label class="text-[11px] font-bold text-slate-500">
+                                        Fim
+                                        <input id="ranking-historico-fim-${ipdId}" type="date"
+                                               class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs outline-none focus:border-indigo-500">
+                                    </label>
+
+                                    <label class="text-[11px] font-bold text-slate-500">
+                                        Agrupar por
+                                        <select id="ranking-historico-agrupamento-${ipdId}"
+                                                onchange="toggleDiaSemanaRankingHistorico(${ipdId})"
+                                                class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold outline-none focus:border-indigo-500">
+                                            <option value="diario">Diário</option>
+                                            <option value="semana">Semanal</option>
+                                            <option value="quinzena">Quinzenal</option>
+                                            <option value="mes">Mensal</option>
+                                        </select>
+                                    </label>
+
+                                    <label id="ranking-historico-box-dia-semana-${ipdId}"
+                                           class="hidden text-[11px] font-bold text-slate-500">
+                                        Semana começa em
+                                        <select id="ranking-historico-dia-semana-${ipdId}"
+                                                class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold outline-none focus:border-indigo-500">
+                                            <option value="1">Segunda-feira</option>
+                                            <option value="2">Terça-feira</option>
+                                            <option value="3">Quarta-feira</option>
+                                            <option value="4">Quinta-feira</option>
+                                            <option value="5">Sexta-feira</option>
+                                            <option value="6">Sábado</option>
+                                            <option value="0">Domingo</option>
+                                        </select>
+                                    </label>
+
+                                    <button type="button"
+                                            onclick="aplicarFiltroRankingHistorico(${ipdId})"
+                                            class="rounded-lg bg-indigo-600 px-4 py-2 text-xs font-black text-white hover:bg-indigo-700">
+                                        <i class="fa-solid fa-chart-line mr-1"></i>
+                                        Atualizar Top 10
+                                    </button>
+                                </div>
+
+                                <p id="erro-ranking-historico-${ipdId}"
+                                   class="hidden text-[11px] font-bold text-rose-600"></p>
+                            </div>
+
+                            <div class="p-3.5 rounded-xl bg-indigo-50/70 border border-indigo-200 flex items-start gap-2.5 text-xs text-slate-700">
+                                <i class="fa-solid fa-ranking-star text-indigo-600 mt-0.5"></i>
+                                <p>
+                                    <strong>Leitura:</strong> o eixo vertical vai de <strong>1º a 10º</strong>.
+                                    Cada linha representa um perfil. Quanto mais alta a linha, melhor a posição.
+                                    Perfis fora do Top 10 naquele ponto ficam sem valor até voltarem ao Top 10.
+                                </p>
+                            </div>
+
+                            <div class="flex flex-wrap gap-2 text-[10px] font-bold">
+                                <span class="px-2.5 py-1 rounded-full bg-slate-50 text-slate-600 border border-slate-200">
+                                    <i class="fa-solid fa-ranking-star mr-1 text-indigo-500"></i>Top 10 real
+                                </span>
+                                <span id="resumo-ranking-historico-${ipdId}"
+                                      class="px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200"></span>
+                            </div>
+
+                            <div id="scroll-ranking-historico-${ipdId}"
+                                 class="overflow-auto ranking-scroll border border-slate-200 bg-white rounded-2xl p-3"
+                                 style="max-height: 680px;">
+                                <div id="wrapper-ranking-historico-${ipdId}"
+                                     class="w-full relative"
+                                     style="height: 920px; min-width: 760px;">
+                                    <canvas id="chart-ranking-historico-${ipdId}"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr class="border-slate-100" />
+
                     <!-- 3º SEÇÃO: RADAR MENSAL E CARROSSEL -->
                     <div class="space-y-6">
                         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -6781,11 +6906,50 @@ function toggleComparacaoRanking(ipdId) {
     // APLICA FILTROS INICIAIS
     // =========================================================
 
+    // =========================================================
+    // TOP 10 HISTÓRICO — PERÍODO INDEPENDENTE
+    // =========================================================
+
+    const rankingHistoricoInicio =
+        document.getElementById(`ranking-historico-inicio-${ipdId}`);
+
+    const rankingHistoricoFim =
+        document.getElementById(`ranking-historico-fim-${ipdId}`);
+
+    const rankingHistoricoAgrupamento =
+        document.getElementById(`ranking-historico-agrupamento-${ipdId}`);
+
+    [rankingHistoricoInicio, rankingHistoricoFim].forEach(input => {
+        if (!input) return;
+        input.min = minimo;
+        input.max = maximo;
+    });
+
+    if (rankingHistoricoInicio)
+        rankingHistoricoInicio.value = periodoPadrao.inicioAtual;
+
+    if (rankingHistoricoFim)
+        rankingHistoricoFim.value = periodoPadrao.fimAtual;
+
+    if (rankingHistoricoAgrupamento)
+        rankingHistoricoAgrupamento.value = 'semana';
+
+    const rankingHistoricoDiaSemana =
+        document.getElementById(`ranking-historico-dia-semana-${ipdId}`);
+
+    if (rankingHistoricoDiaSemana)
+        rankingHistoricoDiaSemana.value = '1';
+
+    toggleDiaSemanaRankingHistorico(ipdId);
+
+
     aplicarFiltroRanking(ipdId);
 
     aplicarFiltroVariacao(ipdId);
 
     aplicarFiltroHistorico(ipdId);
+
+    aplicarFiltroRankingHistorico(ipdId);
 
     aplicarFiltroRadar(ipdId);
 }
@@ -7082,6 +7246,630 @@ function toggleComparacaoRanking(ipdId) {
             montarBotoesHistorico(ipdId);
             fecharBoxDiagnostico(ipdId);
         }
+
+        function toggleDiaSemanaRankingHistorico(ipdId) {
+            const agrupamento =
+                document.getElementById(`ranking-historico-agrupamento-${ipdId}`)?.value;
+
+            const box =
+                document.getElementById(`ranking-historico-box-dia-semana-${ipdId}`);
+
+            if (!box) return;
+
+            box.classList.toggle(
+                'hidden',
+                agrupamento !== 'semana'
+            );
+        }
+
+
+        function agregarSerieSemanalComDiaInicio(rawDiarias, inicio, fim, diaInicioSemana = 1) {
+            const estruturaDiaria =
+                agregarSerieDiaria(
+                    rawDiarias,
+                    'diario',
+                    inicio,
+                    fim
+                );
+
+            const resultado = {
+                datas: [],
+                profiles: {}
+            };
+
+            const chavesSemana = new Set();
+
+            Object.entries(estruturaDiaria.profiles || {}).forEach(
+                ([profileName, profileInfo]) => {
+
+                    const acumuladoPorSemana = {};
+
+                    Object.entries(profileInfo.registrosPorData || {}).forEach(
+                        ([dataIso, registro]) => {
+
+                            const inicioSemana =
+                                inicioSemanaIso(
+                                    dataIso,
+                                    Number(diaInicioSemana)
+                                );
+
+                            chavesSemana.add(inicioSemana);
+
+                            if (!acumuladoPorSemana[inicioSemana]) {
+                                acumuladoPorSemana[inicioSemana] = {
+                                    somaIpd: 0,
+                                    qtdIpd: 0,
+                                    somaFama: 0,
+                                    qtdFama: 0,
+                                    somaEngaj: 0,
+                                    qtdEngaj: 0,
+                                    somaMob: 0,
+                                    qtdMob: 0,
+                                    somaValencia: 0,
+                                    qtdValencia: 0,
+                                    somaInteresse: 0,
+                                    qtdInteresse: 0
+                                };
+                            }
+
+                            const acc =
+                                acumuladoPorSemana[inicioSemana];
+
+                            [
+                                ['ipd', 'somaIpd', 'qtdIpd'],
+                                ['fama', 'somaFama', 'qtdFama'],
+                                ['engaj', 'somaEngaj', 'qtdEngaj'],
+                                ['mob', 'somaMob', 'qtdMob'],
+                                ['valencia', 'somaValencia', 'qtdValencia'],
+                                ['interesse', 'somaInteresse', 'qtdInteresse']
+                            ].forEach(([campo, soma, qtd]) => {
+                                const valor = Number(registro?.[campo]);
+
+                                if (Number.isFinite(valor)) {
+                                    acc[soma] += valor;
+                                    acc[qtd] += 1;
+                                }
+                            });
+                        }
+                    );
+
+                    resultado.profiles[profileName] = {
+                        registrosPorData: {}
+                    };
+
+                    Object.entries(acumuladoPorSemana).forEach(
+                        ([semana, acc]) => {
+
+                            const media = (soma, qtd) =>
+                                qtd > 0
+                                    ? soma / qtd
+                                    : null;
+
+                            resultado.profiles[profileName]
+                                .registrosPorData[semana] = {
+
+                                    ipd:
+                                        media(
+                                            acc.somaIpd,
+                                            acc.qtdIpd
+                                        ),
+
+                                    fama:
+                                        media(
+                                            acc.somaFama,
+                                            acc.qtdFama
+                                        ),
+
+                                    engaj:
+                                        media(
+                                            acc.somaEngaj,
+                                            acc.qtdEngaj
+                                        ),
+
+                                    mob:
+                                        media(
+                                            acc.somaMob,
+                                            acc.qtdMob
+                                        ),
+
+                                    valencia:
+                                        media(
+                                            acc.somaValencia,
+                                            acc.qtdValencia
+                                        ),
+
+                                    interesse:
+                                        media(
+                                            acc.somaInteresse,
+                                            acc.qtdInteresse
+                                        )
+                                };
+                        }
+                    );
+                }
+            );
+
+            resultado.datas =
+                Array.from(chavesSemana)
+                    .sort();
+
+            return resultado;
+        }
+
+
+        function aplicarFiltroRankingHistorico(ipdId) {
+            renderizarRankingHistoricoTop10(ipdId);
+        }
+
+
+        function renderizarRankingHistoricoTop10(ipdId) {
+            const ref = stateIPDs[ipdId];
+            const canvas = document.getElementById(`chart-ranking-historico-${ipdId}`);
+            if (!ref || !canvas) return;
+
+            const inputInicio = document.getElementById(`ranking-historico-inicio-${ipdId}`);
+            const inputFim = document.getElementById(`ranking-historico-fim-${ipdId}`);
+            const selectAgrupamento = document.getElementById(`ranking-historico-agrupamento-${ipdId}`);
+            const erro = document.getElementById(`erro-ranking-historico-${ipdId}`);
+            const resumo = document.getElementById(`resumo-ranking-historico-${ipdId}`);
+
+            const inicio = inputInicio?.value;
+            const fim = inputFim?.value;
+            const agrupamento = selectAgrupamento?.value || 'semana';
+
+            const diaInicioSemana =
+                Number(
+                    document.getElementById(
+                        `ranking-historico-dia-semana-${ipdId}`
+                    )?.value ?? 1
+                );
+
+            if (!inicio || !fim || inicio > fim) {
+                if (erro) {
+                    erro.textContent = 'Informe um período válido para o Top 10.';
+                    erro.classList.remove('hidden');
+                }
+                return;
+            }
+
+            const estrutura =
+                agrupamento === 'semana'
+                    ? agregarSerieSemanalComDiaInicio(
+                        ref.rawDiarias,
+                        inicio,
+                        fim,
+                        diaInicioSemana
+                    )
+                    : agregarSerieDiaria(
+                        ref.rawDiarias,
+                        agrupamento,
+                        inicio,
+                        fim
+                    );
+
+            if (!estrutura?.datas?.length) {
+                if (erro) {
+                    erro.textContent = 'Não existem dados no período selecionado.';
+                    erro.classList.remove('hidden');
+                }
+                return;
+            }
+
+            if (erro) erro.classList.add('hidden');
+
+            const LIMITE_TOP = 10;
+            const datas = estrutura.datas;
+
+            // Ranking completo em cada ponto do tempo e recorte dos 10 primeiros.
+            const rankingsPorData = datas.map(data => {
+                const ranking = Object.keys(estrutura.profiles || {})
+                    .map(profile => {
+                        const reg = estrutura.profiles?.[profile]?.registrosPorData?.[data];
+                        const score = Number(reg?.ipd);
+
+                        return Number.isFinite(score)
+                            ? { profile, score }
+                            : null;
+                    })
+                    .filter(Boolean)
+                    .sort((a, b) =>
+                        b.score - a.score ||
+                        a.profile.localeCompare(b.profile, 'pt-BR')
+                    );
+
+                return new Map(
+                    ranking
+                        .slice(0, LIMITE_TOP)
+                        .map((item, index) => [
+                            item.profile,
+                            {
+                                posicao: index + 1,
+                                score: item.score
+                            }
+                        ])
+                );
+            });
+
+            // Mostra todos que estiveram no Top 10 em pelo menos um ponto.
+            const perfisNoTop10 = new Set();
+
+            rankingsPorData.forEach(mapa => {
+                mapa.forEach((_, profile) => {
+                    perfisNoTop10.add(profile);
+                });
+            });
+
+            const melhorPosicao = profile => {
+                const posicoes = rankingsPorData
+                    .map(mapa => mapa.get(profile)?.posicao)
+                    .filter(Number.isFinite);
+
+                return posicoes.length
+                    ? Math.min(...posicoes)
+                    : 999;
+            };
+
+            const perfis = Array.from(perfisNoTop10)
+                .sort((a, b) =>
+                    melhorPosicao(a) - melhorPosicao(b) ||
+                    a.localeCompare(b, 'pt-BR')
+                );
+
+            const labels = datas.map(data =>
+                formatarChaveHistorico(data, agrupamento)
+            );
+
+            const datasets = perfis.map(profileName => {
+                const color = obterCorPerfil(profileName);
+
+                const posicoes = rankingsPorData.map(
+                    mapa => mapa.get(profileName)?.posicao ?? null
+                );
+
+                const scores = rankingsPorData.map(
+                    mapa => mapa.get(profileName)?.score ?? null
+                );
+
+                // Plugin já existente no projeto usa estes rótulos.
+                // Mostra o nome no primeiro ponto válido e depois
+                // somente quando a posição muda. Se o perfil continuar
+                // na mesma posição, o nome não é repetido.
+                //
+                // Exemplo:
+                // 3º, 3º, 3º, 2º, 2º, 5º
+                //
+                // Rótulos:
+                // Nome · 3º
+                //            Nome · 2º
+                //                       Nome · 5º
+                const rotulosRanking = posicoes.map((posicao, index) => {
+                    if (!Number.isFinite(posicao)) {
+                        return {
+                            mostrar: false,
+                            texto: ''
+                        };
+                    }
+
+                    // Procura o último ponto válido anterior.
+                    let anterior = null;
+
+                    for (let i = index - 1; i >= 0; i--) {
+                        if (Number.isFinite(posicoes[i])) {
+                            anterior = Number(posicoes[i]);
+                            break;
+                        }
+                    }
+
+                    // Primeiro ponto válido do perfil:
+                    // sempre mostra o nome.
+                    if (anterior === null) {
+                        return {
+                            mostrar: true,
+                            texto: `${profileName} · ${Number(posicao)}º`
+                        };
+                    }
+
+                    // Mesma posição do último ponto válido:
+                    // não repete o nome.
+                    if (anterior === Number(posicao)) {
+                        return {
+                            mostrar: false,
+                            texto: ''
+                        };
+                    }
+
+                    // Mudou de posição:
+                    // mostra novamente o nome + nova posição.
+                    const saldo =
+                        anterior -
+                        Number(posicao);
+
+                    return {
+                        mostrar: true,
+                        texto:
+                            `${profileName} · ${Number(posicao)}º ` +
+                            (
+                                saldo > 0
+                                    ? `▲${saldo}`
+                                    : `▼${Math.abs(saldo)}`
+                            )
+                    };
+                });
+
+                return {
+                    label: profileName,
+                    data: posicoes,
+                    scoresIPD: scores,
+                    rotulosRanking,
+
+                    borderColor: color,
+                    backgroundColor: color,
+
+                    pointBackgroundColor: color,
+                    pointBorderColor: '#FFFFFF',
+                    pointHoverBackgroundColor: color,
+                    pointHoverBorderColor: '#FFFFFF',
+
+                    borderWidth: 2.5,
+                    pointRadius: 4,
+                    pointHoverRadius: 7,
+                    pointBorderWidth: 2,
+
+                    tension: 0.15,
+
+                    // IMPORTANTE:
+                    // Não liga artificialmente períodos em que o perfil
+                    // ficou fora do Top 10.
+                    spanGaps: false
+                };
+            });
+
+            if (mapRankingHistoricoCharts[ipdId]) {
+                mapRankingHistoricoCharts[ipdId].destroy();
+            }
+
+            const wrapper =
+                document.getElementById(
+                    `wrapper-ranking-historico-${ipdId}`
+                );
+
+            const scroll =
+                document.getElementById(
+                    `scroll-ranking-historico-${ipdId}`
+                );
+
+            if (wrapper) {
+                wrapper.style.height = '920px';
+
+                // Dá espaço horizontal suficiente para a linha realmente
+                // mostrar a trajetória quando houver muitos pontos.
+                const larguraMinima =
+                    Math.max(
+                        scroll?.clientWidth || 760,
+                        labels.length * 105
+                    );
+
+                wrapper.style.width =
+                    `${larguraMinima}px`;
+            }
+
+            mapRankingHistoricoCharts[ipdId] =
+                new Chart(
+                    canvas.getContext('2d'),
+                    {
+                        type: 'line',
+
+                        data: {
+                            labels,
+                            datasets
+                        },
+
+                        plugins: [
+                            pluginRotulosRankingPrevisao
+                        ],
+
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            clip: false,
+
+                            layout: {
+                                padding: {
+                                    top: 45,
+                                    right: 190,
+                                    bottom: 20,
+                                    left: 16
+                                }
+                            },
+
+                            interaction: {
+                                mode: 'nearest',
+                                intersect: false
+                            },
+
+                            plugins: {
+                                legend: {
+                                    display: true,
+                                    position: 'top',
+
+                                    labels: {
+                                        usePointStyle: true,
+                                        boxWidth: 8,
+                                        boxHeight: 8,
+                                        padding: 14,
+
+                                        font: {
+                                            family: 'Inter',
+                                            size: 10,
+                                            weight: '800'
+                                        }
+                                    }
+                                },
+
+                                tooltip: {
+                                    padding: 12,
+                                    cornerRadius: 10,
+
+                                    callbacks: {
+                                        title: itens =>
+                                            itens?.[0]?.label || '',
+
+                                        label: context => {
+                                            const profile =
+                                                context.dataset.label;
+
+                                            const posicao =
+                                                Number(context.raw);
+
+                                            const score =
+                                                context.dataset
+                                                    .scoresIPD?.[
+                                                        context.dataIndex
+                                                    ];
+
+                                            const anterior =
+                                                context.dataIndex > 0
+                                                    ? context.dataset.data[
+                                                        context.dataIndex - 1
+                                                    ]
+                                                    : null;
+
+                                            let movimento =
+                                                'posição inicial';
+
+                                            if (
+                                                Number.isFinite(
+                                                    Number(anterior)
+                                                )
+                                            ) {
+                                                const saldo =
+                                                    Number(anterior) -
+                                                    posicao;
+
+                                                movimento =
+                                                    saldo > 0
+                                                        ? `subiu ${saldo} posição(ões)`
+                                                        : saldo < 0
+                                                            ? `caiu ${Math.abs(saldo)} posição(ões)`
+                                                            : 'manteve a posição';
+                                            }
+
+                                            return [
+                                                ` ${profile}: ${posicao}º lugar`,
+                                                ` IPD: ${Number(score).toFixed(2)} pts`,
+                                                ` Movimento: ${movimento}`
+                                            ];
+                                        }
+                                    }
+                                }
+                            },
+
+                            scales: {
+                                x: {
+                                    offset: true,
+
+                                    border: {
+                                        color: '#CBD5E1'
+                                    },
+
+                                    grid: {
+                                        color: '#F1F5F9'
+                                    },
+
+                                    ticks: {
+                                        color: '#64748B',
+                                        autoSkip: false,
+                                        maxRotation: 0,
+
+                                        font: {
+                                            family: 'Inter',
+                                            size: 10,
+                                            weight: '700'
+                                        }
+                                    }
+                                },
+
+                                y: {
+                                    // 1º lugar em cima, 10º embaixo.
+                                    reverse: true,
+                                    min: 1,
+                                    max: 10,
+
+                                    border: {
+                                        color: '#CBD5E1'
+                                    },
+
+                                    grid: {
+                                        color: '#E2E8F0'
+                                    },
+
+                                    ticks: {
+                                        stepSize: 1,
+                                        precision: 0,
+                                        autoSkip: false,
+                                        padding: 10,
+                                        color: '#475569',
+
+                                        font: {
+                                            family: 'Inter',
+                                            size: 11,
+                                            weight: '900'
+                                        },
+
+                                        callback: value =>
+                                            `${Number(value)}º`
+                                    },
+
+                                    title: {
+                                        display: true,
+                                        text: 'POSIÇÃO NO TOP 10',
+                                        color: '#64748B',
+
+                                        font: {
+                                            family: 'Inter',
+                                            size: 10,
+                                            weight: '900'
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                );
+
+            if (resumo) {
+                const nomeAgrupamento =
+                    agrupamento === 'semana'
+                        ? 'Semanal'
+                        : agrupamento === 'quinzena'
+                            ? 'Quinzenal'
+                            : agrupamento === 'mes'
+                                ? 'Mensal'
+                                : 'Diário';
+
+                const nomesDias = {
+                    0: 'domingo',
+                    1: 'segunda-feira',
+                    2: 'terça-feira',
+                    3: 'quarta-feira',
+                    4: 'quinta-feira',
+                    5: 'sexta-feira',
+                    6: 'sábado'
+                };
+
+                const complementoSemana =
+                    agrupamento === 'semana'
+                        ? ` · semana começa em ${nomesDias[diaInicioSemana]}`
+                        : '';
+
+                resumo.textContent =
+                    `${formatarDataAnoCurto(inicio)} a ` +
+                    `${formatarDataAnoCurto(fim)} · ` +
+                    `${nomeAgrupamento}${complementoSemana} · ` +
+                    `${perfis.length} perfil(is) passaram pelo Top 10`;
+            }
+        }
+
 
         function montarBotoesRadar(ipdId) {
             const ref = stateIPDs[ipdId];
