@@ -424,6 +424,7 @@
         let mapRankingPrevisaoCharts = {};
         let statePrevisaoPreditiva = {};
         let mapRankingCharts = {};
+        let mapVariacaoCharts = {};
         let relatorioFoiAberto = false;
         let carregamentoInicialConcluido = false;
         let dimensoesProjetoIPD = null;
@@ -456,6 +457,7 @@
             const graficos = [
                 ...Object.values(stateIPDs).flatMap(ref => [ref?.lineChart, ref?.radarChart]),
                 ...Object.values(mapRankingCharts),
+                ...Object.values(mapVariacaoCharts),
                 ...Object.values(mapTemasCharts),
                 ...Object.values(mapCausalCharts),
                 ...Object.values(mapPrevisaoCharts),
@@ -1477,6 +1479,155 @@ function desmarcarTodosRanking(ipdId) {
     atualizarRankingIpdModulo(ipdId);
 }
 
+        function selecionarTodosVariacao(ipdId) {
+            const ref = stateIPDs[ipdId];
+            if (!ref) return;
+            const profiles = (ref.ipdObj?.profiles_usados?.length ? ref.ipdObj.profiles_usados : Object.keys(ref.profilesDataDiario?.profiles || {})).filter(Boolean).sort((a,b)=>a.localeCompare(b,'pt-BR'));
+            ref.profilesSelecionadosVariacao = new Set(profiles);
+            atualizarGraficoVariacao(ipdId);
+        }
+
+        function desmarcarTodosVariacao(ipdId) {
+            const ref = stateIPDs[ipdId];
+            if (!ref) return;
+            ref.profilesSelecionadosVariacao = new Set();
+            atualizarGraficoVariacao(ipdId);
+        }
+
+        function montarBotoesVariacao(ipdId) {
+            const ref = stateIPDs[ipdId];
+            const container = document.getElementById(`container-profiles-variacao-${ipdId}`);
+            if (!ref || !container) return;
+            const profiles = (ref.ipdObj?.profiles_usados?.length ? ref.ipdObj.profiles_usados : Object.keys(ref.profilesDataDiario?.profiles || {})).filter(Boolean).sort((a,b)=>a.localeCompare(b,'pt-BR'));
+            if (!(ref.profilesSelecionadosVariacao instanceof Set)) ref.profilesSelecionadosVariacao = new Set(profiles);
+
+            container.innerHTML = `<div class="flex items-center justify-between w-full mb-1"><span class="text-xs font-bold text-slate-500">Perfis na Variação:</span><div class="flex items-center gap-2"><button onclick="selecionarTodosVariacao(${ipdId})" class="text-[11px] font-bold text-quaest-teal hover:underline"><i class="fa-solid fa-check-double text-[10px]"></i> Selecionar Tudo</button><span class="text-slate-300">|</span><button onclick="desmarcarTodosVariacao(${ipdId})" class="text-[11px] font-bold text-rose-500 hover:underline"><i class="fa-solid fa-trash-can text-[10px]"></i> Remover Seleção</button></div></div><div id="botoes-variacao-list-${ipdId}" class="flex flex-wrap items-center gap-1.5"></div>`;
+            const sub = document.getElementById(`botoes-variacao-list-${ipdId}`);
+
+            profiles.forEach(profileName => {
+                const ativo = ref.profilesSelecionadosVariacao.has(profileName);
+                const btn = document.createElement('button');
+                btn.className = `${ativo ? 'bg-quaest-teal text-white border-quaest-teal' : 'bg-white text-slate-600 border-slate-300'} px-3 py-1 rounded-lg text-xs font-bold border shadow-sm transition`;
+                btn.innerHTML = `<i class="fa-solid fa-${ativo ? 'check' : 'plus'} text-[10px]"></i> ${profileName}`;
+                btn.onclick = () => {
+                    ativo ? ref.profilesSelecionadosVariacao.delete(profileName) : ref.profilesSelecionadosVariacao.add(profileName);
+                    atualizarGraficoVariacao(ipdId);
+                };
+                sub.appendChild(btn);
+            });
+        }
+
+        function aplicarFiltroVariacao(ipdId) {
+            atualizarGraficoVariacao(ipdId);
+        }
+
+        const pluginValoresVariacao = {
+            id: 'pluginValoresVariacao',
+            afterDatasetsDraw(chart) {
+                const ds = chart.data.datasets?.[0];
+                const meta = chart.getDatasetMeta(0);
+                if (!ds?.customData || !meta?.data) return;
+                const { ctx, chartArea } = chart;
+                ctx.save();
+                ctx.font = '800 10px "Inter", sans-serif';
+                ctx.textBaseline = 'middle';
+                meta.data.forEach((bar, i) => {
+                    const item = ds.customData[i];
+                    if (!item) return;
+                    const v = item.variacaoPct;
+                    const t = `${v > 0 ? '+' : ''}${v.toFixed(1)}%`;
+                    ctx.fillStyle = v > 0 ? '#0F766E' : v < 0 ? '#E11D48' : '#64748B';
+                    if (v >= 0) {
+                        ctx.textAlign = 'left';
+                        ctx.fillText(t, Math.min(bar.x + 6, chartArea.right - 38), bar.y);
+                    } else {
+                        ctx.textAlign = 'right';
+                        ctx.fillText(t, Math.max(bar.x - 6, chartArea.left + 38), bar.y);
+                    }
+                });
+                ctx.restore();
+            }
+        };
+
+        function atualizarGraficoVariacao(ipdId) {
+            const ref = stateIPDs[ipdId];
+            if (!ref) return;
+
+            const inicio = document.getElementById(`variacao-inicio-${ipdId}`)?.value;
+            const fim = document.getElementById(`variacao-fim-${ipdId}`)?.value;
+            const compInicio = document.getElementById(`variacao-comp-inicio-${ipdId}`)?.value;
+            const compFim = document.getElementById(`variacao-comp-fim-${ipdId}`)?.value;
+            const erro = document.getElementById(`erro-variacao-periodo-${ipdId}`);
+            const resumo = document.getElementById(`resumo-filtro-variacao-${ipdId}`);
+
+            if (!inicio || !fim || !compInicio || !compFim || inicio > fim || compInicio > compFim) {
+                if (erro) { erro.textContent = 'Informe corretamente os dois períodos da comparação.'; erro.classList.remove('hidden'); }
+                return;
+            }
+
+            const atual = agregarSerieDiaria(ref.rawDiarias, 'diario', inicio, fim);
+            const anterior = agregarSerieDiaria(ref.rawDiarias, 'diario', compInicio, compFim);
+            if (!atual.datas.length || !anterior.datas.length) {
+                if (erro) { erro.textContent = 'Não existem dados suficientes em um dos períodos selecionados.'; erro.classList.remove('hidden'); }
+                return;
+            }
+            if (erro) erro.classList.add('hidden');
+
+            ref.filtrosGraficos.variacao = { inicio, fim, comparacaoInicio: compInicio, comparacaoFim: compFim, estruturaAtual: atual, estruturaAnterior: anterior };
+
+            const profiles = (ref.ipdObj?.profiles_usados?.length ? ref.ipdObj.profiles_usados : Object.keys(ref.profilesDataDiario?.profiles || {})).filter(Boolean);
+            const dados = profiles.filter(p => ref.profilesSelecionadosVariacao.has(p)).map(profile => {
+                const a = calcularMediaPerfilNaEstrutura(atual, profile);
+                const b = calcularMediaPerfilNaEstrutura(anterior, profile);
+                if (!a || !b) return null;
+                const atualIpd = Number(a.ipd), anteriorIpd = Number(b.ipd);
+                if (!Number.isFinite(atualIpd) || !Number.isFinite(anteriorIpd)) return null;
+                const diferencaPts = atualIpd - anteriorIpd;
+                return { profile, atual: atualIpd, anterior: anteriorIpd, diferencaPts, variacaoPct: anteriorIpd !== 0 ? (diferencaPts / anteriorIpd) * 100 : 0 };
+            }).filter(Boolean).sort((a,b)=>b.variacaoPct-a.variacaoPct);
+
+            montarBotoesVariacao(ipdId);
+
+            const canvas = document.getElementById(`chart-variacao-${ipdId}`);
+            if (!canvas) return;
+            const wrapper = document.getElementById(`wrapper-chart-variacao-${ipdId}`);
+            if (wrapper) wrapper.style.height = `${Math.max(240, dados.length * 34 + 60)}px`;
+
+            if (mapVariacaoCharts[ipdId]) mapVariacaoCharts[ipdId].destroy();
+
+            const valores = dados.map(d=>d.variacaoPct);
+            const maxAbs = valores.length ? Math.max(1, ...valores.map(Math.abs)) : 1;
+            const limite = Math.ceil(maxAbs * 1.3 * 10) / 10;
+            const cores = dados.map(d => d.variacaoPct > 0 ? '#20B2AA' : d.variacaoPct < 0 ? '#FF5A4E' : '#94A3B8');
+
+            mapVariacaoCharts[ipdId] = new Chart(canvas.getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: dados.map(d=>d.profile),
+                    datasets: [{ label:'Variação relativa (%)', data:valores, backgroundColor:cores, borderColor:cores, borderRadius:2, barThickness:18, customData:dados }]
+                },
+                plugins: [pluginValoresVariacao],
+                options: {
+                    indexAxis:'y', responsive:true, maintainAspectRatio:false,
+                    layout:{padding:{right:55}},
+                    plugins:{
+                        legend:{display:false},
+                        title:{display:true,text:'VARIAÇÃO RELATIVA (%)',color:'#0F172A',font:{family:'Inter',weight:'900',size:12}},
+                        tooltip:{callbacks:{label:c=>{
+                            const d=dados[c.dataIndex];
+                            return [` Variação: ${d.variacaoPct>0?'+':''}${d.variacaoPct.toFixed(2)}%`,` IPD atual: ${d.atual.toFixed(2)}`,` IPD anterior: ${d.anterior.toFixed(2)}`,` Diferença: ${d.diferencaPts>0?'+':''}${d.diferencaPts.toFixed(2)} pts`];
+                        }}}
+                    },
+                    scales:{
+                        x:{min:-limite,max:limite,grid:{color:c=>Number(c.tick?.value)===0?'#64748B':'#F1F5F9',lineWidth:c=>Number(c.tick?.value)===0?1.5:1},ticks:{color:'#94A3B8',font:{size:9,weight:'700'},callback:v=>`${Number(v).toFixed(0)}%`}},
+                        y:{grid:{display:false},ticks:{color:'#0F172A',font:{size:11,weight:'700'}}}
+                    }
+                }
+            });
+
+            if (resumo) resumo.textContent = `Atual: ${formatarDataAnoCurto(inicio)} a ${formatarDataAnoCurto(fim)} • anterior: ${formatarDataAnoCurto(compInicio)} a ${formatarDataAnoCurto(compFim)}`;
+        }
+
         function selecionarTodosHistorico(ipdId) {
             const ref = stateIPDs[ipdId];
             if (!ref) return;
@@ -1576,6 +1727,7 @@ function desmarcarTodosRanking(ipdId) {
                                 if (stateIPDs[idAtual].radarChart) stateIPDs[idAtual].radarChart.resize();
                             }
                             if (mapRankingCharts[idAtual]) mapRankingCharts[idAtual].resize();
+                                if (mapVariacaoCharts[idAtual]) mapVariacaoCharts[idAtual].resize();
                             if (mapCausalCharts[idAtual]) mapCausalCharts[idAtual].resize();
                             if (mapPrevisaoCharts[idAtual]) mapPrevisaoCharts[idAtual].resize();
                             if (mapRankingPrevisaoCharts[idAtual]) mapRankingPrevisaoCharts[idAtual].resize();
@@ -4674,6 +4826,40 @@ function toggleComparacaoRanking(ipdId) {
 
 
     // ============================================================
+    // VARIAÇÃO
+    // ============================================================
+    if (grafico === 'variacao') {
+        return `
+            <div class="rounded-2xl border border-quaest-tealBorder bg-white p-4 space-y-4">
+                <div>
+                    <span class="text-[10px] font-black uppercase tracking-widest text-quaest-teal">Períodos da Variação</span>
+                    <p class="text-[11px] text-slate-500 mt-1">Compare a média do IPD de cada perfil entre dois intervalos livres.</p>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-end">
+                    <label class="text-[11px] font-bold text-slate-500">Atual — início
+                        <input id="variacao-inicio-${ipdId}" type="date" class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs outline-none focus:border-quaest-teal">
+                    </label>
+                    <label class="text-[11px] font-bold text-slate-500">Atual — fim
+                        <input id="variacao-fim-${ipdId}" type="date" class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs outline-none focus:border-quaest-teal">
+                    </label>
+                    <label class="text-[11px] font-bold text-slate-500">Anterior — início
+                        <input id="variacao-comp-inicio-${ipdId}" type="date" class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs outline-none focus:border-quaest-teal">
+                    </label>
+                    <label class="text-[11px] font-bold text-slate-500">Anterior — fim
+                        <input id="variacao-comp-fim-${ipdId}" type="date" class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs outline-none focus:border-quaest-teal">
+                    </label>
+                    <button type="button" onclick="aplicarFiltroVariacao(${ipdId})" class="rounded-lg bg-quaest-teal px-4 py-2 text-xs font-black text-white hover:bg-quaest-tealDark">
+                        <i class="fa-solid fa-code-compare mr-1"></i> Comparar períodos
+                    </button>
+                </div>
+                <p id="resumo-filtro-variacao-${ipdId}" class="text-[11px] font-bold text-quaest-tealDark"></p>
+                <p id="erro-variacao-periodo-${ipdId}" class="hidden text-[11px] font-bold text-rose-600"></p>
+            </div>
+        `;
+    }
+
+
+    // ============================================================
     // HISTÓRICO
     // ============================================================
     if (grafico === 'historico') {
@@ -5081,6 +5267,44 @@ function toggleComparacaoRanking(ipdId) {
                                 <div class="max-h-[420px] overflow-x-auto overflow-y-auto ranking-scroll relative w-full">
                                     <div id="wrapper-chart-ranking-${ipdId}" class="min-w-[600px] w-full relative">
                                         <canvas id="chart-bar-ranking-${ipdId}"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr class="border-slate-100" />
+
+                    <!-- NOVA SEÇÃO: VARIAÇÃO DO IPD -->
+                    <div class="space-y-6">
+                        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-9 h-9 rounded-xl bg-quaest-tealLight border border-quaest-tealBorder flex items-center justify-center text-quaest-teal text-base font-black shrink-0">
+                                    <i class="fa-solid fa-arrow-trend-up"></i>
+                                </div>
+                                <div>
+                                    <span class="text-[10px] font-black text-quaest-teal uppercase tracking-widest block">Comparação entre períodos</span>
+                                    <h3 class="text-xl font-black text-slate-900">Variação do IPD por Perfil / Marca (${nomeIpd})</h3>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <button onclick="exportarGraficoParaPNG('chart-variacao-${ipdId}', 'Variacao_IPD')" class="px-2.5 py-1 rounded-lg bg-white text-slate-600 border border-slate-200 font-bold text-xs"><i class="fa-solid fa-download text-quaest-teal"></i> PNG</button>
+                                <button onclick="exportarGraficoParaCSV(mapVariacaoCharts[${ipdId}], 'Variacao_IPD')" class="px-2.5 py-1 rounded-lg bg-white text-slate-600 border border-slate-200 font-bold text-xs"><i class="fa-solid fa-file-csv text-emerald-600"></i> CSV</button>
+                                <button onclick="toggleMinimizarCard('box-variacao-${ipdId}', this)" class="p-1.5 rounded-xl bg-slate-100 text-slate-500"><i class="fa-solid fa-chevron-up text-xs"></i></button>
+                            </div>
+                        </div>
+
+                        <div id="box-variacao-${ipdId}" class="space-y-4">
+                            ${criarControlesTemporaisGrafico(ipdId, 'variacao')}
+                            <div class="p-3.5 rounded-xl bg-sky-50/80 border border-sky-200 flex items-start gap-2.5 text-xs text-slate-700">
+                                <i class="fa-solid fa-circle-info text-sky-600 mt-0.5"></i>
+                                <p><strong>Leitura:</strong> verde indica crescimento e vermelho queda. A barra mostra a variação percentual da média do IPD entre os dois períodos.</p>
+                            </div>
+                            <div id="container-profiles-variacao-${ipdId}" class="flex flex-col gap-1.5"></div>
+                            <div class="p-6 rounded-2xl bg-slate-50 border border-slate-200">
+                                <div class="max-h-[520px] overflow-auto ranking-scroll relative w-full">
+                                    <div id="wrapper-chart-variacao-${ipdId}" class="min-w-[650px] w-full relative">
+                                        <canvas id="chart-variacao-${ipdId}"></canvas>
                                     </div>
                                 </div>
                             </div>
@@ -5840,12 +6064,20 @@ function toggleComparacaoRanking(ipdId) {
         comparar: true,
         comparacaoInicio: null,
         comparacaoFim: null
+    },
+
+    variacao: {
+        inicio: null,
+        fim: null,
+        comparacaoInicio: null,
+        comparacaoFim: null
     }
 
 },
                 periodoHistorico: 'mes',
                 mesSelecionadoRadar: null,
                 profilesSelecionadosRanking: new Set(todosPerfisIpd),
+                profilesSelecionadosVariacao: new Set(todosPerfisIpd),
                 profilesSelecionadosHistorico: new Set(todosPerfisIpd.slice(0, 2)),
                 profilesSelecionadosRadar: new Set(todosPerfisIpd.slice(0, 2)),
                 perfilDestacadoRanking: null,
@@ -6444,6 +6676,25 @@ function toggleComparacaoRanking(ipdId) {
 
 
     // =========================================================
+    // VARIAÇÃO
+    const variacaoInicio = document.getElementById(`variacao-inicio-${ipdId}`);
+    const variacaoFim = document.getElementById(`variacao-fim-${ipdId}`);
+    const variacaoCompInicio = document.getElementById(`variacao-comp-inicio-${ipdId}`);
+    const variacaoCompFim = document.getElementById(`variacao-comp-fim-${ipdId}`);
+
+    [variacaoInicio, variacaoFim, variacaoCompInicio, variacaoCompFim].forEach(input => {
+        if (!input) return;
+        input.min = minimo;
+        input.max = maximo;
+    });
+
+    if (variacaoInicio) variacaoInicio.value = periodoPadrao.inicioAtual;
+    if (variacaoFim) variacaoFim.value = periodoPadrao.fimAtual;
+    if (variacaoCompInicio) variacaoCompInicio.value = periodoPadrao.inicioAnterior;
+    if (variacaoCompFim) variacaoCompFim.value = periodoPadrao.fimAnterior;
+
+
+    // =========================================================
     // HISTÓRICO
     // =========================================================
 
@@ -6531,6 +6782,8 @@ function toggleComparacaoRanking(ipdId) {
     // =========================================================
 
     aplicarFiltroRanking(ipdId);
+
+    aplicarFiltroVariacao(ipdId);
 
     aplicarFiltroHistorico(ipdId);
 
