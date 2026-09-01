@@ -237,524 +237,2687 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
-
-
 class MediaMetricasIPDView(APIView):
-    permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        projeto_ipd_id = request.query_params.get('projeto_ipd')
-        profile = request.query_params.get('profile')
-        ano_mes = request.query_params.get('ano_mes')  # YYYY-MM
 
-        if not projeto_ipd_id or not profile or not ano_mes:
+        # ============================================================
+        # 1. AUTENTICAÇÃO
+        # ============================================================
+        #
+        # Mesmo padrão das outras views do projeto.
+        # ============================================================
+
+        if not request.user.is_authenticated:
             return Response(
-                {"error": "Parâmetros obrigatórios ausentes: 'projeto_ipd', 'profile' e 'ano_mes' (ex: YYYY-MM)."},
+                {
+                    "error": "Não autenticado."
+                },
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
+
+        # ============================================================
+        # 2. PARÂMETROS
+        # ============================================================
+        #
+        # A API recebe:
+        #
+        # projeto_id   -> ProjetoCliente
+        # projeto_ipd  -> ProjetoIPD
+        # profile
+        # data_inicio  -> YYYY-MM-DD
+        # data_fim     -> YYYY-MM-DD
+        #
+        # Exemplo:
+        #
+        # /api/conteudo/medias/
+        # ?projeto_id=10
+        # &projeto_ipd=4
+        # &profile=Netflix
+        # &data_inicio=2026-08-01
+        # &data_fim=2026-08-31
+        # ============================================================
+
+        projeto_id = request.query_params.get(
+            'projeto_id'
+        )
+
+        projeto_ipd_id = request.query_params.get(
+            'projeto_ipd'
+        )
+
+        profile = request.query_params.get(
+            'profile'
+        )
+
+        data_inicio_str = request.query_params.get(
+            'data_inicio'
+        )
+
+        data_fim_str = request.query_params.get(
+            'data_fim'
+        )
+
+
+        # ============================================================
+        # 3. VALIDAÇÃO DOS PARÂMETROS
+        # ============================================================
+
+        if (
+            not projeto_id
+            or not projeto_ipd_id
+            or not profile
+            or not data_inicio_str
+            or not data_fim_str
+        ):
+            return Response(
+                {
+                    "error": (
+                        "Parâmetros obrigatórios ausentes: "
+                        "'projeto_id', "
+                        "'projeto_ipd', "
+                        "'profile', "
+                        "'data_inicio' e "
+                        "'data_fim'."
+                    )
+                },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        projeto_ipd = get_object_or_404(ProjetoIPD, pk=projeto_ipd_id)
-        projetos_cliente = projeto_ipd.projetos_cliente.all()
 
-        tem_permissao = any(
-            usuario_tem_acesso_ao_projeto(request.user, proj) for proj in projetos_cliente
+        # ============================================================
+        # 4. PROJETO CLIENTE + PERMISSÃO
+        # ============================================================
+
+        projeto = get_object_or_404(
+            ProjetoCliente,
+            pk=projeto_id
         )
-        if not tem_permissao:
+
+
+        if not usuario_tem_acesso_ao_projeto(
+            request.user,
+            projeto
+        ):
             return Response(
-                {"error": "Você não tem permissão para acessar os dados deste projeto."},
+                {
+                    "error": (
+                        "Você não tem permissão para "
+                        "acessar este projeto."
+                    )
+                },
                 status=status.HTTP_403_FORBIDDEN,
             )
 
-        # ==========================================
-        # JANELA TEMPORAL MENSAL
-        # ==========================================
+
+        # ============================================================
+        # 5. PROJETO IPD
+        # ============================================================
+        #
+        # Não basta ter acesso ao ProjetoCliente.
+        #
+        # Também garantimos que o ProjetoIPD solicitado
+        # realmente está vinculado ao projeto autorizado.
+        #
+        # Isso impede:
+        #
+        # projeto_id autorizado = 10
+        # projeto_ipd de outro projeto = 999
+        #
+        # ============================================================
+
+        projeto_ipd = get_object_or_404(
+            ProjetoIPD,
+            pk=projeto_ipd_id,
+            projetos_cliente=projeto
+        )
+
+
+        # ============================================================
+        # 6. DATAS
+        # ============================================================
+
         try:
-            data_obj = datetime.strptime(ano_mes, '%Y-%m')
-            ano = data_obj.year
-            mes = data_obj.month
-            _, ultimo_dia = calendar.monthrange(ano, mes)
 
-            data_inicio = f"{ano:04d}-{mes:02d}-01"
-            data_fim = f"{ano:04d}-{mes:02d}-{ultimo_dia:02d}"
+            data_inicio = datetime.strptime(
+                data_inicio_str,
+                '%Y-%m-%d'
+            ).date()
+
+            data_fim = datetime.strptime(
+                data_fim_str,
+                '%Y-%m-%d'
+            ).date()
+
         except ValueError:
-            return Response(
-                {"error": "Formato de 'ano_mes' inválido. Use o formato YYYY-MM (ex: 2026-06)."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        # ==========================================
-        # FUNÇÕES ESTATÍSTICAS (ESCALA 1.0 A 10.0)
-        # ==========================================
-        def calc_mean_std(values):
-            if not values: 
-                return 0.0, 0.0
-            mean = sum(values) / len(values)
-            variance = sum((x - mean) ** 2 for x in values) / len(values)
-            std = math.sqrt(variance)
-            return mean, std
-
-        def z_to_score_and_class(val, mean, std, posts_count=10, reverse=False):
-            if std == 0:
-                z = 0.0
-            else:
-                z = (val - mean) / std
-                
-            if reverse:
-                z = -z
-                
-            z = max(-2.0, min(2.0, z))
-            nota = 5.5 + (z * 2.25)
-            nota = max(1.0, min(10.0, nota))
-            
-            # Trava Hard Cap: Menos de 3 posts no mês trava no teto de 5.5 ("Na Média")
-            if posts_count < 3:
-                nota = min(5.5, nota)
-
-            if nota >= 8.875:
-                classif = "Excepcional"
-            elif nota >= 6.625:
-                classif = "Alta Performance"
-            elif nota >= 4.375:
-                classif = "Na Média"
-            elif nota >= 2.125:
-                classif = "Abaixo da Média"
-            else:
-                classif = "Crítico"
-                
-            return round(nota, 1), classif
-
-        # ==========================================
-        # 1. MÉTRICAS IPD MENSAL
-        # ==========================================
-        base_mes_ipd = IPD.objects.filter(
-            projeto_ipd_id=projeto_ipd_id,
-            data__range=[data_inicio, data_fim],
-        )
-
-        media_grupo = base_mes_ipd.aggregate(
-            fama=Avg('fama'), engaj=Avg('engaj'), valencia=Avg('valencia'),
-            mob=Avg('mob'), interesse=Avg('interesse'), ipd=Avg('ipd'),
-        )
-
-        media_perfil = base_mes_ipd.filter(profile__iexact=profile.strip()).aggregate(
-            fama=Avg('fama'), engaj=Avg('engaj'), valencia=Avg('valencia'),
-            mob=Avg('mob'), interesse=Avg('interesse'), ipd=Avg('ipd'),
-        )
-
-        # ==========================================
-        # 2. CONTEÚDO MENSAL DO GRUPO
-        # ==========================================
-        conteudos_grupo = Conteudo.objects.filter(
-            projeto_ipd__id=projeto_ipd_id,
-            data__range=[data_inicio, data_fim]
-        )
-
-        # Calculando o desvio padrão sobre Curtidas + Comentários (Interações Totais)
-        stats_por_perfil = conteudos_grupo.values('profile').annotate(
-            t_curtidas=Sum('curtidas'),
-            t_comentarios=Sum('comentarios'),
-            t_posts=Count('id_post'),
-            std_interacoes=StdDev(F('curtidas') + F('comentarios'))
-        )
-
-        total_interacoes_grupo = 0
-        total_posts_grupo = 0
-        total_comentarios_grupo = 0
-
-        for st in stats_por_perfil:
-            c = st['t_curtidas'] or 0
-            com = st['t_comentarios'] or 0
-            total_comentarios_grupo += com
-            total_interacoes_grupo += (c + com)
-            total_posts_grupo += (st['t_posts'] or 0)
-
-        # Se ninguém postou no período selecionado
-        if not stats_por_perfil or total_posts_grupo == 0:
-            def fmt_zero(val):
-                return round(float(val), 2) if val is not None else 0.0
 
             return Response(
                 {
-                    "projeto_ipd": int(projeto_ipd_id) if str(projeto_ipd_id).isdigit() else projeto_ipd_id,
-                    "profile": profile,
-                    "periodo": ano_mes,
-                    "data_inicio": data_inicio,
-                    "data_fim": data_fim,
-                    "message": "Nenhuma publicação encontrada no período selecionado.",
+                    "error": (
+                        "Formato de data inválido. "
+                        "Use YYYY-MM-DD "
+                        "(ex: 2026-08-01)."
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+
+        if data_inicio > data_fim:
+
+            return Response(
+                {
+                    "error": (
+                        "'data_inicio' não pode ser "
+                        "posterior a 'data_fim'."
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+
+        # ============================================================
+        # 7. TAMANHO DO PERÍODO
+        # ============================================================
+        #
+        # Antes a metodologia era mensal.
+        #
+        # META_POSTS_MINIMO = 10
+        #
+        # significava, na prática:
+        #
+        #     10 posts / mês
+        #
+        # Agora o usuário pode escolher qualquer intervalo.
+        #
+        # Portanto transformamos isso em uma TAXA:
+        #
+        #     10 posts a cada 30 dias
+        #
+        # E a meta passa a ser proporcional ao intervalo.
+        #
+        # Exemplos aproximados:
+        #
+        #  7 dias ->  2.33 posts
+        # 15 dias ->  5.00 posts
+        # 30 dias -> 10.00 posts
+        # 45 dias -> 15.00 posts
+        # 60 dias -> 20.00 posts
+        # 90 dias -> 30.00 posts
+        #
+        # ============================================================
+
+        dias_periodo = (
+            data_fim - data_inicio
+        ).days + 1
+
+
+        DIAS_REFERENCIA = 30.0
+
+        META_POSTS_30_DIAS = 10.0
+
+        META_MINIMA_NOTA_30_DIAS = 3.0
+
+
+        # Meta usada no fator de atividade do ICQ/PDB.
+
+        meta_posts_periodo = max(
+            1.0,
+            META_POSTS_30_DIAS
+            * (
+                dias_periodo
+                / DIAS_REFERENCIA
+            )
+        )
+
+
+        # Meta usada para limitar notas pouco sustentadas
+        # por volume de conteúdo.
+
+        meta_minima_nota_periodo = max(
+            1.0,
+            META_MINIMA_NOTA_30_DIAS
+            * (
+                dias_periodo
+                / DIAS_REFERENCIA
+            )
+        )
+
+
+        # ============================================================
+        # 8. FUNÇÕES ESTATÍSTICAS
+        # ============================================================
+
+        def calc_mean_std(values):
+
+            if not values:
+                return 0.0, 0.0
+
+
+            mean = (
+                sum(values)
+                / len(values)
+            )
+
+
+            variance = (
+                sum(
+                    (x - mean) ** 2
+                    for x in values
+                )
+                / len(values)
+            )
+
+
+            std = math.sqrt(
+                variance
+            )
+
+
+            return mean, std
+
+
+        # ============================================================
+        # CONVERSÃO PARA NOTA 1–10
+        # ============================================================
+
+        def z_to_score_and_class(
+            val,
+            mean,
+            std,
+            posts_count=0,
+            meta_minima_posts=1.0,
+            reverse=False
+        ):
+
+            if std == 0:
+
+                z = 0.0
+
+            else:
+
+                z = (
+                    val - mean
+                ) / std
+
+
+            if reverse:
+                z = -z
+
+
+            # Limita extremos estatísticos.
+
+            z = max(
+                -2.0,
+                min(
+                    2.0,
+                    z
+                )
+            )
+
+
+            # Converte z-score para escala 1–10.
+
+            nota = (
+                5.5
+                + (
+                    z * 2.25
+                )
+            )
+
+
+            nota = max(
+                1.0,
+                min(
+                    10.0,
+                    nota
+                )
+            )
+
+
+            # ========================================================
+            # TRAVA DE VOLUME PROPORCIONAL AO PERÍODO
+            # ========================================================
+            #
+            # Antes:
+            #
+            #     posts < 3
+            #
+            # Agora:
+            #
+            #     3 posts / 30 dias
+            #
+            # proporcionalmente ao intervalo.
+            #
+            # ========================================================
+
+            if posts_count < meta_minima_posts:
+
+                nota = min(
+                    5.5,
+                    nota
+                )
+
+
+            # ========================================================
+            # CLASSIFICAÇÃO
+            # ========================================================
+
+            if nota >= 8.875:
+
+                classif = "Excepcional"
+
+            elif nota >= 6.625:
+
+                classif = "Alta Performance"
+
+            elif nota >= 4.375:
+
+                classif = "Na Média"
+
+            elif nota >= 2.125:
+
+                classif = "Abaixo da Média"
+
+            else:
+
+                classif = "Crítico"
+
+
+            return (
+                round(nota, 1),
+                classif
+            )
+
+
+        # ============================================================
+        # 9. MÉTRICAS IPD DO PERÍODO
+        # ============================================================
+
+        base_periodo_ipd = (
+            IPD.objects
+            .filter(
+                projeto_ipd=projeto_ipd,
+                data__range=[
+                    data_inicio,
+                    data_fim
+                ],
+            )
+        )
+
+
+        media_grupo = (
+            base_periodo_ipd
+            .aggregate(
+
+                fama=Avg('fama'),
+
+                engaj=Avg('engaj'),
+
+                valencia=Avg('valencia'),
+
+                mob=Avg('mob'),
+
+                interesse=Avg('interesse'),
+
+                ipd=Avg('ipd'),
+            )
+        )
+
+
+        media_perfil = (
+            base_periodo_ipd
+            .filter(
+                profile__iexact=
+                    profile.strip()
+            )
+            .aggregate(
+
+                fama=Avg('fama'),
+
+                engaj=Avg('engaj'),
+
+                valencia=Avg('valencia'),
+
+                mob=Avg('mob'),
+
+                interesse=Avg('interesse'),
+
+                ipd=Avg('ipd'),
+            )
+        )
+
+
+        # ============================================================
+        # 10. CONTEÚDO DO GRUPO NO PERÍODO
+        # ============================================================
+
+        conteudos_grupo = (
+            Conteudo.objects
+            .filter(
+                projeto_ipd=projeto_ipd,
+                data__range=[
+                    data_inicio,
+                    data_fim
+                ]
+            )
+        )
+
+
+        # ============================================================
+        # 11. ESTATÍSTICAS POR PERFIL
+        # ============================================================
+
+        stats_por_perfil = (
+            conteudos_grupo
+            .values(
+                'profile'
+            )
+            .annotate(
+
+                t_curtidas=
+                    Sum('curtidas'),
+
+                t_comentarios=
+                    Sum('comentarios'),
+
+                t_posts=
+                    Count('id_post'),
+
+                std_interacoes=
+                    StdDev(
+                        F('curtidas')
+                        + F('comentarios')
+                    )
+            )
+        )
+
+
+        total_interacoes_grupo = 0
+
+        total_posts_grupo = 0
+
+        total_comentarios_grupo = 0
+
+
+        for st in stats_por_perfil:
+
+            curtidas = (
+                st['t_curtidas']
+                or 0
+            )
+
+            comentarios = (
+                st['t_comentarios']
+                or 0
+            )
+
+            posts = (
+                st['t_posts']
+                or 0
+            )
+
+
+            total_comentarios_grupo += (
+                comentarios
+            )
+
+
+            total_interacoes_grupo += (
+                curtidas
+                + comentarios
+            )
+
+
+            total_posts_grupo += (
+                posts
+            )
+
+
+        # ============================================================
+        # 12. FORMATAÇÃO
+        # ============================================================
+
+        def fmt(val):
+
+            return (
+                round(
+                    float(val),
+                    2
+                )
+                if val is not None
+                else 0.0
+            )
+
+
+        # ============================================================
+        # 13. SEM PUBLICAÇÕES
+        # ============================================================
+
+        if (
+            not stats_por_perfil
+            or total_posts_grupo == 0
+        ):
+
+            return Response(
+                {
+
+                    "projeto_id":
+                        projeto.id,
+
+                    "projeto_ipd":
+                        projeto_ipd.id,
+
+                    "profile":
+                        profile,
+
+
+                    "periodo": {
+
+                        "data_inicio":
+                            data_inicio.isoformat(),
+
+                        "data_fim":
+                            data_fim.isoformat(),
+
+                        "dias":
+                            dias_periodo,
+                    },
+
+
+                    "data_inicio":
+                        data_inicio.isoformat(),
+
+                    "data_fim":
+                        data_fim.isoformat(),
+
+
+                    # ================================================
+                    # METODOLOGIA DE VOLUME
+                    # ================================================
+
+                    "metodologia_periodo": {
+
+                        "dias_periodo":
+                            dias_periodo,
+
+                        "referencia_dias":
+                            int(
+                                DIAS_REFERENCIA
+                            ),
+
+                        "meta_posts_periodo":
+                            fmt(
+                                meta_posts_periodo
+                            ),
+
+                        "meta_minima_nota":
+                            fmt(
+                                meta_minima_nota_periodo
+                            ),
+                    },
+
+
+                    "message": (
+                        "Nenhuma publicação encontrada "
+                        "no período selecionado."
+                    ),
+
+
                     "metricas_perfil_ipd": {
-                        "fama": fmt_zero(media_perfil['fama']),
-                        "engajamento": fmt_zero(media_perfil['engaj']),
-                        "valencia": fmt_zero(media_perfil['valencia']),
-                        "mobilizacao": fmt_zero(media_perfil['mob']),
-                        "interesse": fmt_zero(media_perfil['interesse']),
-                        "ipd_geral": fmt_zero(media_perfil['ipd']),
+
+                        "fama":
+                            fmt(
+                                media_perfil['fama']
+                            ),
+
+                        "engajamento":
+                            fmt(
+                                media_perfil['engaj']
+                            ),
+
+                        "valencia":
+                            fmt(
+                                media_perfil['valencia']
+                            ),
+
+                        "mobilizacao":
+                            fmt(
+                                media_perfil['mob']
+                            ),
+
+                        "interesse":
+                            fmt(
+                                media_perfil['interesse']
+                            ),
+
+                        "ipd_geral":
+                            fmt(
+                                media_perfil['ipd']
+                            ),
                     },
+
+
                     "media_grupo_ipd": {
-                        "fama": fmt_zero(media_grupo['fama']),
-                        "engajamento": fmt_zero(media_grupo['engaj']),
-                        "valencia": fmt_zero(media_grupo['valencia']),
-                        "mobilizacao": fmt_zero(media_grupo['mob']),
-                        "interesse": fmt_zero(media_grupo['interesse']),
-                        "ipd_geral": fmt_zero(media_grupo['ipd']),
+
+                        "fama":
+                            fmt(
+                                media_grupo['fama']
+                            ),
+
+                        "engajamento":
+                            fmt(
+                                media_grupo['engaj']
+                            ),
+
+                        "valencia":
+                            fmt(
+                                media_grupo['valencia']
+                            ),
+
+                        "mobilizacao":
+                            fmt(
+                                media_grupo['mob']
+                            ),
+
+                        "interesse":
+                            fmt(
+                                media_grupo['interesse']
+                            ),
+
+                        "ipd_geral":
+                            fmt(
+                                media_grupo['ipd']
+                            ),
                     },
+
+
                     "conteudo_perfil": {
-                        "totais": {"posts": 0, "curtidas": 0, "comentarios": 0, "interacoes": 0},
-                        "estrategia_temas": {"qtd_temas_distintos": 0, "tema_principal": "Nenhum", "taxa_concentracao_pct": 0.0},
+
+                        "totais": {
+
+                            "posts": 0,
+
+                            "curtidas": 0,
+
+                            "comentarios": 0,
+
+                            "interacoes": 0,
+                        },
+
+
+                        "estrategia_temas": {
+
+                            "qtd_temas_distintos":
+                                0,
+
+                            "tema_principal":
+                                "Nenhum",
+
+                            "taxa_concentracao_pct":
+                                0.0,
+                        },
+
+
                         "performance_bruta": {
-                            "share_pct": 0.0, "taxa_debate_pct": 0.0, "media_ints_post": 0.0,
-                            "variacao_cv": 0.0, "fator_atividade": 0.0, "icq_bruto_mes": 0.0, "pdb_bruto_mes": 0.0
+
+                            "share_pct":
+                                0.0,
+
+                            "taxa_debate_pct":
+                                0.0,
+
+                            "media_ints_post":
+                                0.0,
+
+                            "variacao_cv":
+                                0.0,
+
+                            "fator_atividade":
+                                0.0,
+
+                            "icq_bruto_periodo":
+                                0.0,
+
+                            "pdb_bruto_periodo":
+                                0.0,
                         }
                     },
-                    "notas_normalizadas_mes": {
-                        "share_mercado": {"nota": 1.0, "classificacao": "Crítico"},
-                        "poder_debate": {"nota": 1.0, "classificacao": "Crítico"},
-                        "eficiencia_post": {"nota": 1.0, "classificacao": "Crítico"},
-                        "consistencia_qualidade": {"nota": 1.0, "classificacao": "Crítico"}
+
+
+                    "notas_normalizadas_periodo": {
+
+                        "share_mercado": {
+                            "nota": 1.0,
+                            "classificacao": "Crítico"
+                        },
+
+                        "poder_debate": {
+                            "nota": 1.0,
+                            "classificacao": "Crítico"
+                        },
+
+                        "eficiencia_post": {
+                            "nota": 1.0,
+                            "classificacao": "Crítico"
+                        },
+
+                        "consistencia_qualidade": {
+                            "nota": 1.0,
+                            "classificacao": "Crítico"
+                        },
                     },
+
+
                     "top_posts": [],
                 },
+
                 status=status.HTTP_200_OK,
             )
 
-        META_POSTS_MINIMO = 10.0
 
-        media_interacao_geral_grupo = total_interacoes_grupo / total_posts_grupo
-        prop_debate_grupo = (total_comentarios_grupo / total_interacoes_grupo) if total_interacoes_grupo > 0 else 0.0
+        # ============================================================
+        # 14. MÉDIAS GERAIS DO GRUPO
+        # ============================================================
 
-        list_tracao = []
-        list_debate = []
-        list_share = []
-        list_icq = []
-
-        for st in stats_por_perfil:
-            c = st['t_curtidas'] or 0
-            com = st['t_comentarios'] or 0
-            posts = st['t_posts'] or 0
-            std_inter = st['std_interacoes'] or 0.0
-            inter = c + com
-            
-            tracao_mes = (inter / posts) if posts > 0 else 0.0
-            
-            # Coeficiente de Variação (CV) baseado na oscilação de INTERAÇÕES TOTAIS
-            cv_mes = (std_inter / tracao_mes) if tracao_mes > 0 else 0.0
-            share_mes = ((inter / total_interacoes_grupo) * 100) if total_interacoes_grupo > 0 else 0.0
-
-            # Fator de Atividade
-            fator_volume = min(1.0, posts / META_POSTS_MINIMO) if posts > 0 else 0.0
-
-            # 1. ICQ (Qualidade x Estabilidade do Total de Interações x Volume)
-            razao_qualidade = (tracao_mes / media_interacao_geral_grupo) if media_interacao_geral_grupo > 0 else 0.0
-            fator_estabilidade = 1.0 / (1.0 + cv_mes)
-            icq_mes = razao_qualidade * fator_estabilidade * fator_volume
-
-            # 2. PDB (Proporção Comentários/Interações do Perfil x Mercado)
-            prop_debate_perfil = (com / inter) if inter > 0 else 0.0
-            razao_debate = (prop_debate_perfil / prop_debate_grupo) if prop_debate_grupo > 0 else 0.0
-            razao_debate = min(3.0, razao_debate)
-            pdb_mes = razao_debate * fator_volume
-
-            list_tracao.append(tracao_mes)
-            list_debate.append(pdb_mes)
-            list_share.append(share_mes)
-            list_icq.append(icq_mes)
-
-        mean_tracao, std_tracao = calc_mean_std(list_tracao)
-        mean_debate, std_debate = calc_mean_std(list_debate)
-        mean_share, std_share = calc_mean_std(list_share)
-        mean_icq, std_icq = calc_mean_std(list_icq)
-
-        # ==========================================
-        # 3. CONTEÚDO MENSAL DO PERFIL ESPECÍFICO
-        # ==========================================
-        conteudos_perfil = conteudos_grupo.filter(profile__iexact=profile.strip())
-
-        perfil_agregado = conteudos_perfil.aggregate(
-            t_curtidas=Sum('curtidas'),
-            t_comentarios=Sum('comentarios'),
-            std_interacoes=StdDev(F('curtidas') + F('comentarios')),
-            t_posts=Count('id_post')
+        media_interacao_geral_grupo = (
+            total_interacoes_grupo
+            / total_posts_grupo
         )
 
-        p_curtidas = perfil_agregado['t_curtidas'] or 0
-        p_comentarios = perfil_agregado['t_comentarios'] or 0
-        p_posts = perfil_agregado['t_posts'] or 0
-        p_std_interacoes = perfil_agregado['std_interacoes'] or 0.0
-        p_interacoes = p_curtidas + p_comentarios
 
-        p_tracao_mes = (p_interacoes / p_posts) if p_posts > 0 else 0.0
-        p_taxa_debate_bruta_pct = ((p_comentarios / p_interacoes) * 100) if p_interacoes > 0 else 0.0
-        
-        # CV do perfil específico usando o Desvio Padrão das Interações Totais
-        p_cv_mes = (p_std_interacoes / p_tracao_mes) if p_tracao_mes > 0 else 0.0
-        p_share_mes = ((p_interacoes / total_interacoes_grupo) * 100) if total_interacoes_grupo > 0 else 0.0
+        prop_debate_grupo = (
 
-        p_fator_volume = min(1.0, p_posts / META_POSTS_MINIMO) if p_posts > 0 else 0.0
+            total_comentarios_grupo
+            / total_interacoes_grupo
 
-        # ICQ do Perfil
-        p_razao_qualidade = (p_tracao_mes / media_interacao_geral_grupo) if media_interacao_geral_grupo > 0 else 0.0
-        p_fator_estabilidade = 1.0 / (1.0 + p_cv_mes)
-        p_icq_mes = p_razao_qualidade * p_fator_estabilidade * p_fator_volume
+            if total_interacoes_grupo > 0
 
-        # PDB do Perfil
-        p_prop_debate = (p_comentarios / p_interacoes) if p_interacoes > 0 else 0.0
-        p_razao_debate = (p_prop_debate / prop_debate_grupo) if prop_debate_grupo > 0 else 0.0
-        p_razao_debate = min(3.0, p_razao_debate)
-        p_pdb_mes = p_razao_debate * p_fator_volume
+            else 0.0
+        )
 
-        # Conversão Z-Score (1.0 a 10.0) com verificação do mínimo de 3 posts
-        nota_tracao, class_tracao = z_to_score_and_class(p_tracao_mes, mean_tracao, std_tracao, posts_count=p_posts)
-        nota_debate, class_debate = z_to_score_and_class(p_pdb_mes, mean_debate, std_debate, posts_count=p_posts, reverse=False)
-        nota_share, class_share = z_to_score_and_class(p_share_mes, mean_share, std_share, posts_count=p_posts)
-        nota_consist, class_consist = z_to_score_and_class(p_icq_mes, mean_icq, std_icq, posts_count=p_posts, reverse=False)
 
-        # Estratégia Temática
-        temas_perfil = conteudos_perfil.values('categoria_tema').annotate(total=Count('id_post')).order_by('-total')
+        list_tracao = []
 
-        p_diversificacao_qtd = len(temas_perfil)
-        p_tema_principal = "Nenhum"
-        p_concentracao_pct = 0.0
+        list_debate = []
 
-        if p_diversificacao_qtd > 0 and p_posts > 0:
-            p_tema_principal = temas_perfil[0]['categoria_tema']
-            p_concentracao_pct = (temas_perfil[0]['total'] / p_posts) * 100.0
+        list_share = []
 
-        # ==========================================
-        # 4. TOP POSTS DO MÊS
-        # ==========================================
-        top_posts_objs = conteudos_perfil.order_by('-curtidas', '-comentarios')[:3]
+        list_icq = []
+
+
+        # ============================================================
+        # 15. MÉTRICAS DE TODOS OS PERFIS
+        # ============================================================
+
+        for st in stats_por_perfil:
+
+            c = (
+                st['t_curtidas']
+                or 0
+            )
+
+            com = (
+                st['t_comentarios']
+                or 0
+            )
+
+            posts = (
+                st['t_posts']
+                or 0
+            )
+
+            std_inter = (
+                st['std_interacoes']
+                or 0.0
+            )
+
+
+            inter = (
+                c + com
+            )
+
+
+            # ========================================================
+            # TRAÇÃO
+            # ========================================================
+
+            tracao_periodo = (
+
+                inter
+                / posts
+
+                if posts > 0
+
+                else 0.0
+            )
+
+
+            # ========================================================
+            # COEFICIENTE DE VARIAÇÃO
+            # ========================================================
+
+            cv_periodo = (
+
+                std_inter
+                / tracao_periodo
+
+                if tracao_periodo > 0
+
+                else 0.0
+            )
+
+
+            # ========================================================
+            # SHARE
+            # ========================================================
+
+            share_periodo = (
+
+                (
+                    inter
+                    / total_interacoes_grupo
+                )
+                * 100
+
+                if total_interacoes_grupo > 0
+
+                else 0.0
+            )
+
+
+            # ========================================================
+            # FATOR DE ATIVIDADE
+            # ========================================================
+            #
+            # NOVO:
+            #
+            # Não existe mais meta fixa de 10 posts.
+            #
+            # A meta depende do tamanho do período.
+            #
+            # ========================================================
+
+            fator_volume = (
+
+                min(
+                    1.0,
+
+                    posts
+                    / meta_posts_periodo
+                )
+
+                if posts > 0
+
+                else 0.0
+            )
+
+
+            # ========================================================
+            # ICQ
+            # ========================================================
+            #
+            # ICQ =
+            #
+            # qualidade relativa
+            # × estabilidade
+            # × atividade proporcional ao período
+            #
+            # ========================================================
+
+            razao_qualidade = (
+
+                tracao_periodo
+                / media_interacao_geral_grupo
+
+                if media_interacao_geral_grupo > 0
+
+                else 0.0
+            )
+
+
+            fator_estabilidade = (
+
+                1.0
+                / (
+                    1.0
+                    + cv_periodo
+                )
+            )
+
+
+            icq_periodo = (
+
+                razao_qualidade
+                * fator_estabilidade
+                * fator_volume
+            )
+
+
+            # ========================================================
+            # PDB
+            # ========================================================
+
+            prop_debate_perfil = (
+
+                com
+                / inter
+
+                if inter > 0
+
+                else 0.0
+            )
+
+
+            razao_debate = (
+
+                prop_debate_perfil
+                / prop_debate_grupo
+
+                if prop_debate_grupo > 0
+
+                else 0.0
+            )
+
+
+            razao_debate = min(
+                3.0,
+                razao_debate
+            )
+
+
+            pdb_periodo = (
+
+                razao_debate
+                * fator_volume
+            )
+
+
+            list_tracao.append(
+                tracao_periodo
+            )
+
+
+            list_debate.append(
+                pdb_periodo
+            )
+
+
+            list_share.append(
+                share_periodo
+            )
+
+
+            list_icq.append(
+                icq_periodo
+            )
+
+
+        # ============================================================
+        # 16. MÉDIA + DESVIO PADRÃO DO GRUPO
+        # ============================================================
+
+        mean_tracao, std_tracao = (
+            calc_mean_std(
+                list_tracao
+            )
+        )
+
+
+        mean_debate, std_debate = (
+            calc_mean_std(
+                list_debate
+            )
+        )
+
+
+        mean_share, std_share = (
+            calc_mean_std(
+                list_share
+            )
+        )
+
+
+        mean_icq, std_icq = (
+            calc_mean_std(
+                list_icq
+            )
+        )
+
+
+        # ============================================================
+        # 17. CONTEÚDO DO PERFIL SELECIONADO
+        # ============================================================
+
+        conteudos_perfil = (
+            conteudos_grupo
+            .filter(
+                profile__iexact=
+                    profile.strip()
+            )
+        )
+
+
+        perfil_agregado = (
+            conteudos_perfil
+            .aggregate(
+
+                t_curtidas=
+                    Sum('curtidas'),
+
+                t_comentarios=
+                    Sum('comentarios'),
+
+                std_interacoes=
+                    StdDev(
+                        F('curtidas')
+                        + F('comentarios')
+                    ),
+
+                t_posts=
+                    Count('id_post')
+            )
+        )
+
+
+        p_curtidas = (
+            perfil_agregado[
+                't_curtidas'
+            ]
+            or 0
+        )
+
+
+        p_comentarios = (
+            perfil_agregado[
+                't_comentarios'
+            ]
+            or 0
+        )
+
+
+        p_posts = (
+            perfil_agregado[
+                't_posts'
+            ]
+            or 0
+        )
+
+
+        p_std_interacoes = (
+            perfil_agregado[
+                'std_interacoes'
+            ]
+            or 0.0
+        )
+
+
+        p_interacoes = (
+            p_curtidas
+            + p_comentarios
+        )
+
+
+        # ============================================================
+        # 18. PERFORMANCE DO PERFIL
+        # ============================================================
+
+        p_tracao_periodo = (
+
+            p_interacoes
+            / p_posts
+
+            if p_posts > 0
+
+            else 0.0
+        )
+
+
+        p_taxa_debate_bruta_pct = (
+
+            (
+                p_comentarios
+                / p_interacoes
+            )
+            * 100
+
+            if p_interacoes > 0
+
+            else 0.0
+        )
+
+
+        p_cv_periodo = (
+
+            p_std_interacoes
+            / p_tracao_periodo
+
+            if p_tracao_periodo > 0
+
+            else 0.0
+        )
+
+
+        p_share_periodo = (
+
+            (
+                p_interacoes
+                / total_interacoes_grupo
+            )
+            * 100
+
+            if total_interacoes_grupo > 0
+
+            else 0.0
+        )
+
+
+        # ============================================================
+        # FATOR DE VOLUME DO PERFIL
+        # ============================================================
+
+        p_fator_volume = (
+
+            min(
+                1.0,
+
+                p_posts
+                / meta_posts_periodo
+            )
+
+            if p_posts > 0
+
+            else 0.0
+        )
+
+
+        # ============================================================
+        # 19. ICQ DO PERFIL
+        # ============================================================
+
+        p_razao_qualidade = (
+
+            p_tracao_periodo
+            / media_interacao_geral_grupo
+
+            if media_interacao_geral_grupo > 0
+
+            else 0.0
+        )
+
+
+        p_fator_estabilidade = (
+
+            1.0
+            / (
+                1.0
+                + p_cv_periodo
+            )
+        )
+
+
+        p_icq_periodo = (
+
+            p_razao_qualidade
+            * p_fator_estabilidade
+            * p_fator_volume
+        )
+
+
+        # ============================================================
+        # 20. PDB DO PERFIL
+        # ============================================================
+
+        p_prop_debate = (
+
+            p_comentarios
+            / p_interacoes
+
+            if p_interacoes > 0
+
+            else 0.0
+        )
+
+
+        p_razao_debate = (
+
+            p_prop_debate
+            / prop_debate_grupo
+
+            if prop_debate_grupo > 0
+
+            else 0.0
+        )
+
+
+        p_razao_debate = min(
+            3.0,
+            p_razao_debate
+        )
+
+
+        p_pdb_periodo = (
+
+            p_razao_debate
+            * p_fator_volume
+        )
+
+
+        # ============================================================
+        # 21. NOTAS NORMALIZADAS
+        # ============================================================
+        #
+        # Todas usam agora a trava proporcional ao período.
+        # ============================================================
+
+        nota_tracao, class_tracao = (
+            z_to_score_and_class(
+
+                p_tracao_periodo,
+
+                mean_tracao,
+
+                std_tracao,
+
+                posts_count=
+                    p_posts,
+
+                meta_minima_posts=
+                    meta_minima_nota_periodo
+            )
+        )
+
+
+        nota_debate, class_debate = (
+            z_to_score_and_class(
+
+                p_pdb_periodo,
+
+                mean_debate,
+
+                std_debate,
+
+                posts_count=
+                    p_posts,
+
+                meta_minima_posts=
+                    meta_minima_nota_periodo,
+
+                reverse=False
+            )
+        )
+
+
+        nota_share, class_share = (
+            z_to_score_and_class(
+
+                p_share_periodo,
+
+                mean_share,
+
+                std_share,
+
+                posts_count=
+                    p_posts,
+
+                meta_minima_posts=
+                    meta_minima_nota_periodo
+            )
+        )
+
+
+        nota_consist, class_consist = (
+            z_to_score_and_class(
+
+                p_icq_periodo,
+
+                mean_icq,
+
+                std_icq,
+
+                posts_count=
+                    p_posts,
+
+                meta_minima_posts=
+                    meta_minima_nota_periodo,
+
+                reverse=False
+            )
+        )
+
+
+        # ============================================================
+        # 22. ESTRATÉGIA TEMÁTICA
+        # ============================================================
+
+        temas_perfil = (
+            conteudos_perfil
+            .values(
+                'categoria_tema'
+            )
+            .annotate(
+                total=
+                    Count(
+                        'id_post'
+                    )
+            )
+            .order_by(
+                '-total'
+            )
+        )
+
+
+        p_diversificacao_qtd = (
+            len(
+                temas_perfil
+            )
+        )
+
+
+        p_tema_principal = (
+            "Nenhum"
+        )
+
+
+        p_concentracao_pct = (
+            0.0
+        )
+
+
+        if (
+            p_diversificacao_qtd > 0
+            and p_posts > 0
+        ):
+
+            p_tema_principal = (
+                temas_perfil[0][
+                    'categoria_tema'
+                ]
+            )
+
+
+            p_concentracao_pct = (
+
+                temas_perfil[0][
+                    'total'
+                ]
+                / p_posts
+
+            ) * 100.0
+
+
+        # ============================================================
+        # 23. TOP 3 POSTS DO PERÍODO
+        # ============================================================
+
+        top_posts_objs = (
+            conteudos_perfil
+            .order_by(
+                '-curtidas',
+                '-comentarios'
+            )[:3]
+        )
+
+
         top_posts_data = [
+
             {
-                "id_post": post.id_post,
-                "texto": post.texto,
-                "data": post.data,
-                "curtidas": post.curtidas or 0,
-                "comentarios": post.comentarios or 0,
-                "url": post.link_post,
-                "tema": post.categoria_tema
-            } for post in top_posts_objs
+                "id_post":
+                    post.id_post,
+
+                "texto":
+                    post.texto,
+
+                "data":
+                    post.data,
+
+                "curtidas":
+                    post.curtidas
+                    or 0,
+
+                "comentarios":
+                    post.comentarios
+                    or 0,
+
+                "url":
+                    post.link_post,
+
+                "tema":
+                    post.categoria_tema,
+            }
+
+            for post
+            in top_posts_objs
         ]
 
-        def fmt(val):
-            return round(float(val), 2) if val is not None else 0.0
+
+        # ============================================================
+        # 24. RESPONSE
+        # ============================================================
 
         return Response(
             {
-                "projeto_ipd": int(projeto_ipd_id) if str(projeto_ipd_id).isdigit() else projeto_ipd_id,
-                "profile": profile,
-                "periodo": ano_mes,
-                "data_inicio": data_inicio,
-                "data_fim": data_fim,
+
+                "projeto_id":
+                    projeto.id,
+
+
+                "projeto_ipd":
+                    projeto_ipd.id,
+
+
+                "profile":
+                    profile,
+
+
+                # ====================================================
+                # PERÍODO
+                # ====================================================
+
+                "periodo": {
+
+                    "data_inicio":
+                        data_inicio.isoformat(),
+
+                    "data_fim":
+                        data_fim.isoformat(),
+
+                    "dias":
+                        dias_periodo,
+                },
+
+
+                "data_inicio":
+                    data_inicio.isoformat(),
+
+                "data_fim":
+                    data_fim.isoformat(),
+
+
+                # ====================================================
+                # METODOLOGIA DO INTERVALO
+                # ====================================================
+                #
+                # Útil inclusive para depuração no front.
+                #
+                # ====================================================
+
+                "metodologia_periodo": {
+
+                    "dias_periodo":
+                        dias_periodo,
+
+                    "referencia_dias":
+                        int(
+                            DIAS_REFERENCIA
+                        ),
+
+                    "meta_posts_periodo":
+                        fmt(
+                            meta_posts_periodo
+                        ),
+
+                    "meta_minima_nota":
+                        fmt(
+                            meta_minima_nota_periodo
+                        ),
+                },
+
+
+                # ====================================================
+                # IPD
+                # ====================================================
 
                 "metricas_perfil_ipd": {
-                    "fama": fmt(media_perfil['fama']),
-                    "engajamento": fmt(media_perfil['engaj']),
-                    "valencia": fmt(media_perfil['valencia']),
-                    "mobilizacao": fmt(media_perfil['mob']),
-                    "interesse": fmt(media_perfil['interesse']),
-                    "ipd_geral": fmt(media_perfil['ipd']),
-                },
-                "media_grupo_ipd": {
-                    "fama": fmt(media_grupo['fama']),
-                    "engajamento": fmt(media_grupo['engaj']),
-                    "valencia": fmt(media_grupo['valencia']),
-                    "mobilizacao": fmt(media_grupo['mob']),
-                    "interesse": fmt(media_grupo['interesse']),
-                    "ipd_geral": fmt(media_grupo['ipd']),
+
+                    "fama":
+                        fmt(
+                            media_perfil[
+                                'fama'
+                            ]
+                        ),
+
+                    "engajamento":
+                        fmt(
+                            media_perfil[
+                                'engaj'
+                            ]
+                        ),
+
+                    "valencia":
+                        fmt(
+                            media_perfil[
+                                'valencia'
+                            ]
+                        ),
+
+                    "mobilizacao":
+                        fmt(
+                            media_perfil[
+                                'mob'
+                            ]
+                        ),
+
+                    "interesse":
+                        fmt(
+                            media_perfil[
+                                'interesse'
+                            ]
+                        ),
+
+                    "ipd_geral":
+                        fmt(
+                            media_perfil[
+                                'ipd'
+                            ]
+                        ),
                 },
 
+
+                "media_grupo_ipd": {
+
+                    "fama":
+                        fmt(
+                            media_grupo[
+                                'fama'
+                            ]
+                        ),
+
+                    "engajamento":
+                        fmt(
+                            media_grupo[
+                                'engaj'
+                            ]
+                        ),
+
+                    "valencia":
+                        fmt(
+                            media_grupo[
+                                'valencia'
+                            ]
+                        ),
+
+                    "mobilizacao":
+                        fmt(
+                            media_grupo[
+                                'mob'
+                            ]
+                        ),
+
+                    "interesse":
+                        fmt(
+                            media_grupo[
+                                'interesse'
+                            ]
+                        ),
+
+                    "ipd_geral":
+                        fmt(
+                            media_grupo[
+                                'ipd'
+                            ]
+                        ),
+                },
+
+
+                # ====================================================
+                # CONTEÚDO
+                # ====================================================
+
                 "conteudo_perfil": {
+
                     "totais": {
-                        "posts": p_posts,
-                        "curtidas": p_curtidas,
-                        "comentarios": p_comentarios,
-                        "interacoes": p_interacoes
+
+                        "posts":
+                            p_posts,
+
+                        "curtidas":
+                            p_curtidas,
+
+                        "comentarios":
+                            p_comentarios,
+
+                        "interacoes":
+                            p_interacoes,
                     },
+
+
                     "estrategia_temas": {
-                        "qtd_temas_distintos": p_diversificacao_qtd,
-                        "tema_principal": p_tema_principal,
-                        "taxa_concentracao_pct": fmt(p_concentracao_pct)
+
+                        "qtd_temas_distintos":
+                            p_diversificacao_qtd,
+
+                        "tema_principal":
+                            p_tema_principal,
+
+                        "taxa_concentracao_pct":
+                            fmt(
+                                p_concentracao_pct
+                            ),
                     },
+
+
                     "performance_bruta": {
-                        "share_pct": fmt(p_share_mes),
-                        "taxa_debate_pct": fmt(p_taxa_debate_bruta_pct),
-                        "media_ints_post": fmt(p_tracao_mes),
-                        "variacao_cv": fmt(p_cv_mes),
-                        "fator_atividade": fmt(p_fator_volume),
-                        "icq_bruto_mes": fmt(p_icq_mes),
-                        "pdb_bruto_mes": fmt(p_pdb_mes)
+
+                        "share_pct":
+                            fmt(
+                                p_share_periodo
+                            ),
+
+                        "taxa_debate_pct":
+                            fmt(
+                                p_taxa_debate_bruta_pct
+                            ),
+
+                        "media_ints_post":
+                            fmt(
+                                p_tracao_periodo
+                            ),
+
+                        "variacao_cv":
+                            fmt(
+                                p_cv_periodo
+                            ),
+
+                        "fator_atividade":
+                            fmt(
+                                p_fator_volume
+                            ),
+
+                        "icq_bruto_periodo":
+                            fmt(
+                                p_icq_periodo
+                            ),
+
+                        "pdb_bruto_periodo":
+                            fmt(
+                                p_pdb_periodo
+                            ),
                     }
                 },
 
-                "notas_normalizadas_mes": {
-                    "share_mercado": {"nota": fmt(nota_share), "classificacao": class_share},
-                    "poder_debate": {"nota": fmt(nota_debate), "classificacao": class_debate},
-                    "eficiencia_post": {"nota": fmt(nota_tracao), "classificacao": class_tracao},
-                    "consistencia_qualidade": {"nota": fmt(nota_consist), "classificacao": class_consist}
+
+                # ====================================================
+                # NOTAS NORMALIZADAS
+                # ====================================================
+
+                "notas_normalizadas_periodo": {
+
+                    "share_mercado": {
+
+                        "nota":
+                            fmt(
+                                nota_share
+                            ),
+
+                        "classificacao":
+                            class_share,
+                    },
+
+
+                    "poder_debate": {
+
+                        "nota":
+                            fmt(
+                                nota_debate
+                            ),
+
+                        "classificacao":
+                            class_debate,
+                    },
+
+
+                    "eficiencia_post": {
+
+                        "nota":
+                            fmt(
+                                nota_tracao
+                            ),
+
+                        "classificacao":
+                            class_tracao,
+                    },
+
+
+                    "consistencia_qualidade": {
+
+                        "nota":
+                            fmt(
+                                nota_consist
+                            ),
+
+                        "classificacao":
+                            class_consist,
+                    },
                 },
 
-                "top_posts": top_posts_data,
+
+                # ====================================================
+                # TOP POSTS
+                # ====================================================
+
+                "top_posts":
+                    top_posts_data,
             },
+
             status=status.HTTP_200_OK,
         )
 # ==============================================================================
 # 5. API VIEW: TEMAS E ENGAJAMENTO (REFATORADA)
 # ==============================================================================
+
 class TemasEngajamentoView(APIView):
-    permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        projeto_ipd_id = request.query_params.get(
-            'projeto_ipd_id'
-        ) or request.query_params.get('projeto_ipd')
-        mes = request.query_params.get('mes')
-        ano = request.query_params.get('ano')
 
-        if not all([projeto_ipd_id, mes, ano]):
+        # ============================================================
+        # 1. AUTENTICAÇÃO
+        # ============================================================
+        #
+        # Mesmo padrão das outras views.
+        # ============================================================
+
+        if not request.user.is_authenticated:
             return Response(
-                {"error": "Os parâmetros 'projeto_ipd_id', 'mes' e 'ano' são obrigatórios."},
+                {
+                    "error": "Não autenticado."
+                },
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
+
+        # ============================================================
+        # 2. PARÂMETROS
+        # ============================================================
+        #
+        # Antes:
+        #
+        #   projeto_ipd_id
+        #   mes
+        #   ano
+        #
+        # Agora:
+        #
+        #   projeto_id
+        #   projeto_ipd
+        #   data_inicio
+        #   data_fim
+        #
+        # Exemplo:
+        #
+        # /api/temas/
+        # ?projeto_id=10
+        # &projeto_ipd=4
+        # &data_inicio=2026-08-01
+        # &data_fim=2026-08-31
+        #
+        # ============================================================
+
+        projeto_id = request.query_params.get(
+            'projeto_id'
+        )
+
+        projeto_ipd_id = (
+            request.query_params.get(
+                'projeto_ipd_id'
+            )
+            or
+            request.query_params.get(
+                'projeto_ipd'
+            )
+        )
+
+        data_inicio_str = request.query_params.get(
+            'data_inicio'
+        )
+
+        data_fim_str = request.query_params.get(
+            'data_fim'
+        )
+
+
+        # ============================================================
+        # 3. PARÂMETROS OBRIGATÓRIOS
+        # ============================================================
+
+        if (
+            not projeto_id
+            or not projeto_ipd_id
+            or not data_inicio_str
+            or not data_fim_str
+        ):
+            return Response(
+                {
+                    "error": (
+                        "Os parâmetros "
+                        "'projeto_id', "
+                        "'projeto_ipd', "
+                        "'data_inicio' e "
+                        "'data_fim' são obrigatórios."
+                    )
+                },
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
+
+        # ============================================================
+        # 4. VALIDA IDs
+        # ============================================================
 
         try:
-            mes = int(mes)
-            ano = int(ano)
-            projeto_ipd_id = int(projeto_ipd_id)
-        except ValueError:
+
+            projeto_id = int(
+                projeto_id
+            )
+
+            projeto_ipd_id = int(
+                projeto_ipd_id
+            )
+
+        except (
+            TypeError,
+            ValueError
+        ):
+
             return Response(
-                {"error": "Os parâmetros devem ser numéricos."},
+                {
+                    "error": (
+                        "'projeto_id' e "
+                        "'projeto_ipd' devem ser numéricos."
+                    )
+                },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        projeto_ipd = get_object_or_404(ProjetoIPD, pk=projeto_ipd_id)
-        projetos_cliente = projeto_ipd.projetos_cliente.all()
 
-        tem_permissao = any(
-            usuario_tem_acesso_ao_projeto(request.user, proj) for proj in projetos_cliente
-        )
-        if not tem_permissao:
+        # ============================================================
+        # 5. VALIDA DATAS
+        # ============================================================
+
+        try:
+
+            data_inicio = datetime.strptime(
+                data_inicio_str,
+                '%Y-%m-%d'
+            ).date()
+
+            data_fim = datetime.strptime(
+                data_fim_str,
+                '%Y-%m-%d'
+            ).date()
+
+        except ValueError:
+
             return Response(
-                {"error": "Você não tem permissão para acessar os dados deste projeto."},
+                {
+                    "error": (
+                        "Formato de data inválido. "
+                        "Use YYYY-MM-DD "
+                        "(ex: 2026-08-01)."
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+
+        if data_inicio > data_fim:
+
+            return Response(
+                {
+                    "error": (
+                        "'data_inicio' não pode ser "
+                        "posterior a 'data_fim'."
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+
+        # ============================================================
+        # 6. PROJETO CLIENTE + PERMISSÃO
+        # ============================================================
+        #
+        # PRIMEIRA TRAVA:
+        #
+        # O usuário precisa ter acesso explicitamente ao
+        # ProjetoCliente recebido.
+        #
+        # ============================================================
+
+        projeto = get_object_or_404(
+            ProjetoCliente,
+            pk=projeto_id
+        )
+
+
+        if not usuario_tem_acesso_ao_projeto(
+            request.user,
+            projeto
+        ):
+
+            return Response(
+                {
+                    "error": (
+                        "Você não tem permissão para "
+                        "acessar este projeto."
+                    )
+                },
                 status=status.HTTP_403_FORBIDDEN,
             )
 
-        queryset = Conteudo.objects.filter(
-            projeto_ipd__id=projeto_ipd_id, data__year=ano, data__month=mes
+
+        # ============================================================
+        # 7. PROJETO IPD + TRAVA DE RELACIONAMENTO
+        # ============================================================
+        #
+        # SEGUNDA TRAVA:
+        #
+        # Mesmo que o usuário tenha acesso ao ProjetoCliente,
+        # o projeto_ipd enviado também precisa estar vinculado
+        # exatamente a esse projeto.
+        #
+        # Impede algo como:
+        #
+        #   projeto_id = projeto autorizado
+        #   projeto_ipd = IPD de outro projeto
+        #
+        # ============================================================
+
+        projeto_ipd = get_object_or_404(
+            ProjetoIPD,
+            pk=projeto_ipd_id,
+            projetos_cliente=projeto
         )
 
-        interacao_expr = F('curtidas') + F('comentarios')
 
-        # Totais e Médias Globais do Período
-        totais_globais = queryset.aggregate(
-            total_interacoes_mes=Sum(interacao_expr), total_posts_mes=Count('id_post')
-        )
-        grand_interacoes = totais_globais['total_interacoes_mes'] or 0
-        grand_posts = totais_globais['total_posts_mes'] or 0
-        
-        # Média de corte geral
-        media_geral_interacoes = round(grand_interacoes / grand_posts, 2) if grand_posts > 0 else 0.0
+        # ============================================================
+        # 8. QUERYSET DO PERÍODO
+        # ============================================================
+        #
+        # Antes:
+        #
+        #   data__year=ano
+        #   data__month=mes
+        #
+        # Agora:
+        #
+        #   data__range=[
+        #       data_inicio,
+        #       data_fim
+        #   ]
+        #
+        # Portanto funciona para:
+        #
+        #   1 dia
+        #   7 dias
+        #   15 dias
+        #   1 mês
+        #   45 dias
+        #   trimestre
+        #   campanha
+        #   qualquer intervalo
+        #
+        # ============================================================
 
-        totais_por_perfil = {
-            p['profile']: {
-                'total_interacoes': p['total_interacoes'] or 0,
-                'total_posts': p['total_posts'] or 0,
-                'media_perfil': round((p['total_interacoes'] or 0) / p['total_posts'], 2) if p['total_posts'] > 0 else 0.0
-            }
-            for p in queryset.values('profile').annotate(
-                total_interacoes=Sum(interacao_expr), total_posts=Count('id_post')
+        queryset = (
+            Conteudo.objects
+            .filter(
+                projeto_ipd=projeto_ipd,
+                data__range=[
+                    data_inicio,
+                    data_fim
+                ]
             )
-        }
+        )
 
-        # 1. Agrupamento Geral
-        raw_geral = (
-            queryset.values('categoria_tema')
+
+        # ============================================================
+        # 9. EXPRESSÃO DE INTERAÇÃO
+        # ============================================================
+
+        interacao_expr = (
+            F('curtidas')
+            + F('comentarios')
+        )
+
+
+        # ============================================================
+        # 10. TOTAIS GLOBAIS DO PERÍODO
+        # ============================================================
+
+        totais_globais = (
+            queryset
+            .aggregate(
+
+                total_interacoes_periodo=
+                    Coalesce(
+                        Sum(
+                            interacao_expr
+                        ),
+                        0
+                    ),
+
+                total_posts_periodo=
+                    Count(
+                        'id_post'
+                    ),
+            )
+        )
+
+
+        grand_interacoes = (
+            totais_globais[
+                'total_interacoes_periodo'
+            ]
+            or 0
+        )
+
+
+        grand_posts = (
+            totais_globais[
+                'total_posts_periodo'
+            ]
+            or 0
+        )
+
+
+        # ============================================================
+        # 11. MÉDIA GERAL DE INTERAÇÃO POR POST
+        # ============================================================
+        #
+        # Não precisa de ajuste pela duração.
+        #
+        # É:
+        #
+        #   interações totais do intervalo
+        #   ------------------------------
+        #        posts do intervalo
+        #
+        # ============================================================
+
+        media_geral_interacoes = (
+
+            round(
+                grand_interacoes
+                / grand_posts,
+                2
+            )
+
+            if grand_posts > 0
+
+            else 0.0
+        )
+
+
+        # ============================================================
+        # 12. TOTAIS POR PERFIL
+        # ============================================================
+
+        raw_totais_por_perfil = (
+            queryset
+            .values(
+                'profile'
+            )
             .annotate(
-                total_posts=Count('id_post'),
-                total_interacoes=Coalesce(Sum(interacao_expr), 0),
+
+                total_interacoes=
+                    Coalesce(
+                        Sum(
+                            interacao_expr
+                        ),
+                        0
+                    ),
+
+                total_posts=
+                    Count(
+                        'id_post'
+                    ),
             )
         )
+
+
+        totais_por_perfil = {}
+
+
+        for item in raw_totais_por_perfil:
+
+            profile = item[
+                'profile'
+            ]
+
+            total_interacoes = (
+                item[
+                    'total_interacoes'
+                ]
+                or 0
+            )
+
+            total_posts = (
+                item[
+                    'total_posts'
+                ]
+                or 0
+            )
+
+
+            media_perfil = (
+
+                round(
+                    total_interacoes
+                    / total_posts,
+                    2
+                )
+
+                if total_posts > 0
+
+                else 0.0
+            )
+
+
+            totais_por_perfil[
+                profile
+            ] = {
+
+                'total_interacoes':
+                    total_interacoes,
+
+                'total_posts':
+                    total_posts,
+
+                'media_perfil':
+                    media_perfil,
+            }
+
+
+        # ============================================================
+        # 13. AGRUPAMENTO GERAL POR TEMA
+        # ============================================================
+
+        raw_geral = (
+            queryset
+            .values(
+                'categoria_tema'
+            )
+            .annotate(
+
+                total_posts=
+                    Count(
+                        'id_post'
+                    ),
+
+                total_interacoes=
+                    Coalesce(
+                        Sum(
+                            interacao_expr
+                        ),
+                        0
+                    ),
+            )
+        )
+
 
         temas_geral = []
+
+
         for item in raw_geral:
-            t_inter = item['total_interacoes']
-            t_posts = item['total_posts']
-            media_tema = round(t_inter / t_posts, 2) if t_posts > 0 else 0.0
-            
-            # Lógica de Eficiência em relação à Média Geral
-            if media_tema > (media_geral_interacoes * 1.02):
-                eficiencia = "Alta Eficiência"
-            elif media_tema < (media_geral_interacoes * 0.98):
-                eficiencia = "Sub-Eficiente"
+
+            t_inter = (
+                item[
+                    'total_interacoes'
+                ]
+                or 0
+            )
+
+            t_posts = (
+                item[
+                    'total_posts'
+                ]
+                or 0
+            )
+
+
+            # ========================================================
+            # INTERAÇÃO MÉDIA POR POST DO TEMA
+            # ========================================================
+
+            media_tema = (
+
+                round(
+                    t_inter
+                    / t_posts,
+                    2
+                )
+
+                if t_posts > 0
+
+                else 0.0
+            )
+
+
+            # ========================================================
+            # EFICIÊNCIA GERAL
+            # ========================================================
+            #
+            # Compara o tema com a média geral do próprio
+            # período selecionado.
+            #
+            # Mantemos a faixa de tolerância ±2%.
+            #
+            # > 102% da média -> Alta Eficiência
+            # <  98% da média -> Sub-Eficiente
+            # restante       -> Equilibrado
+            #
+            # Essa regra não depende da duração do intervalo.
+            #
+            # ========================================================
+
+            if (
+                media_tema
+                >
+                (
+                    media_geral_interacoes
+                    * 1.02
+                )
+            ):
+
+                eficiencia = (
+                    "Alta Eficiência"
+                )
+
+            elif (
+                media_tema
+                <
+                (
+                    media_geral_interacoes
+                    * 0.98
+                )
+            ):
+
+                eficiencia = (
+                    "Sub-Eficiente"
+                )
+
             else:
-                eficiencia = "Equilibrado"
 
-            temas_geral.append({
-                'categoria_tema': item['categoria_tema'],
-                'total_posts': t_posts,
-                'total_interacoes': t_inter,
-                'share_interacoes': round((t_inter / grand_interacoes * 100), 2) if grand_interacoes > 0 else 0.0,
-                'share_posts': round((t_posts / grand_posts * 100), 2) if grand_posts > 0 else 0.0,
-                'interacao_por_post': media_tema,
-                'eficiencia': eficiencia,
-            })
+                eficiencia = (
+                    "Equilibrado"
+                )
 
-        # Ordena por interacao_por_post (maior eficiência primeiro)
-        temas_geral = sorted(temas_geral, key=lambda x: x['interacao_por_post'], reverse=True)
 
-        # 2. Agrupamento Por Perfil
+            temas_geral.append(
+                {
+
+                    'categoria_tema':
+                        item[
+                            'categoria_tema'
+                        ],
+
+                    'total_posts':
+                        t_posts,
+
+                    'total_interacoes':
+                        t_inter,
+
+
+                    # ================================================
+                    # SHARE DE INTERAÇÕES NO PERÍODO
+                    # ================================================
+
+                    'share_interacoes':
+
+                        round(
+                            (
+                                t_inter
+                                / grand_interacoes
+                            )
+                            * 100,
+                            2
+                        )
+
+                        if grand_interacoes > 0
+
+                        else 0.0,
+
+
+                    # ================================================
+                    # SHARE DE POSTS NO PERÍODO
+                    # ================================================
+
+                    'share_posts':
+
+                        round(
+                            (
+                                t_posts
+                                / grand_posts
+                            )
+                            * 100,
+                            2
+                        )
+
+                        if grand_posts > 0
+
+                        else 0.0,
+
+
+                    'interacao_por_post':
+                        media_tema,
+
+                    'eficiencia':
+                        eficiencia,
+                }
+            )
+
+
+        # ============================================================
+        # 14. ORDENA TEMAS GERAIS
+        # ============================================================
+
+        temas_geral = sorted(
+            temas_geral,
+            key=lambda x:
+                x[
+                    'interacao_por_post'
+                ],
+            reverse=True
+        )
+
+
+        # ============================================================
+        # 15. AGRUPAMENTO TEMA × PERFIL
+        # ============================================================
+
         raw_perfil = (
-            queryset.values('profile', 'categoria_tema')
+            queryset
+            .values(
+                'profile',
+                'categoria_tema'
+            )
             .annotate(
-                total_posts=Count('id_post'),
-                total_interacoes=Coalesce(Sum(interacao_expr), 0),
+
+                total_posts=
+                    Count(
+                        'id_post'
+                    ),
+
+                total_interacoes=
+                    Coalesce(
+                        Sum(
+                            interacao_expr
+                        ),
+                        0
+                    ),
             )
         )
 
+
         temas_por_perfil = []
+
+
         for item in raw_perfil:
-            prof = item['profile']
-            t_inter = item['total_interacoes']
-            t_posts = item['total_posts']
-            prof_totals = totais_por_perfil.get(
-                prof, {'total_interacoes': 0, 'total_posts': 0, 'media_perfil': 0.0}
+
+            prof = item[
+                'profile'
+            ]
+
+            t_inter = (
+                item[
+                    'total_interacoes'
+                ]
+                or 0
             )
 
-            p_inter_tot = prof_totals['total_interacoes']
-            p_posts_tot = prof_totals['total_posts']
-            p_media = prof_totals['media_perfil']
-            
-            media_tema = round(t_inter / t_posts, 2) if t_posts > 0 else 0.0
+            t_posts = (
+                item[
+                    'total_posts'
+                ]
+                or 0
+            )
 
-            # Lógica de Eficiência em relação à Média do Perfil
-            if media_tema > (p_media * 1.02):
-                eficiencia = "Alta Eficiência"
-            elif media_tema < (p_media * 0.98):
-                eficiencia = "Sub-Eficiente"
+
+            prof_totals = (
+                totais_por_perfil
+                .get(
+                    prof,
+                    {
+                        'total_interacoes':
+                            0,
+
+                        'total_posts':
+                            0,
+
+                        'media_perfil':
+                            0.0,
+                    }
+                )
+            )
+
+
+            p_inter_tot = (
+                prof_totals[
+                    'total_interacoes'
+                ]
+            )
+
+            p_posts_tot = (
+                prof_totals[
+                    'total_posts'
+                ]
+            )
+
+            p_media = (
+                prof_totals[
+                    'media_perfil'
+                ]
+            )
+
+
+            media_tema = (
+
+                round(
+                    t_inter
+                    / t_posts,
+                    2
+                )
+
+                if t_posts > 0
+
+                else 0.0
+            )
+
+
+            # ========================================================
+            # EFICIÊNCIA DENTRO DO PERFIL
+            # ========================================================
+            #
+            # Aqui não comparamos com a média geral.
+            #
+            # Comparamos o desempenho do tema com a própria
+            # média de interações/post daquele perfil no período.
+            #
+            # ========================================================
+
+            if (
+                media_tema
+                >
+                (
+                    p_media
+                    * 1.02
+                )
+            ):
+
+                eficiencia = (
+                    "Alta Eficiência"
+                )
+
+            elif (
+                media_tema
+                <
+                (
+                    p_media
+                    * 0.98
+                )
+            ):
+
+                eficiencia = (
+                    "Sub-Eficiente"
+                )
+
             else:
-                eficiencia = "Equilibrado"
 
-            temas_por_perfil.append({
-                'profile': prof,
-                'categoria_tema': item['categoria_tema'],
-                'total_posts': t_posts,
-                'total_interacoes': t_inter,
-                'share_interacoes_perfil': round((t_inter / p_inter_tot * 100), 2) if p_inter_tot > 0 else 0.0,
-                'share_posts_perfil': round((t_posts / p_posts_tot * 100), 2) if p_posts_tot > 0 else 0.0,
-                'interacao_por_post': media_tema,
-                'eficiencia': eficiencia,
-            })
+                eficiencia = (
+                    "Equilibrado"
+                )
 
-        temas_por_perfil = sorted(temas_por_perfil, key=lambda x: x['interacao_por_post'], reverse=True)
 
-        return Response({
-            "filtros": {"projeto_ipd_id": projeto_ipd_id, "mes": mes, "ano": ano},
-            "metricas_gerais": {
-                "media_interacao_por_post_geral": media_geral_interacoes,
-                "totais_por_perfil": totais_por_perfil
+            temas_por_perfil.append(
+                {
+
+                    'profile':
+                        prof,
+
+                    'categoria_tema':
+                        item[
+                            'categoria_tema'
+                        ],
+
+                    'total_posts':
+                        t_posts,
+
+                    'total_interacoes':
+                        t_inter,
+
+
+                    # ================================================
+                    # SHARE DAS INTERAÇÕES DO PERFIL
+                    # ================================================
+
+                    'share_interacoes_perfil':
+
+                        round(
+                            (
+                                t_inter
+                                / p_inter_tot
+                            )
+                            * 100,
+                            2
+                        )
+
+                        if p_inter_tot > 0
+
+                        else 0.0,
+
+
+                    # ================================================
+                    # SHARE DOS POSTS DO PERFIL
+                    # ================================================
+
+                    'share_posts_perfil':
+
+                        round(
+                            (
+                                t_posts
+                                / p_posts_tot
+                            )
+                            * 100,
+                            2
+                        )
+
+                        if p_posts_tot > 0
+
+                        else 0.0,
+
+
+                    'interacao_por_post':
+                        media_tema,
+
+                    'eficiencia':
+                        eficiencia,
+                }
+            )
+
+
+        # ============================================================
+        # 16. ORDENA TEMAS POR PERFIL
+        # ============================================================
+
+        temas_por_perfil = sorted(
+            temas_por_perfil,
+            key=lambda x:
+                x[
+                    'interacao_por_post'
+                ],
+            reverse=True
+        )
+
+
+        # ============================================================
+        # 17. RESPONSE
+        # ============================================================
+
+        return Response(
+            {
+
+                # ====================================================
+                # FILTROS EFETIVAMENTE UTILIZADOS
+                # ====================================================
+
+                "filtros": {
+
+                    "projeto_id":
+                        projeto.id,
+
+                    "projeto_ipd_id":
+                        projeto_ipd.id,
+
+                    "data_inicio":
+                        data_inicio.isoformat(),
+
+                    "data_fim":
+                        data_fim.isoformat(),
+
+                    "dias_periodo":
+                        (
+                            data_fim
+                            - data_inicio
+                        ).days + 1,
+                },
+
+
+                # ====================================================
+                # MÉTRICAS GERAIS
+                # ====================================================
+
+                "metricas_gerais": {
+
+                    "total_interacoes_periodo":
+                        grand_interacoes,
+
+                    "total_posts_periodo":
+                        grand_posts,
+
+                    "media_interacao_por_post_geral":
+                        media_geral_interacoes,
+
+                    "totais_por_perfil":
+                        totais_por_perfil,
+                },
+
+
+                # ====================================================
+                # TEMAS
+                # ====================================================
+
+                "temas_geral":
+                    temas_geral,
+
+                "temas_por_perfil":
+                    temas_por_perfil,
             },
-            "temas_geral": temas_geral,
-            "temas_por_perfil": temas_por_perfil,
-        }, status=status.HTTP_200_OK)
 
+            status=status.HTTP_200_OK,
+        )
+    
 import traceback
 import numpy as np
 import pandas as pd

@@ -46,6 +46,8 @@
         }
     </script>
     <style>
+        html { scroll-behavior: smooth; }
+
         body { font-family: 'Inter', sans-serif; }
         @keyframes pulse-cursor {
             0%, 100% { opacity: 1; }
@@ -333,20 +335,7 @@
 
         <!-- SEÇÃO DE ABAS MÚLTIPLAS DOS MÓDULOS IPD -->
         <section id="secao-abas-ipd" class="hidden max-w-6xl mx-auto px-6 space-y-6">
-            <div id="bloco-ultima-atualizacao" class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-2xl border border-quaest-tealBorder bg-white px-5 py-4 shadow-sm">
-                <div class="flex items-center gap-3">
-                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-quaest-tealLight text-quaest-teal">
-                        <i class="fa-regular fa-calendar-check"></i>
-                    </div>
-                    <div>
-                        <span class="block text-[10px] font-black uppercase tracking-widest text-slate-400">Última atualização dos dados</span>
-                        <strong id="mes-referencia-hero" class="text-lg font-black tracking-tight text-slate-900">Carregando...</strong>
-                    </div>
-                </div>
-                <span class="inline-flex w-fit items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-wide text-emerald-700">
-                    <i class="fa-solid fa-circle-check"></i> Dados validados
-                </span>
-            </div>
+            
             
             <div id="container-navegacao-abas" class="hidden flex items-center gap-2 overflow-x-auto pb-2 border-b border-slate-200">
                 <span class="text-xs font-black text-slate-400 uppercase tracking-widest mr-2 shrink-0">Selecione o Módulo:</span>
@@ -420,6 +409,70 @@
 
     <!-- LÓGICA JAVASCRIPT INTEGRADA -->
     <script>
+
+        /*
+         * =====================================================================
+         * MAPA DE DEPENDÊNCIAS VISUAIS DO MÓDULO IPD
+         * =====================================================================
+         *
+         * O conteúdo visual de cada IPD está dividido em 3 blocos independentes:
+         *
+         * [A] IPD GERAL
+         *     - Ranking do IPD
+         *     - Variação do IPD
+         *     - Evolução Histórica
+         *     - Trajetória Histórica do Top 10
+         *     - Radar
+         *
+         *     Fonte principal:
+         *       stateIPDs[ipdId].rawDiarias
+         *
+         *     Dependências:
+         *       agregarSerieDiaria()
+         *       obterCorPerfil()
+         *       formatarChaveHistorico()
+         *       funções específicas de cada gráfico
+         *
+         *     IMPORTANTE:
+         *       os filtros de Ranking, Variação, Histórico, Top 10 e Radar
+         *       são independentes entre si. Alterar um período NÃO deve
+         *       alterar automaticamente os demais.
+         *
+         * [B] TEMAS E CONTEÚDO
+         *     - Matrizes temáticas
+         *     - Comparativo de eficiência
+         *     - Top publicações / conteúdo
+         *
+         *     Fonte:
+         *       carregarTemasEngajamento()
+         *       stateIPDs[ipdId].dadosTemas
+         *       stateTemasMetricas[ipdId]
+         *
+         *     IMPORTANTE:
+         *       este bloco NÃO depende dos filtros temporais do IPD Geral.
+         *
+         * [C] ANÁLISES AVANÇADAS
+         *     - Forecasting
+         *     - Controle Sintético / BSTS
+         *
+         *     Forecasting:
+         *       usa statePrevisaoPreditiva, mapPrevisaoCharts e
+         *       mapRankingPrevisaoCharts.
+         *
+         *     Controle Sintético:
+         *       possui fluxo próprio de formulário/API causal.
+         *
+         *     IMPORTANTE:
+         *       Forecasting e Controle Sintético NÃO dependem dos filtros
+         *       visuais de Ranking, Histórico, Radar ou Top 10 Real.
+         *
+         * Observação de compatibilidade:
+         *     alguns nomes internos antigos ainda contêm "Previsao"
+         *     (ex.: mapPrevisaoCharts). Eles foram mantidos para não quebrar
+         *     chamadas existentes, mas o nome exibido ao usuário é FORECASTING.
+         * =====================================================================
+         */
+
         let mapPrevisaoCharts = {};
         let mapRankingPrevisaoCharts = {};
         let statePrevisaoPreditiva = {};
@@ -1661,6 +1714,8 @@ function desmarcarTodosRanking(ipdId) {
 
             montarBotoesRadar(ipdId);
             aplicarFiltroRadar(ipdId);
+
+    atualizarCardUltimaDataIpd(ipdId);
         }
 
         function desmarcarTodosRadar(ipdId) {
@@ -1876,6 +1931,254 @@ function desmarcarTodosRanking(ipdId) {
             return str;
         }
 
+        /*
+         * obterUltimaDataDisponivelIpd(ipdId)
+         * -------------------------------------------------------------
+         * Retorna a data MAIS RECENTE realmente disponível para este IPD.
+         *
+         * Fonte prioritária:
+         *   stateIPDs[ipdId].rawDiarias
+         *
+         * Fallback:
+         *   profilesDataDiario.datas
+         *
+         * Essa data alimenta exclusivamente o card
+         * "Último dado disponível" do respectivo IPD.
+         * Não representa a atualização geral do relatório.
+         */
+        function obterUltimaDataDisponivelIpd(ipdId) {
+            const ref = stateIPDs[ipdId];
+
+            if (!ref) return null;
+
+            const datas = new Set();
+
+            /*
+             * IMPORTANTE SOBRE rawDiarias
+             * ---------------------------------------------------------
+             * Neste painel, os dados diários do IPD podem estar em dois
+             * formatos:
+             *
+             * 1) Objeto indexado pela própria data:
+             *
+             *    rawDiarias = {
+             *        "2026-08-30": {...},
+             *        "2026-08-31": {...}
+             *    }
+             *
+             * 2) Array de registros, em versões/fontes diferentes:
+             *
+             *    rawDiarias = [
+             *        { data: "2026-08-30", ... },
+             *        { data: "2026-08-31", ... }
+             *    ]
+             *
+             * A data de atualização do card deve vir DESSES DADOS DO IPD,
+             * e não da data geral do ProjetoCliente.
+             */
+
+            const raw =
+                ref.rawDiarias;
+
+            // ---------------------------------------------------------
+            // FORMATO 1 — OBJETO COM A DATA NA CHAVE
+            // ---------------------------------------------------------
+            if (
+                raw &&
+                typeof raw === 'object' &&
+                !Array.isArray(raw)
+            ) {
+
+                Object.keys(raw).forEach(chave => {
+
+                    if (
+                        /^\d{4}-\d{2}-\d{2}/.test(
+                            String(chave)
+                        )
+                    ) {
+
+                        datas.add(
+                            String(chave).slice(0, 10)
+                        );
+                    }
+                });
+
+
+                /*
+                 * Algumas estruturas podem ser:
+                 *
+                 * {
+                 *   profileA: {
+                 *      "2026-08-31": {...}
+                 *   }
+                 * }
+                 *
+                 * Por isso também fazemos uma leitura rasa dos objetos
+                 * internos procurando chaves que sejam datas.
+                 */
+                Object.values(raw).forEach(valor => {
+
+                    if (
+                        !valor ||
+                        typeof valor !== 'object' ||
+                        Array.isArray(valor)
+                    ) {
+                        return;
+                    }
+
+                    Object.keys(valor).forEach(chave => {
+
+                        if (
+                            /^\d{4}-\d{2}-\d{2}/.test(
+                                String(chave)
+                            )
+                        ) {
+
+                            datas.add(
+                                String(chave).slice(0, 10)
+                            );
+                        }
+                    });
+                });
+            }
+
+
+            // ---------------------------------------------------------
+            // FORMATO 2 — ARRAY DE REGISTROS
+            // ---------------------------------------------------------
+            if (Array.isArray(raw)) {
+
+                raw.forEach(registro => {
+
+                    const data =
+                        registro?.data ||
+                        registro?.date ||
+                        registro?.dia;
+
+                    if (
+                        typeof data === 'string' &&
+                        /^\d{4}-\d{2}-\d{2}/.test(data)
+                    ) {
+
+                        datas.add(
+                            data.slice(0, 10)
+                        );
+                    }
+                });
+            }
+
+
+            // ---------------------------------------------------------
+            // FONTE NORMALIZADA DO PRÓPRIO IPD
+            // ---------------------------------------------------------
+            //
+            // Esta é uma fonte muito confiável porque
+            // normalizarDadosDiarios() já transforma rawDiarias em:
+            //
+            // profilesDataDiario.datas = [
+            //    "2026-08-01",
+            //    "2026-08-02",
+            //    ...
+            // ]
+            //
+            // Continua sendo dado do IPD, NÃO dado geral do projeto.
+            // ---------------------------------------------------------
+
+            (
+                ref.profilesDataDiario?.datas ||
+                []
+            ).forEach(data => {
+
+                if (
+                    typeof data === 'string' &&
+                    /^\d{4}-\d{2}-\d{2}/.test(data)
+                ) {
+
+                    datas.add(
+                        data.slice(0, 10)
+                    );
+                }
+            });
+
+
+            // ---------------------------------------------------------
+            // FALLBACK ADICIONAL:
+            // procura datas existentes nos registros por perfil.
+            // ---------------------------------------------------------
+
+            Object.values(
+                ref.profilesDataDiario?.profiles ||
+                {}
+            ).forEach(profileInfo => {
+
+                Object.keys(
+                    profileInfo?.registrosPorData ||
+                    {}
+                ).forEach(data => {
+
+                    if (
+                        /^\d{4}-\d{2}-\d{2}/.test(
+                            String(data)
+                        )
+                    ) {
+
+                        datas.add(
+                            String(data).slice(0, 10)
+                        );
+                    }
+                });
+            });
+
+
+            if (!datas.size) {
+                return null;
+            }
+
+
+            /*
+             * ISO YYYY-MM-DD ordena corretamente como string.
+             * A última posição é o último dia com dado real disponível.
+             */
+            return Array
+                .from(datas)
+                .sort()
+                .at(-1);
+        }
+
+
+        /*
+         * atualizarCardUltimaDataIpd(ipdId)
+         * -------------------------------------------------------------
+         * Atualiza SOMENTE o card visual da data do IPD.
+         * Não recalcula gráficos nem altera filtros.
+         */
+        function atualizarCardUltimaDataIpd(ipdId) {
+            const el =
+                document.getElementById(
+                    `ultima-data-ipd-${ipdId}`
+                );
+
+            if (!el) return;
+
+            const ultimaData =
+                obterUltimaDataDisponivelIpd(ipdId);
+
+            if (!ultimaData) {
+                el.textContent = 'Sem dados';
+                el.title = 'Nenhuma data disponível para este IPD';
+                return;
+            }
+
+            el.textContent =
+                formatarDataAnoCurto(
+                    ultimaData
+                );
+
+            el.title =
+                `Último dado disponível neste IPD: ${formatarDataAnoCurto(ultimaData)}`;
+        }
+
+
         function formatarDataAnoCurto(dataStr, apenasMes = false) {
             if (!dataStr) return '';
             const parts = String(dataStr).split('-');
@@ -2001,48 +2304,306 @@ function desmarcarTodosRanking(ipdId) {
             }
         }
 
+        /*
+         * carregarTemasEngajamento(ipdId)
+         * -------------------------------------------------------------
+         * BLOCO VISUAL: Temas e Conteúdo.
+         *
+         * Busca/carrega os dados temáticos e alimenta:
+         *   renderizarMatrizGeralTemas()
+         *   renderizarMatrizPerfilTemas()
+         *   renderizarComparativoPerfis()
+         *
+         * NÃO usa os filtros de Ranking, Histórico, Top 10 ou Radar.
+         */
+        /*
+         * carregarTemasEngajamento(ipdId)
+         * -------------------------------------------------------------
+         * BLOCO VISUAL:
+         *   Temas e Conteúdo > Matriz de Eficiência Temática
+         *
+         * ENDPOINT:
+         *   /api/temas/
+         *
+         * NOVOS PARÂMETROS:
+         *   projeto_id
+         *   projeto_ipd
+         *   data_inicio
+         *   data_fim
+         *
+         * O endpoint não recebe mais mes/ano.
+         *
+         * Segurança:
+         *   PROJETO_ID identifica o ProjetoCliente aberto no relatório.
+         *   A API valida:
+         *     1) acesso do usuário ao ProjetoCliente;
+         *     2) vínculo do ProjetoIPD com esse ProjetoCliente.
+         *
+         * Esta função só atualiza o bloco Temas.
+         * Não altera Ranking, Histórico, Radar, Top 10 ou Forecasting.
+         */
         async function carregarTemasEngajamento(ipdId) {
-            const selectMes = document.getElementById(`select-mes-temas-${ipdId}`);
-            if (!selectMes || !selectMes.value) return;
 
-            const mesAnoFormatado = formatarDataParaAnoMes(selectMes.value);
-            const partes = mesAnoFormatado.split('-');
-            if (partes.length < 2) return;
+            const inputInicio =
+                document.getElementById(
+                    `temas-inicio-${ipdId}`
+                );
 
-            const ano = partes[0];
-            const mes = parseInt(partes[1], 10);
+            const inputFim =
+                document.getElementById(
+                    `temas-fim-${ipdId}`
+                );
 
-            const url = `/api/temas/?projeto_ipd_id=${ipdId}&mes=${mes}&ano=${ano}`;
+            const erro =
+                document.getElementById(
+                    `erro-periodo-temas-${ipdId}`
+                );
 
-            try {
-                const response = await fetch(url);
-                const data = await response.json();
+            const resumo =
+                document.getElementById(
+                    `resumo-periodo-temas-${ipdId}`
+                );
 
-                if (!response.ok) return;
+            if (!inputInicio || !inputFim) {
+                return;
+            }
 
-                if (!stateIPDs[ipdId]) stateIPDs[ipdId] = {};
-                stateIPDs[ipdId].dadosTemas = data;
+            const dataInicio =
+                inputInicio.value;
 
-                const todosPerfis = (stateIPDs[ipdId]?.ipdObj?.profiles_usados || []).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+            const dataFim =
+                inputFim.value;
 
-                if (!stateTemasMetricas[ipdId]) {
-                    stateTemasMetricas[ipdId] = {
-                        perfisComparativo: new Set(todosPerfis.slice(0, 2))
-                    };
-                } else if (stateTemasMetricas[ipdId].perfisComparativo.size === 0) {
-                    stateTemasMetricas[ipdId].perfisComparativo = new Set(todosPerfis.slice(0, 2));
+
+            // =========================================================
+            // VALIDAÇÃO NO FRONT
+            // =========================================================
+
+            if (!dataInicio || !dataFim) {
+
+                if (erro) {
+                    erro.textContent =
+                        'Informe a data inicial e a data final.';
+
+                    erro.classList.remove(
+                        'hidden'
+                    );
                 }
 
-                popularSeletorPerfisTemas(ipdId, data.temas_por_perfil || []);
+                return;
+            }
 
-                renderizarMatrizGeralTemas(ipdId);
-                renderizarMatrizPerfilTemas(ipdId);
-                renderizarComparativoPerfis(ipdId);
+
+            if (dataInicio > dataFim) {
+
+                if (erro) {
+                    erro.textContent =
+                        'A data inicial não pode ser posterior à data final.';
+
+                    erro.classList.remove(
+                        'hidden'
+                    );
+                }
+
+                return;
+            }
+
+
+            if (erro) {
+                erro.classList.add(
+                    'hidden'
+                );
+            }
+
+
+            // =========================================================
+            // NOVA CHAMADA DA API
+            // =========================================================
+
+            const params =
+                new URLSearchParams({
+
+                    projeto_id:
+                        String(PROJETO_ID),
+
+                    projeto_ipd:
+                        String(ipdId),
+
+                    data_inicio:
+                        dataInicio,
+
+                    data_fim:
+                        dataFim
+                });
+
+
+            const url =
+                `/api/temas/?${params.toString()}`;
+
+
+            try {
+
+                const response =
+                    await fetch(url);
+
+                const data =
+                    await response.json();
+
+
+                if (
+                    !response.ok ||
+                    data.error
+                ) {
+
+                    if (erro) {
+                        erro.textContent =
+                            data.error ||
+                            'Não foi possível carregar os temas.';
+
+                        erro.classList.remove(
+                            'hidden'
+                        );
+                    }
+
+                    return;
+                }
+
+
+                // =====================================================
+                // SALVA O RESULTADO NO STATE
+                // =====================================================
+
+                if (!stateIPDs[ipdId]) {
+                    stateIPDs[ipdId] = {};
+                }
+
+                stateIPDs[ipdId].dadosTemas =
+                    data;
+
+
+                // =====================================================
+                // PERFIS DISPONÍVEIS
+                // =====================================================
+
+                const todosPerfis =
+                    (
+                        stateIPDs[ipdId]
+                            ?.ipdObj
+                            ?.profiles_usados ||
+                        []
+                    )
+                    .sort(
+                        (a, b) =>
+                            a.localeCompare(
+                                b,
+                                'pt-BR'
+                            )
+                    );
+
+
+                if (!stateTemasMetricas[ipdId]) {
+
+                    stateTemasMetricas[ipdId] = {
+
+                        perfisComparativo:
+                            new Set(
+                                todosPerfis.slice(
+                                    0,
+                                    2
+                                )
+                            )
+                    };
+
+                } else if (
+                    stateTemasMetricas[
+                        ipdId
+                    ].perfisComparativo.size === 0
+                ) {
+
+                    stateTemasMetricas[
+                        ipdId
+                    ].perfisComparativo =
+                        new Set(
+                            todosPerfis.slice(
+                                0,
+                                2
+                            )
+                        );
+                }
+
+
+                // =====================================================
+                // ATUALIZA O BLOCO VISUAL
+                // =====================================================
+
+                popularSeletorPerfisTemas(
+                    ipdId,
+                    data.temas_por_perfil ||
+                    []
+                );
+
+
+                renderizarMatrizGeralTemas(
+                    ipdId
+                );
+
+
+                renderizarMatrizPerfilTemas(
+                    ipdId
+                );
+
+
+                renderizarComparativoPerfis(
+                    ipdId
+                );
+
+
+                // =====================================================
+                // RESUMO DO PERÍODO
+                // =====================================================
+
+                if (resumo) {
+
+                    const inicioResposta =
+                        data.filtros
+                            ?.data_inicio ||
+                        dataInicio;
+
+                    const fimResposta =
+                        data.filtros
+                            ?.data_fim ||
+                        dataFim;
+
+
+                    resumo.textContent =
+                        `${formatarDataAnoCurto(
+                            inicioResposta
+                        )} a ${formatarDataAnoCurto(
+                            fimResposta
+                        )}`;
+                }
+
 
             } catch (err) {
-                console.error("Erro ao carregar dados temáticos da API:", err);
+
+                console.error(
+                    "Erro ao carregar dados temáticos da API:",
+                    err
+                );
+
+
+                if (erro) {
+
+                    erro.textContent =
+                        'Falha na comunicação com o servidor.';
+
+                    erro.classList.remove(
+                        'hidden'
+                    );
+                }
             }
         }
+
 
         function popularSeletorPerfisTemas(ipdId, listaPerfil) {
             const todosPerfisIpd = (stateIPDs[ipdId]?.ipdObj?.profiles_usados || []).sort((a, b) => a.localeCompare(b, 'pt-BR'));
@@ -2557,93 +3118,410 @@ function desmarcarTodosRanking(ipdId) {
 
         let cacheTopPostsPorModulo = {};
 
+        /*
+         * carregarMetricasConteudo(ipdId)
+         * -------------------------------------------------------------
+         * BLOCO VISUAL:
+         *   Temas e Conteúdo > Análise de Conteúdo & Top 3 Publicações do Período
+         *
+         * ENDPOINT:
+         *   /api/conteudo/medias/
+         *
+         * PARÂMETROS ATUAIS DA API:
+         *   projeto_ipd
+         *   profile
+         *   data_inicio (YYYY-MM-DD)
+         *   data_fim    (YYYY-MM-DD)
+         *
+         * IMPORTANTE:
+         *   este módulo NÃO usa mais ano_mes.
+         *   O usuário pode consultar qualquer intervalo de datas.
+         *
+         * RESPOSTA NOVA:
+         *   notas_normalizadas_periodo
+         *   performance_bruta.icq_bruto_periodo
+         *   performance_bruta.pdb_bruto_periodo
+         *
+         * Esta função NÃO altera Ranking, Histórico, Radar,
+         * Top 10 real ou Forecasting.
+         */
         async function carregarMetricasConteudo(ipdId) {
-            const selectProfile = document.getElementById(`select-profile-postages-${ipdId}`);
-            const selectMes = document.getElementById(`select-mes-postages-${ipdId}`);
+            const selectProfile =
+                document.getElementById(
+                    `select-profile-postages-${ipdId}`
+                );
 
-            if (!selectProfile || !selectMes) return;
+            const inputInicio =
+                document.getElementById(
+                    `conteudo-inicio-${ipdId}`
+                );
 
-            const profileName = selectProfile.value;
-            const mesAnoRaw = selectMes.value;
+            const inputFim =
+                document.getElementById(
+                    `conteudo-fim-${ipdId}`
+                );
 
-            const dimKeys = ['share', 'debate', 'foco', 'consist'];
-
-            if (!profileName || !mesAnoRaw) {
-                const elTexto = document.getElementById(`top-post-texto-${ipdId}`);
-                if (elTexto) elTexto.innerText = "Selecione o perfil e o mês para consultar.";
-                
-                dimKeys.forEach(dim => {
-                    const elVal = document.getElementById(`badge-val-${dim}-${ipdId}`);
-                    if (elVal) elVal.innerText = "--";
-                });
+            if (!selectProfile || !inputInicio || !inputFim) {
                 return;
             }
 
-            const mesAno = formatarDataParaAnoMes(mesAnoRaw);
-            const url = `/api/conteudo/medias/?projeto_ipd=${ipdId}&profile=${encodeURIComponent(profileName)}&ano_mes=${mesAno}`;
+            const profileName =
+                selectProfile.value;
+
+            const dataInicio =
+                inputInicio.value;
+
+            const dataFim =
+                inputFim.value;
+
+            const dimKeys = [
+                'share',
+                'debate',
+                'foco',
+                'consist'
+            ];
+
+            const limparCards = () => {
+                dimKeys.forEach(dim => {
+                    const elVal =
+                        document.getElementById(
+                            `badge-val-${dim}-${ipdId}`
+                        );
+
+                    if (elVal) {
+                        elVal.innerText = "--";
+                    }
+                });
+            };
+
+            if (
+                !profileName ||
+                !dataInicio ||
+                !dataFim
+            ) {
+                limparCards();
+
+                const elTexto =
+                    document.getElementById(
+                        `top-post-texto-${ipdId}`
+                    );
+
+                if (elTexto) {
+                    elTexto.innerText =
+                        "Selecione o perfil e informe o período.";
+                }
+
+                return;
+            }
+
+            if (dataInicio > dataFim) {
+                limparCards();
+
+                const elTexto =
+                    document.getElementById(
+                        `top-post-texto-${ipdId}`
+                    );
+
+                if (elTexto) {
+                    elTexto.innerHTML =
+                        `<span class="text-rose-600 font-bold">
+                            <i class="fa-solid fa-triangle-exclamation mr-1"></i>
+                            A data inicial não pode ser posterior à data final.
+                        </span>`;
+                }
+
+                return;
+            }
+
+            // =========================================================
+            // PARÂMETROS DA NOVA MediaMetricasIPDView
+            // =========================================================
+            //
+            // A view agora exige também projeto_id para aplicar:
+            //
+            // ProjetoCliente -> permissão do usuário -> ProjetoIPD
+            //
+            // PROJETO_ID já representa o ProjetoCliente aberto
+            // neste relatório.
+            // =========================================================
+
+            const params =
+                new URLSearchParams({
+
+                    projeto_id:
+                        String(PROJETO_ID),
+
+                    projeto_ipd:
+                        String(ipdId),
+
+                    profile:
+                        profileName,
+
+                    data_inicio:
+                        dataInicio,
+
+                    data_fim:
+                        dataFim
+                });
+
+            const url =
+                `/api/conteudo/medias/?${params.toString()}`;
 
             try {
-                const response = await fetch(url);
-                const data = await response.json();
+                const response =
+                    await fetch(url);
 
-                if (!response.ok || data.error) {
-                    const msgErro = data.error || "Erro ao consultar métricas do período.";
-                    
-                    dimKeys.forEach(dim => {
-                        const elVal = document.getElementById(`badge-val-${dim}-${ipdId}`);
-                        if (elVal) elVal.innerText = "--";
-                    });
+                const data =
+                    await response.json();
 
-                    document.getElementById(`top-post-texto-${ipdId}`).innerHTML = `<span class="text-rose-600 font-bold"><i class="fa-solid fa-triangle-exclamation mr-1"></i> ${msgErro}</span>`;
-                    document.getElementById(`embed-box-${ipdId}`).innerHTML = `<p class="text-xs text-slate-400 italic">Sem dados para o período informado.</p>`;
-                    
+                if (
+                    !response.ok ||
+                    data.error
+                ) {
+                    const msgErro =
+                        data.error ||
+                        "Erro ao consultar métricas do período.";
+
+                    limparCards();
+
+                    const texto =
+                        document.getElementById(
+                            `top-post-texto-${ipdId}`
+                        );
+
+                    if (texto) {
+                        texto.innerHTML =
+                            `<span class="text-rose-600 font-bold">
+                                <i class="fa-solid fa-triangle-exclamation mr-1"></i>
+                                ${msgErro}
+                            </span>`;
+                    }
+
+                    const embed =
+                        document.getElementById(
+                            `embed-box-${ipdId}`
+                        );
+
+                    if (embed) {
+                        embed.innerHTML =
+                            `<p class="text-xs text-slate-400 italic">
+                                Sem dados para o período informado.
+                            </p>`;
+                    }
+
                     return;
                 }
 
-                const cPerfil = data.conteudo_perfil || {};
-                const cNotas = data.notas_normalizadas_mes || {};
+                const cPerfil =
+                    data.conteudo_perfil ||
+                    {};
 
-                // 1. Share
-                const elShare = document.getElementById(`badge-val-share-${ipdId}`);
-                const elClassShare = document.getElementById(`badge-class-share-${ipdId}`);
-                if(elShare) elShare.innerText = cPerfil.performance_bruta?.share_pct !== undefined ? `${cPerfil.performance_bruta.share_pct.toFixed(1)}%` : '--%';
-                if(elClassShare) elClassShare.innerText = cNotas.share_mercado?.classificacao || '--';
+                /*
+                 * Nova chave da API.
+                 *
+                 * O fallback para notas_normalizadas_mes é mantido
+                 * temporariamente para permitir transição sem quebrar
+                 * respostas antigas durante o deploy.
+                 */
+                const cNotas =
+                    data.notas_normalizadas_periodo ||
+                    data.notas_normalizadas_mes ||
+                    {};
 
-                // 2. Consistência & Qualidade (ICQ)
-                const elConsist = document.getElementById(`badge-val-consist-${ipdId}`);
-                const elClassConsist = document.getElementById(`badge-class-consist-${ipdId}`);
-                if(elConsist) elConsist.innerText = cNotas.consistencia_qualidade?.nota !== undefined ? cNotas.consistencia_qualidade.nota.toFixed(1) : '--';
-                if(elClassConsist) elClassConsist.innerText = cNotas.consistencia_qualidade?.classificacao || '--';
 
-                // 3. Debate
-                const elDebate = document.getElementById(`badge-val-debate-${ipdId}`);
-                const elClassDebate = document.getElementById(`badge-class-debate-${ipdId}`);
-                if(elDebate) elDebate.innerText = cNotas.poder_debate?.nota !== undefined ? cNotas.poder_debate.nota.toFixed(1) : '--';
-                if(elClassDebate) elClassDebate.innerText = cNotas.poder_debate?.classificacao || '--';
+                // =====================================================
+                // 1. SHARE DE INTERAÇÕES
+                // =====================================================
 
-                // 4. Foco Narrativo
-                const elFoco = document.getElementById(`badge-val-foco-${ipdId}`);
-                const elSubFoco = document.getElementById(`badge-sub-foco-${ipdId}`);
-                if(elFoco) elFoco.innerText = cPerfil.estrategia_temas?.tema_principal || 'N/A';
-                if(elSubFoco) elSubFoco.innerText = cPerfil.estrategia_temas?.taxa_concentracao_pct !== undefined ? `${cPerfil.estrategia_temas.taxa_concentracao_pct.toFixed(1)}%` : '--';
+                const elShare =
+                    document.getElementById(
+                        `badge-val-share-${ipdId}`
+                    );
 
-                let listaTopPosts = data.top_posts || [];
+                const elClassShare =
+                    document.getElementById(
+                        `badge-class-share-${ipdId}`
+                    );
+
+                if (elShare) {
+                    elShare.innerText =
+                        cPerfil.performance_bruta?.share_pct !== undefined
+                            ? `${Number(cPerfil.performance_bruta.share_pct).toFixed(1)}%`
+                            : '--%';
+                }
+
+                if (elClassShare) {
+                    elClassShare.innerText =
+                        cNotas.share_mercado?.classificacao ||
+                        '--';
+                }
+
+
+                // =====================================================
+                // 2. CONSISTÊNCIA & QUALIDADE
+                // =====================================================
+
+                const elConsist =
+                    document.getElementById(
+                        `badge-val-consist-${ipdId}`
+                    );
+
+                const elClassConsist =
+                    document.getElementById(
+                        `badge-class-consist-${ipdId}`
+                    );
+
+                if (elConsist) {
+                    elConsist.innerText =
+                        cNotas.consistencia_qualidade?.nota !== undefined
+                            ? Number(
+                                cNotas.consistencia_qualidade.nota
+                            ).toFixed(1)
+                            : '--';
+                }
+
+                if (elClassConsist) {
+                    elClassConsist.innerText =
+                        cNotas.consistencia_qualidade?.classificacao ||
+                        '--';
+                }
+
+
+                // =====================================================
+                // 3. PODER DE DEBATE
+                // =====================================================
+
+                const elDebate =
+                    document.getElementById(
+                        `badge-val-debate-${ipdId}`
+                    );
+
+                const elClassDebate =
+                    document.getElementById(
+                        `badge-class-debate-${ipdId}`
+                    );
+
+                if (elDebate) {
+                    elDebate.innerText =
+                        cNotas.poder_debate?.nota !== undefined
+                            ? Number(
+                                cNotas.poder_debate.nota
+                            ).toFixed(1)
+                            : '--';
+                }
+
+                if (elClassDebate) {
+                    elClassDebate.innerText =
+                        cNotas.poder_debate?.classificacao ||
+                        '--';
+                }
+
+
+                // =====================================================
+                // 4. FOCO NARRATIVO
+                // =====================================================
+
+                const elFoco =
+                    document.getElementById(
+                        `badge-val-foco-${ipdId}`
+                    );
+
+                const elSubFoco =
+                    document.getElementById(
+                        `badge-sub-foco-${ipdId}`
+                    );
+
+                if (elFoco) {
+                    elFoco.innerText =
+                        cPerfil.estrategia_temas?.tema_principal ||
+                        'N/A';
+                }
+
+                if (elSubFoco) {
+                    elSubFoco.innerText =
+                        cPerfil.estrategia_temas?.taxa_concentracao_pct !== undefined
+                            ? `${Number(
+                                cPerfil.estrategia_temas.taxa_concentracao_pct
+                            ).toFixed(1)}%`
+                            : '--';
+                }
+
+
+                // =====================================================
+                // TOP POSTS DO INTERVALO
+                // =====================================================
+
+                const listaTopPosts =
+                    data.top_posts ||
+                    [];
 
                 cacheTopPostsPorModulo[ipdId] = {
-                    listaPosts: listaTopPosts,
-                    mediaCurtidas: cPerfil.medias_por_post?.curtidas || 0,
-                    mediaComentarios: cPerfil.medias_por_post?.comentarios || 0,
-                    totalPosts: cPerfil.totais?.posts || 0
+                    listaPosts:
+                        listaTopPosts,
+
+                    /*
+                     * A view atual retorna totais e performance_bruta.
+                     * Mantemos estes campos de cache porque outras funções
+                     * do front podem consultá-los.
+                     */
+                    mediaCurtidas:
+                        cPerfil.medias_por_post?.curtidas ||
+                        0,
+
+                    mediaComentarios:
+                        cPerfil.medias_por_post?.comentarios ||
+                        0,
+
+                    totalPosts:
+                        cPerfil.totais?.posts ||
+                        0,
+
+                    dataInicio:
+                        data.data_inicio ||
+                        dataInicio,
+
+                    dataFim:
+                        data.data_fim ||
+                        dataFim
                 };
 
-                selecionarTopPostAba(ipdId, 0);
+                selecionarTopPostAba(
+                    ipdId,
+                    0
+                );
+
+                const resumo =
+                    document.getElementById(
+                        `resumo-periodo-conteudo-${ipdId}`
+                    );
+
+                if (resumo) {
+                    resumo.textContent =
+                        `${formatarDataAnoCurto(
+                            data.data_inicio || dataInicio
+                        )} a ${formatarDataAnoCurto(
+                            data.data_fim || dataFim
+                        )}`;
+                }
 
             } catch (err) {
-                console.error("Falha ao carregar conteúdos:", err);
-                const elTexto = document.getElementById(`top-post-texto-${ipdId}`);
-                if (elTexto) elTexto.innerText = "Falha na comunicação com o servidor.";
+                console.error(
+                    "Falha ao carregar conteúdos:",
+                    err
+                );
+
+                const elTexto =
+                    document.getElementById(
+                        `top-post-texto-${ipdId}`
+                    );
+
+                if (elTexto) {
+                    elTexto.innerText =
+                        "Falha na comunicação com o servidor.";
+                }
             }
         }
+
 
         function selecionarTopPostAba(ipdId, indexAba) {
             const cache = cacheTopPostsPorModulo[ipdId];
@@ -4730,6 +5608,24 @@ function toggleComparacaoRanking(ipdId) {
         /* =========================================================
            RENDERIZAR MÓDULOS COM ORDEM REAJUSTADA E EXPLICAÇÕES
            ========================================================= */
+        /*
+         * criarControlesTemporaisGrafico(ipdId, grafico)
+         * -------------------------------------------------------------
+         * Responsabilidade:
+         *   retorna SOMENTE o HTML dos controles temporais de cada gráfico
+         *   do bloco IPD Geral.
+         *
+         * Não calcula dados e não cria Chart.js.
+         *
+         * Cada controle chama sua função específica:
+         *   ranking   -> aplicarFiltroRanking()
+         *   variacao  -> aplicarFiltroVariacao()
+         *   historico -> aplicarFiltroHistorico()
+         *   radar     -> aplicarFiltroRadar()
+         *
+         * O Top 10 Histórico possui controles próprios dentro da sua seção,
+         * pois também permite escolher o dia de início da semana.
+         */
         function criarControlesTemporaisGrafico(ipdId, grafico) {
 
     // ============================================================
@@ -5064,6 +5960,26 @@ function toggleComparacaoRanking(ipdId) {
     return '';
 }
 
+        /*
+         * renderizarRelatoriosExecutivos()
+         * -------------------------------------------------------------
+         * Responsabilidade:
+         *   monta a ESTRUTURA VISUAL completa de cada módulo IPD.
+         *
+         * Aqui ficam somente:
+         *   - títulos
+         *   - separadores
+         *   - containers
+         *   - canvases
+         *   - botões/inputs
+         *
+         * Os cálculos dos gráficos permanecem em funções específicas.
+         *
+         * Divisão visual:
+         *   1. IPD Geral
+         *   2. Temas e Conteúdo
+         *   3. Análises Avançadas
+         */
         function renderizarRelatoriosExecutivos() {
             const container = document.getElementById('container-relatorios-ipd');
             const navAbasContainer = document.getElementById('container-navegacao-abas');
@@ -5133,8 +6049,9 @@ function toggleComparacaoRanking(ipdId) {
                                 <span class="text-[11px] text-slate-500 font-bold uppercase tracking-wider">Players Avaliados</span>
                             </div>
                             <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 col-span-2 md:col-span-1">
-                                <span class="block text-2xl md:text-3xl font-black text-slate-800">100.0</span>
-                                <span class="text-[11px] text-slate-500 font-bold uppercase tracking-wider">Escala do Índice</span>
+                                <span id="ultima-data-ipd-${ipdId}" class="block text-xl md:text-2xl font-black text-slate-800">—</span>
+                                <span class="text-[11px] text-slate-500 font-bold uppercase tracking-wider"><i class="fa-regular fa-calendar-check mr-1 text-quaest-teal"></i>Último dado disponível</span>
+                                <span class="block text-[10px] text-slate-400 mt-1">Data do último registro diário deste IPD</span>
                             </div>
                         </div>
 
@@ -5223,6 +6140,52 @@ function toggleComparacaoRanking(ipdId) {
                                 </div>
                                 <div class="h-80 w-full"><canvas id="chart-janelas-${ipdId}"></canvas></div>
                                 <p id="vazio-janelas-${ipdId}" class="text-center text-xs italic text-slate-400">Adicione pelo menos um intervalo para gerar o gráfico.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Navegação rápida entre os três blocos deste IPD.
+                         É apenas navegação visual; não recalcula nenhum dado. -->
+                    <div class="sticky top-2 z-20 flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200 bg-white/95 backdrop-blur px-3 py-2 shadow-sm">
+                        <span class="text-[10px] font-black uppercase tracking-wider text-slate-400 mr-1">
+                            Ir para
+                        </span>
+                        <a href="#bloco-ipd-geral-${ipdId}"
+                           class="px-3 py-1.5 rounded-lg bg-cyan-50 text-cyan-800 border border-cyan-200 text-[11px] font-black hover:bg-cyan-100 transition">
+                            <i class="fa-solid fa-chart-line mr-1"></i> IPD Geral
+                        </a>
+                        <a href="#bloco-temas-${ipdId}"
+                           class="px-3 py-1.5 rounded-lg bg-cyan-50 text-cyan-800 border border-cyan-200 text-[11px] font-black hover:bg-cyan-100 transition">
+                            <i class="fa-solid fa-hashtag mr-1"></i> Temas
+                        </a>
+                        <a href="#bloco-avancadas-${ipdId}"
+                           class="px-3 py-1.5 rounded-lg bg-cyan-50 text-cyan-800 border border-cyan-200 text-[11px] font-black hover:bg-cyan-100 transition">
+                            <i class="fa-solid fa-flask mr-1"></i> Análises Avançadas
+                        </a>
+                    </div>
+
+                    <!-- =========================================================
+                         BLOCO VISUAL A — IPD GERAL
+                         ---------------------------------------------------------
+                         Contém somente análises descritivas dos dados reais do IPD.
+                         Não inclui Temas, Forecasting ou Controle Sintético.
+                         ========================================================= -->
+                    <div id="bloco-ipd-geral-${ipdId}" class="scroll-mt-20 relative overflow-hidden rounded-3xl border border-cyan-700/25 bg-gradient-to-r from-cyan-50 via-white to-white p-5 md:p-6 shadow-sm">
+                        <div class="absolute left-0 top-0 h-full w-1.5 bg-cyan-700"></div>
+                        <div class="flex items-center gap-4">
+                            <div class="w-11 h-11 rounded-2xl bg-cyan-700 text-white flex items-center justify-center shadow-sm shrink-0">
+                                <i class="fa-solid fa-chart-line"></i>
+                            </div>
+                            <div>
+                                <span class="text-[10px] font-black uppercase tracking-[0.22em] text-quaest-teal">
+                                    Dados reais
+                                </span>
+                                <h2 class="text-xl md:text-2xl font-black text-slate-900">
+                                    IPD Geral
+                                </h2>
+                                <p class="text-xs text-slate-500 mt-1">
+                                    Ranking, variação, evolução histórica, trajetória do Top 10 e radar de dimensões.
+                                </p>
                             </div>
                         </div>
                     </div>
@@ -5381,11 +6344,11 @@ function toggleComparacaoRanking(ipdId) {
                     <div class="space-y-6">
                         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                             <div class="flex items-center gap-3">
-                                <div class="w-9 h-9 rounded-xl bg-indigo-50 border border-indigo-200 flex items-center justify-center text-indigo-600 text-base font-black shrink-0">
+                                <div class="w-9 h-9 rounded-xl bg-quaest-tealLight border border-quaest-tealBorder flex items-center justify-center text-quaest-teal text-base font-black shrink-0">
                                     <i class="fa-solid fa-arrow-up-wide-short"></i>
                                 </div>
                                 <div>
-                                    <span class="text-[10px] font-black text-indigo-600 uppercase tracking-widest block">Posição real no período</span>
+                                    <span class="text-[10px] font-black text-quaest-teal uppercase tracking-widest block">Posição real no período</span>
                                     <h3 class="text-xl font-black text-slate-900">Trajetória Histórica do Ranking — Top 10 (${nomeIpd})</h3>
                                     <p class="text-slate-500 text-xs mt-0.5">
                                         Escolha um período e acompanhe em linhas como cada perfil mudou de posição entre 1º e 10º lugar.
@@ -5396,7 +6359,7 @@ function toggleComparacaoRanking(ipdId) {
                             <div class="flex items-center gap-2">
                                 <button onclick="exportarGraficoParaPNG('chart-ranking-historico-${ipdId}', 'Trajetoria_Ranking_Real_IPD')"
                                         class="px-2.5 py-1 rounded-lg bg-white hover:bg-slate-100 text-slate-600 border border-slate-200 font-bold text-xs shadow-sm transition flex items-center gap-1">
-                                    <i class="fa-solid fa-download text-indigo-600"></i> PNG
+                                    <i class="fa-solid fa-download text-quaest-teal"></i> PNG
                                 </button>
                                 <button onclick="exportarGraficoParaCSV(mapRankingHistoricoCharts[${ipdId}], 'Trajetoria_Ranking_Real_IPD')"
                                         class="px-2.5 py-1 rounded-lg bg-white hover:bg-slate-100 text-slate-600 border border-slate-200 font-bold text-xs shadow-sm transition flex items-center gap-1">
@@ -5411,25 +6374,25 @@ function toggleComparacaoRanking(ipdId) {
 
                         <div id="box-ranking-historico-${ipdId}" class="space-y-4">
 
-                            <div class="rounded-2xl border border-indigo-200 bg-white p-4 space-y-4">
+                            <div class="rounded-2xl border border-quaest-tealBorder bg-white p-4 space-y-4">
                                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-end">
                                     <label class="text-[11px] font-bold text-slate-500">
                                         Início
                                         <input id="ranking-historico-inicio-${ipdId}" type="date"
-                                               class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs outline-none focus:border-indigo-500">
+                                               class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs outline-none focus:border-quaest-teal">
                                     </label>
 
                                     <label class="text-[11px] font-bold text-slate-500">
                                         Fim
                                         <input id="ranking-historico-fim-${ipdId}" type="date"
-                                               class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs outline-none focus:border-indigo-500">
+                                               class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs outline-none focus:border-quaest-teal">
                                     </label>
 
                                     <label class="text-[11px] font-bold text-slate-500">
                                         Agrupar por
                                         <select id="ranking-historico-agrupamento-${ipdId}"
                                                 onchange="toggleDiaSemanaRankingHistorico(${ipdId})"
-                                                class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold outline-none focus:border-indigo-500">
+                                                class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold outline-none focus:border-quaest-teal">
                                             <option value="diario">Diário</option>
                                             <option value="semana">Semanal</option>
                                             <option value="quinzena">Quinzenal</option>
@@ -5441,7 +6404,7 @@ function toggleComparacaoRanking(ipdId) {
                                            class="hidden text-[11px] font-bold text-slate-500">
                                         Semana começa em
                                         <select id="ranking-historico-dia-semana-${ipdId}"
-                                                class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold outline-none focus:border-indigo-500">
+                                                class="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold outline-none focus:border-quaest-teal">
                                             <option value="1">Segunda-feira</option>
                                             <option value="2">Terça-feira</option>
                                             <option value="3">Quarta-feira</option>
@@ -5454,7 +6417,7 @@ function toggleComparacaoRanking(ipdId) {
 
                                     <button type="button"
                                             onclick="aplicarFiltroRankingHistorico(${ipdId})"
-                                            class="rounded-lg bg-indigo-600 px-4 py-2 text-xs font-black text-white hover:bg-indigo-700">
+                                            class="rounded-lg bg-quaest-teal px-4 py-2 text-xs font-black text-white hover:bg-quaest-tealDark">
                                         <i class="fa-solid fa-chart-line mr-1"></i>
                                         Atualizar Top 10
                                     </button>
@@ -5464,8 +6427,8 @@ function toggleComparacaoRanking(ipdId) {
                                    class="hidden text-[11px] font-bold text-rose-600"></p>
                             </div>
 
-                            <div class="p-3.5 rounded-xl bg-indigo-50/70 border border-indigo-200 flex items-start gap-2.5 text-xs text-slate-700">
-                                <i class="fa-solid fa-ranking-star text-indigo-600 mt-0.5"></i>
+                            <div class="p-3.5 rounded-xl bg-quaest-tealLight/70 border border-quaest-tealBorder flex items-start gap-2.5 text-xs text-slate-700">
+                                <i class="fa-solid fa-ranking-star text-quaest-teal mt-0.5"></i>
                                 <p>
                                     <strong>Leitura:</strong> o eixo vertical vai de <strong>1º a 10º</strong>.
                                     Cada linha representa um perfil. Quanto mais alta a linha, melhor a posição.
@@ -5475,10 +6438,10 @@ function toggleComparacaoRanking(ipdId) {
 
                             <div class="flex flex-wrap gap-2 text-[10px] font-bold">
                                 <span class="px-2.5 py-1 rounded-full bg-slate-50 text-slate-600 border border-slate-200">
-                                    <i class="fa-solid fa-ranking-star mr-1 text-indigo-500"></i>Top 10 real
+                                    <i class="fa-solid fa-ranking-star mr-1 text-quaest-teal"></i>Top 10 real
                                 </span>
                                 <span id="resumo-ranking-historico-${ipdId}"
-                                      class="px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200"></span>
+                                      class="px-2.5 py-1 rounded-full bg-quaest-tealLight text-quaest-tealDark border border-quaest-tealBorder"></span>
                             </div>
 
                             <div id="scroll-ranking-historico-${ipdId}"
@@ -5573,6 +6536,32 @@ function toggleComparacaoRanking(ipdId) {
 
                     <hr class="border-slate-100" />
 
+                    <!-- =========================================================
+                         BLOCO VISUAL B — TEMAS E CONTEÚDO
+                         ---------------------------------------------------------
+                         Este bloco é carregado por carregarTemasEngajamento().
+                         Não depende dos filtros temporais do IPD Geral.
+                         ========================================================= -->
+                    <div id="bloco-temas-${ipdId}" class="scroll-mt-20 relative overflow-hidden rounded-3xl border border-cyan-800/20 bg-cyan-50/60 p-5 md:p-6 shadow-sm">
+                        <div class="absolute left-0 top-0 h-full w-1.5 bg-cyan-800"></div>
+                        <div class="flex items-center gap-4">
+                            <div class="w-11 h-11 rounded-2xl bg-cyan-800 text-white flex items-center justify-center shadow-sm shrink-0">
+                                <i class="fa-solid fa-hashtag"></i>
+                            </div>
+                            <div>
+                                <span class="text-[10px] font-black uppercase tracking-[0.22em] text-cyan-800">
+                                    Leitura temática
+                                </span>
+                                <h2 class="text-xl md:text-2xl font-black text-slate-900">
+                                    Temas e Conteúdo
+                                </h2>
+                                <p class="text-xs text-slate-500 mt-1">
+                                    Eficiência temática, comparação entre perfis e análise das publicações.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- 4º SEÇÃO: ANÁLISE TEMÁTICA E MATRIZ DE EFICIÊNCIA -->
                     <div class="space-y-6">
                         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
@@ -5582,19 +6571,48 @@ function toggleComparacaoRanking(ipdId) {
                                 <p class="text-slate-500 text-xs mt-0.5">Cruze o volume de publicações (Total de Posts) contra o engajamento retornado (Média de Interações/Post).</p>
                             </div>
                             
-                            <div class="flex items-center gap-3">
-                                <div class="flex items-center gap-2">
-                                    <label for="select-mes-temas-${ipdId}" class="text-xs font-bold text-slate-500">Mês de Análise:</label>
-                                    <select id="select-mes-temas-${ipdId}" onchange="carregarTemasEngajamento(${ipdId})" class="bg-slate-100 text-slate-800 text-xs font-bold px-3 py-1.5 rounded-xl border border-slate-200 outline-none focus:border-quaest-teal cursor-pointer">
-                                    </select>
-                                </div>
-                                <button onclick="toggleMinimizarCard('box-temas-${ipdId}', this)" title="Minimizar Seção" class="p-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 transition">
+                            <div class="flex flex-wrap items-end gap-2">
+                                <label class="text-[10px] font-black uppercase tracking-wider text-slate-500">
+                                    Início
+                                    <input id="temas-inicio-${ipdId}"
+                                           type="date"
+                                           class="block mt-1 bg-white text-slate-800 text-xs font-bold px-3 py-2 rounded-xl border border-slate-200 outline-none focus:border-quaest-teal">
+                                </label>
+
+                                <label class="text-[10px] font-black uppercase tracking-wider text-slate-500">
+                                    Fim
+                                    <input id="temas-fim-${ipdId}"
+                                           type="date"
+                                           class="block mt-1 bg-white text-slate-800 text-xs font-bold px-3 py-2 rounded-xl border border-slate-200 outline-none focus:border-quaest-teal">
+                                </label>
+
+                                <button type="button"
+                                        onclick="carregarTemasEngajamento(${ipdId})"
+                                        class="bg-quaest-teal hover:bg-quaest-tealDark text-white text-xs font-black px-4 py-2 rounded-xl shadow-sm transition">
+                                    <i class="fa-solid fa-filter mr-1"></i>
+                                    Analisar período
+                                </button>
+
+                                <button onclick="toggleMinimizarCard('box-temas-${ipdId}', this)"
+                                        title="Minimizar Seção"
+                                        class="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 transition">
                                     <i class="fa-solid fa-chevron-up text-xs"></i>
                                 </button>
                             </div>
                         </div>
 
                         <div id="box-temas-${ipdId}" class="space-y-6 transition-all">
+                            <div class="flex flex-wrap items-center gap-2 text-[10px] font-bold">
+                                <span class="text-slate-500">
+                                    Período analisado:
+                                </span>
+                                <span id="resumo-periodo-temas-${ipdId}"
+                                      class="px-2.5 py-1 rounded-full bg-quaest-tealLight text-quaest-tealDark border border-quaest-tealBorder">
+                                    —
+                                </span>
+                                <span id="erro-periodo-temas-${ipdId}"
+                                      class="hidden text-rose-600"></span>
+                            </div>
                             <div class="p-3.5 rounded-xl bg-indigo-50/70 border border-indigo-200 flex items-start gap-2.5 text-xs text-slate-700">
                                 <i class="fa-solid fa-table-cells-large text-indigo-600 mt-0.5"></i>
                                 <p><strong>Guia rápido:</strong> os quadrantes cruzam frequência de publicação e retorno médio. Temas no alto entregam mais interação por post; temas à direita recebem maior volume de conteúdo. O comparativo final coloca os perfis lado a lado.</p>
@@ -5707,13 +6725,32 @@ function toggleComparacaoRanking(ipdId) {
                             </div>
                             
                             <div class="flex flex-wrap items-center gap-2">
-                                <select id="select-profile-postages-${ipdId}" class="bg-slate-100 text-slate-800 text-xs font-bold px-3 py-1.5 rounded-xl border border-slate-200 outline-none focus:border-quaest-teal cursor-pointer">
-                                    ${optionsPerfilHtml}
-                                </select>
-                                <select id="select-mes-postages-${ipdId}" class="bg-slate-100 text-slate-800 text-xs font-bold px-3 py-1.5 rounded-xl border border-slate-200 outline-none focus:border-quaest-teal cursor-pointer">
-                                </select>
-                                <button onclick="carregarMetricasConteudo(${ipdId})" class="bg-quaest-teal hover:bg-quaest-tealDark text-white text-xs font-bold px-3.5 py-1.5 rounded-xl shadow-sm transition">
-                                    <i class="fa-solid fa-magnifying-glass mr-1"></i> Filtrar
+                                <label class="text-[10px] font-black uppercase tracking-wider text-slate-500">
+                                    Perfil
+                                    <select id="select-profile-postages-${ipdId}"
+                                            class="block mt-1 bg-slate-100 text-slate-800 text-xs font-bold px-3 py-2 rounded-xl border border-slate-200 outline-none focus:border-quaest-teal cursor-pointer">
+                                        ${optionsPerfilHtml}
+                                    </select>
+                                </label>
+
+                                <label class="text-[10px] font-black uppercase tracking-wider text-slate-500">
+                                    Início
+                                    <input id="conteudo-inicio-${ipdId}"
+                                           type="date"
+                                           class="block mt-1 bg-white text-slate-800 text-xs font-bold px-3 py-2 rounded-xl border border-slate-200 outline-none focus:border-quaest-teal">
+                                </label>
+
+                                <label class="text-[10px] font-black uppercase tracking-wider text-slate-500">
+                                    Fim
+                                    <input id="conteudo-fim-${ipdId}"
+                                           type="date"
+                                           class="block mt-1 bg-white text-slate-800 text-xs font-bold px-3 py-2 rounded-xl border border-slate-200 outline-none focus:border-quaest-teal">
+                                </label>
+
+                                <button onclick="carregarMetricasConteudo(${ipdId})"
+                                        class="self-end bg-quaest-teal hover:bg-quaest-tealDark text-white text-xs font-bold px-4 py-2 rounded-xl shadow-sm transition">
+                                    <i class="fa-solid fa-magnifying-glass mr-1"></i>
+                                    Analisar período
                                 </button>
                                 <button onclick="toggleMinimizarCard('box-postagens-${ipdId}', this)" title="Minimizar Seção" class="p-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 transition ml-1">
                                     <i class="fa-solid fa-chevron-up text-xs"></i>
@@ -5724,8 +6761,18 @@ function toggleComparacaoRanking(ipdId) {
                         <div id="box-postagens-${ipdId}" class="space-y-6 transition-all">
                           <div class="p-3.5 rounded-xl bg-amber-50/80 border border-amber-200 flex items-start gap-2.5 text-xs text-slate-700">
                               <i class="fa-solid fa-lightbulb text-amber-600 mt-0.5"></i>
-                              <p><strong>Objetivo:</strong> selecione perfil e mês para entender quais publicações sustentaram os indicadores. Os cards resumem eficiência; o Top 3 permite inspecionar os conteúdos que mais contribuíram para o resultado.</p>
+                              <p><strong>Objetivo:</strong> selecione o perfil e qualquer intervalo de datas para entender quais publicações sustentaram os indicadores. Os cards resumem eficiência; o Top 3 permite inspecionar os conteúdos que mais contribuíram para o resultado.</p>
                           </div>
+
+                          <div class="flex items-center gap-2 text-[10px] font-bold text-slate-500">
+                              <i class="fa-regular fa-calendar text-quaest-teal"></i>
+                              <span>Período analisado:</span>
+                              <span id="resumo-periodo-conteudo-${ipdId}"
+                                    class="px-2.5 py-1 rounded-full bg-quaest-tealLight text-quaest-tealDark border border-quaest-tealBorder">
+                                  —
+                              </span>
+                          </div>
+
                           <!-- CARDS DAS DIMENSÕES DE CONTEÚDO -->
                           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
                               
@@ -5814,7 +6861,7 @@ function toggleComparacaoRanking(ipdId) {
                             <div class="p-6 rounded-3xl bg-slate-50 border border-slate-200 space-y-4">
                                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200/80 pb-3">
                                     <div class="flex items-center gap-2 font-black text-slate-900 text-sm">
-                                        <i class="fa-solid fa-fire text-rose-500"></i> Top Publicações do Mês
+                                        <i class="fa-solid fa-fire text-rose-500"></i> Top Publicações do Período
                                     </div>
                                     
                                     <div id="container-abas-top-posts-${ipdId}" class="inline-flex p-1 bg-slate-200/60 rounded-xl border border-slate-200 text-xs font-bold gap-1">
@@ -5862,7 +6909,40 @@ function toggleComparacaoRanking(ipdId) {
 
                     <hr class="border-slate-100" />
 
-                    <!-- 6º SEÇÃO: PREVISÃO IPD MENSAL -->
+                    <!-- =========================================================
+                         BLOCO VISUAL C — ANÁLISES AVANÇADAS
+                         ---------------------------------------------------------
+                         Forecasting e Controle Sintético são modelos analíticos
+                         independentes dos filtros de visualização do IPD Geral.
+                         ========================================================= -->
+                    <div id="bloco-avancadas-${ipdId}" class="scroll-mt-20 relative overflow-hidden rounded-3xl border border-quaest-tealBorder bg-gradient-to-r from-cyan-950 via-cyan-900 to-quaest-tealDark p-5 md:p-6 shadow-md">
+                        <div class="flex items-center gap-4">
+                            <div class="w-11 h-11 rounded-2xl bg-white/10 border border-white/20 text-white flex items-center justify-center shadow-sm shrink-0">
+                                <i class="fa-solid fa-flask"></i>
+                            </div>
+                            <div>
+                                <span class="text-[10px] font-black uppercase tracking-[0.22em] text-cyan-200">
+                                    Modelagem
+                                </span>
+                                <h2 class="text-xl md:text-2xl font-black text-white">
+                                    Análises Avançadas
+                                </h2>
+                                <p class="text-xs text-slate-200 mt-1">
+                                    Forecasting de performance e análise causal por Controle Sintético.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- =========================================================
+                         ANÁLISE AVANÇADA 01 — FORECASTING
+                         ---------------------------------------------------------
+                         A interface abaixo usa funções internas com nomes legados
+                         "Previsao" apenas para compatibilidade do código.
+                         Visualmente, o módulo é chamado Forecasting.
+                         ========================================================= -->
+                    <!-- 6º SEÇÃO: FORECASTING IPD MENSAL -->
+
                     <div class="space-y-6">
                         <!-- BANNER EXPLICATIVO DA PREVISÃO -->
                         <div class="p-5 rounded-2xl bg-purple-50/70 border border-purple-200/80 flex items-start gap-4">
@@ -5870,7 +6950,7 @@ function toggleComparacaoRanking(ipdId) {
                                 <i class="fa-solid fa-lightbulb"></i>
                             </div>
                             <div class="space-y-1 text-xs text-slate-700">
-                                <h4 class="font-extrabold text-purple-900 text-sm">Entenda o Módulo de Previsão Mensal de Performance</h4>
+                                <h4 class="font-extrabold text-purple-900 text-sm">Entenda o Módulo de Forecasting Mensal de Performance</h4>
                                 <p class="leading-relaxed">
                                     O modelo preditivo analisa as trajetórias históricas mensais, lags semanais intra-mês e a dinâmica relacional do grupo para projetar a tendência de pontuação do IPD nos próximos meses. A simulação calcula o intervalo provável de variação e estima possíveis trocas de liderança ou empates técnicos. Como o IPD usa escala fechada, previsões e limites são sempre apresentados entre <strong>0 e 100 pontos</strong>.
                                 </p>
@@ -5884,7 +6964,7 @@ function toggleComparacaoRanking(ipdId) {
                                 </div>
                                 <div>
                                     <span class="text-[10px] font-black text-purple-600 uppercase tracking-widest block">Inteligência Preditiva</span>
-                                    <h3 class="text-xl font-black text-slate-900">Previsão e Ranking Mensal do IPD (${nomeIpd})</h3>
+                                    <h3 class="text-xl font-black text-slate-900">Forecasting e Ranking Mensal do IPD (${nomeIpd})</h3>
                                 </div>
                             </div>
                             <div class="flex items-center gap-3">
@@ -5924,7 +7004,7 @@ function toggleComparacaoRanking(ipdId) {
                                 <div>
                                     <button type="button" onclick="executarPrevisaoIPD(${ipdId})" class="w-full bg-purple-600 hover:bg-purple-700 text-white text-xs font-black py-2.5 px-4 rounded-xl shadow-sm transition flex items-center justify-center gap-2 cursor-pointer">
                                         <i class="fa-solid fa-wand-magic-sparkles"></i>
-                                        <span>Calcular Previsão do Grupo</span>
+                                        <span>Calcular Forecasting do Grupo</span>
                                     </button>
                                 </div>
                             </div>
@@ -5982,7 +7062,7 @@ function toggleComparacaoRanking(ipdId) {
                                         <div>
                                             <div class="flex items-center gap-2">
                                                 <i class="fa-solid fa-arrow-up-wide-short text-purple-600"></i>
-                                                <h4 class="text-xs font-black text-slate-900 uppercase tracking-wider">Trajetória prevista — Top 10</h4>
+                                                <h4 class="text-xs font-black text-slate-900 uppercase tracking-wider">Trajetória Forecasting — Top 10</h4>
                                             </div>
                                             <p class="text-[10px] text-slate-500 mt-1">Acompanha automaticamente quem aparece no Top 10. Os rótulos surgem na entrada e quando a posição muda.</p>
                                         </div>
@@ -6001,7 +7081,7 @@ function toggleComparacaoRanking(ipdId) {
                                             <i class="fa-solid fa-circle-check text-slate-400"></i> Último dado real
                                         </span>
                                         <span id="label-inicio-previsao-ranking-${ipdId}" class="inline-flex items-center gap-1.5 text-purple-700">
-                                            <i class="fa-solid fa-wand-magic-sparkles text-purple-500"></i> Início da previsão
+                                            <i class="fa-solid fa-wand-magic-sparkles text-purple-500"></i> Início do Forecasting
                                         </span>
                                     </div>
                                     <div id="scroll-ranking-previsao-${ipdId}" class="overflow-auto ranking-scroll border-t border-slate-100 pt-3" style="max-height: 680px;">
@@ -6016,6 +7096,12 @@ function toggleComparacaoRanking(ipdId) {
 
                     <hr class="border-slate-100" />
 
+                    <!-- =========================================================
+                         ANÁLISE AVANÇADA 02 — CONTROLE SINTÉTICO / BSTS
+                         ---------------------------------------------------------
+                         Fluxo independente do Forecasting e dos gráficos reais.
+                         Depende somente dos inputs do evento/perfil e da API causal.
+                         ========================================================= -->
                     <!-- 7º SEÇÃO: CONTROLE SINTÉTICO / ANÁLISE DE IMPACTO CAUSAL -->
                     <div class="space-y-6">
                         <!-- BANNER EXPLICATIVO DO CONTROLE SINTÉTICO -->
@@ -6026,7 +7112,7 @@ function toggleComparacaoRanking(ipdId) {
                             <div class="space-y-1 text-xs text-slate-700">
                                 <h4 class="font-extrabold text-quaest-tealDark text-sm">O que é a Análise de Controle Sintético (BSTS)?</h4>
                                 <p class="leading-relaxed">
-                                    Esta modelagem estatística isola o efeito real de ações, crises ou eventos de comunicação. Ela cria um "dublê virtual" (trajetória contrafactual) para prever como o perfil performaria sem o evento, demonstrando estatisticamente se a variação foi causal ou apenas uma oscilação natural do mercado. A trajetória e o intervalo de confiança são limitados à escala válida do IPD, de <strong>0 a 100 pontos</strong>.
+                                    Esta modelagem estatística isola o efeito real de ações, crises ou eventos de comunicação. Ela cria um "dublê virtual" (trajetória contrafactual) para prever como o perfil performaria sem o evento, demonstrando estatisticamente se a variação foi causal ou apenas uma oscilação natural do mercado. A trajetória e o intervalo de confiança são limitados à escala válida do IPD, de <strong>1.00 a 4.00 pontos</strong>.
                                 </p>
                             </div>
                         </div>
@@ -6226,12 +7312,15 @@ function toggleComparacaoRanking(ipdId) {
                 ref.profilesDataMes = agregarSerieDiaria(rawDiarias, 'mes');
             }
             const selectMesRadar = document.getElementById(`select-mes-radar-${ipdId}`);
-            const selectMesPostages = document.getElementById(`select-mes-postages-${ipdId}`);
-            const selectMesTemas = document.getElementById(`select-mes-temas-${ipdId}`);
+            const inputConteudoInicio = document.getElementById(`conteudo-inicio-${ipdId}`);
+            const inputConteudoFim = document.getElementById(`conteudo-fim-${ipdId}`);
+            const inputTemasInicio =
+                document.getElementById(`temas-inicio-${ipdId}`);
+
+            const inputTemasFim =
+                document.getElementById(`temas-fim-${ipdId}`);
             
             if (selectMesRadar) selectMesRadar.innerHTML = '';
-            if (selectMesPostages) selectMesPostages.innerHTML = '';
-            if (selectMesTemas) selectMesTemas.innerHTML = '';
             
             const mesesDisponiveis = ref.profilesDataMes.datas;
             if (mesesDisponiveis.length > 0) {
@@ -6247,25 +7336,147 @@ function toggleComparacaoRanking(ipdId) {
                         selectMesRadar.appendChild(opt);
                     }
 
-                    if (selectMesPostages) {
-                        const opt = document.createElement('option');
-                        opt.value = m; 
-                        opt.innerText = textoData;
-                        selectMesPostages.appendChild(opt);
-                    }
-
-                    if (selectMesTemas) {
-                        const opt = document.createElement('option');
-                        opt.value = m; 
-                        opt.innerText = textoData;
-                        selectMesTemas.appendChild(opt);
-                    }
                 });
 
                 const ultimoMesComDados = mesesOrdenados[mesesOrdenados.length - 1];
                 if (selectMesRadar) selectMesRadar.value = ultimoMesComDados;
-                if (selectMesPostages) selectMesPostages.value = ultimoMesComDados;
-                if (selectMesTemas) selectMesTemas.value = ultimoMesComDados;
+                // =====================================================
+                // CONTEÚDO — PERÍODO PADRÃO
+                // =====================================================
+                //
+                // Regra de UX usada em TODO o painel:
+                //
+                //   1. Descobre a última data diária realmente disponível.
+                //   2. Pré-seleciona o mês dessa última data.
+                //   3. O início é o primeiro dia daquele mês.
+                //   4. O fim é a última data que efetivamente possui dado,
+                //      evitando selecionar dias futuros/sem informação.
+                //
+                // Exemplo:
+                //
+                // última data disponível = 18/08/2026
+                //
+                // período inicial:
+                // 01/08/2026 até 18/08/2026
+                //
+                // Depois disso o usuário continua livre para alterar
+                // data_inicio e data_fim.
+                if (inputConteudoInicio && inputConteudoFim) {
+
+                    const datasDiariasConteudo =
+                        (
+                            ref.profilesDataDiario?.datas ||
+                            []
+                        )
+                        .filter(data =>
+                            typeof data === 'string' &&
+                            /^\d{4}-\d{2}-\d{2}$/.test(data)
+                        )
+                        .sort();
+
+                    if (datasDiariasConteudo.length) {
+
+                        const ultimaDataConteudo =
+                            datasDiariasConteudo[
+                                datasDiariasConteudo.length - 1
+                            ];
+
+                        const [
+                            anoConteudo,
+                            mesConteudo
+                        ] =
+                            ultimaDataConteudo.split('-');
+
+                        const primeiroDiaMesConteudo =
+                            `${anoConteudo}-${mesConteudo}-01`;
+
+                        inputConteudoInicio.value =
+                            primeiroDiaMesConteudo;
+
+                        inputConteudoFim.value =
+                            ultimaDataConteudo;
+
+                        inputConteudoInicio.min =
+                            datasDiariasConteudo[0];
+
+                        inputConteudoInicio.max =
+                            ultimaDataConteudo;
+
+                        inputConteudoFim.min =
+                            datasDiariasConteudo[0];
+
+                        inputConteudoFim.max =
+                            ultimaDataConteudo;
+                    }
+                }
+                // =====================================================
+                // TEMAS — PERÍODO PADRÃO
+                // =====================================================
+                //
+                // Assim como os demais filtros do painel, Temas abre
+                // automaticamente no último mês que possui dados diários.
+                //
+                // Se o último dado disponível for 18/08/2026:
+                //
+                //   início = 01/08/2026
+                //   fim    = 18/08/2026
+                //
+                // Depois o usuário pode escolher qualquer intervalo.
+                if (inputTemasInicio && inputTemasFim) {
+
+                    const datasDiariasTemas =
+                        (
+                            ref.profilesDataDiario?.datas ||
+                            []
+                        )
+                        .filter(data =>
+                            typeof data === 'string' &&
+                            /^\d{4}-\d{2}-\d{2}$/.test(data)
+                        )
+                        .sort();
+
+
+                    if (datasDiariasTemas.length) {
+
+                        const ultimaDataTemas =
+                            datasDiariasTemas[
+                                datasDiariasTemas.length - 1
+                            ];
+
+
+                        const [
+                            anoTemas,
+                            mesTemas
+                        ] =
+                            ultimaDataTemas.split(
+                                '-'
+                            );
+
+
+                        const primeiroDiaMesTemas =
+                            `${anoTemas}-${mesTemas}-01`;
+
+
+                        inputTemasInicio.value =
+                            primeiroDiaMesTemas;
+
+                        inputTemasFim.value =
+                            ultimaDataTemas;
+
+
+                        inputTemasInicio.min =
+                            datasDiariasTemas[0];
+
+                        inputTemasInicio.max =
+                            ultimaDataTemas;
+
+                        inputTemasFim.min =
+                            datasDiariasTemas[0];
+
+                        inputTemasFim.max =
+                            ultimaDataTemas;
+                    }
+                }
 
                 ref.mesSelecionadoRadar = ultimoMesComDados;
             }
@@ -6382,6 +7593,9 @@ function toggleComparacaoRanking(ipdId) {
 
             montarBotoesRadar(ipdId);
             inicializarControlesTemporais(ipdId);
+
+            // O state já contém rawDiarias normalizado neste ponto.
+            atualizarCardUltimaDataIpd(ipdId);
 
             carregarTemasEngajamento(ipdId);
 
@@ -7402,6 +8616,33 @@ function toggleComparacaoRanking(ipdId) {
         }
 
 
+        /*
+         * renderizarRankingHistoricoTop10(ipdId)
+         * -------------------------------------------------------------
+         * Visual:
+         *   "Trajetória Histórica do Ranking — Top 10"
+         *
+         * Fonte:
+         *   stateIPDs[ipdId].rawDiarias
+         *
+         * Controles próprios:
+         *   ranking-historico-inicio
+         *   ranking-historico-fim
+         *   ranking-historico-agrupamento
+         *   ranking-historico-dia-semana
+         *
+         * Dependências:
+         *   agregarSerieDiaria()
+         *   agregarSerieSemanalComDiaInicio() quando agrupamento = semana
+         *   obterCorPerfil()
+         *   formatarChaveHistorico()
+         *
+         * NÃO depende:
+         *   do período escolhido no Histórico principal,
+         *   do Ranking principal,
+         *   do Radar,
+         *   do Forecasting.
+         */
         function renderizarRankingHistoricoTop10(ipdId) {
             const ref = stateIPDs[ipdId];
             const canvas = document.getElementById(`chart-ranking-historico-${ipdId}`);
@@ -8175,6 +9416,17 @@ function toggleComparacaoRanking(ipdId) {
             });
         }
 
+        /*
+         * renderizarGraficoEStatsPrevisao(ipdId)
+         * -------------------------------------------------------------
+         * BLOCO VISUAL: Forecasting.
+         *
+         * Nome interno legado contém "Previsao" por compatibilidade.
+         * Renderiza os resultados do Forecasting já calculados:
+         * pontuação histórica/projetada, intervalos e estatísticas.
+         *
+         * NÃO depende dos filtros do IPD Geral.
+         */
         function renderizarGraficoEStatsPrevisao(ipdId) {
             const state = statePrevisaoPreditiva[ipdId];
             if (!state || !state.dadosMensais) return;
@@ -8323,12 +9575,31 @@ function toggleComparacaoRanking(ipdId) {
                                 generateLabels: () => {
                                     return perfisAtivos.map((pName, idx) => ({
                                         text: pName,
+
+                                        // O marcador da legenda continua usando
+                                        // a cor individual do player.
                                         fillStyle: obterCorPerfil(pName),
                                         strokeStyle: obterCorPerfil(pName),
+
+                                        // IMPORTANTE:
+                                        // a cor do TEXTO da legenda é neutra.
+                                        // Sem isso o Chart.js pode herdar a cor
+                                        // do primeiro dataset/player selecionado.
+                                        fontColor: '#475569',
+                                        color: '#475569',
+
                                         datasetIndex: idx * 4
                                     }));
                                 },
-                                font: { weight: 'bold', size: 11, family: 'Inter' }
+
+                                // Cor padrão de texto para todos os players.
+                                color: '#475569',
+
+                                font: {
+                                    weight: 'bold',
+                                    size: 11,
+                                    family: 'Inter'
+                                }
                             }
                         },
                         tooltip: {
@@ -8403,6 +9674,14 @@ function toggleComparacaoRanking(ipdId) {
             }]));
         }
 
+        /*
+         * renderizarRankingPrevisao(...)
+         * -------------------------------------------------------------
+         * BLOCO VISUAL: Forecasting — trajetória prevista do Top 10.
+         *
+         * Usa somente os resultados do Forecasting.
+         * NÃO é o mesmo gráfico do Top 10 Histórico real.
+         */
         function renderizarRankingPrevisao(ipdId, mesesProjetados) {
             const canvas = document.getElementById(`chartRankingPrevisaoCanvas-${ipdId}`);
             if (!canvas) return;
@@ -8436,13 +9715,13 @@ function toggleComparacaoRanking(ipdId) {
             const datasReaisRanking = stateIPDs[ipdId]?.profilesDataMes?.datas || [];
             const ultimoMesRealRanking = [...datasReaisRanking].sort().at(-1);
             const labelUltimoReal = ultimoMesRealRanking ? `${formatarDataAnoCurto(ultimoMesRealRanking, true)} · REAL` : 'ÚLTIMO DADO REAL';
-            const labels = [labelUltimoReal, ...mesesProjetados.map(m => `${m.rotulo_mes || formatarDataAnoCurto(m.data_inicio_mes, true)} · PREVISÃO`)];
+            const labels = [labelUltimoReal, ...mesesProjetados.map(m => `${m.rotulo_mes || formatarDataAnoCurto(m.data_inicio_mes, true)} · FORECASTING`)];
             const primeiroMesPrevisto = mesesProjetados[0];
             const rotuloInicioPrevisao = primeiroMesPrevisto ? (primeiroMesPrevisto.rotulo_mes || formatarDataAnoCurto(primeiroMesPrevisto.data_inicio_mes, true)) : '--';
             const labelRealExterno = document.getElementById(`label-ultimo-real-ranking-${ipdId}`);
             const labelPrevisaoExterno = document.getElementById(`label-inicio-previsao-ranking-${ipdId}`);
             if (labelRealExterno) labelRealExterno.innerHTML = `<i class="fa-solid fa-circle-check text-slate-400"></i> Último dado real: ${ultimoMesRealRanking ? formatarDataAnoCurto(ultimoMesRealRanking, true) : '--'}`;
-            if (labelPrevisaoExterno) labelPrevisaoExterno.innerHTML = `<i class="fa-solid fa-wand-magic-sparkles text-purple-500"></i> Início da previsão: ${rotuloInicioPrevisao}`;
+            if (labelPrevisaoExterno) labelPrevisaoExterno.innerHTML = `<i class="fa-solid fa-wand-magic-sparkles text-purple-500"></i> Início do Forecasting: ${rotuloInicioPrevisao}`;
             const wrapperRanking = document.getElementById(`wrapper-ranking-previsao-${ipdId}`);
 
             const datasetsRanking = perfisTop10.map(profileName => {
