@@ -19,8 +19,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <!-- SDKs de Embeds das Redes Sociais -->
-    <script async src="https://www.instagram.com/embed.js"></script>
-    <script async src="https://www.tiktok.com/embed.js"></script>
+<script async src="https://www.tiktok.com/embed.js"></script>
     <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
     <script async defer crossorigin="anonymous" src="https://connect.facebook.net/pt_BR/sdk.js#xfbml=1&version=v18.0"></script>
 
@@ -100,7 +99,7 @@
             </div>
 
             <div class="flex items-center gap-3 sm:gap-4">
-                <button id="btn-cores-mobile" style="display:none" type="button" onclick="abrirPersonalizadorCoresAtivo()" title="Personalizar cores dos perfis" class="lg:hidden w-10 h-10 rounded-xl bg-white border border-slate-200 text-quaest-teal hover:bg-quaest-tealLight transition flex items-center justify-center shrink-0">
+                <button id="btn-cores-mobile" style="display:none" type="button" onclick="abrirPersonalizadorCoresAtivo()" title="Personalizar cores dos players" class="lg:hidden w-10 h-10 rounded-xl bg-white border border-slate-200 text-quaest-teal hover:bg-quaest-tealLight transition flex items-center justify-center shrink-0">
                     <i class="fa-solid fa-palette text-sm"></i>
                 </button>
                 <a href="/projetos/" class="text-xs font-extrabold bg-quaest-teal text-white hover:bg-quaest-tealDark px-4 py-2.5 rounded-xl transition flex items-center gap-2 shadow-md shadow-teal-500/20 shrink-0">
@@ -1560,7 +1559,7 @@ function desmarcarTodosRanking(ipdId) {
             const profiles = (ref.ipdObj?.profiles_usados?.length ? ref.ipdObj.profiles_usados : Object.keys(ref.profilesDataDiario?.profiles || {})).filter(Boolean).sort((a,b)=>a.localeCompare(b,'pt-BR'));
             if (!(ref.profilesSelecionadosVariacao instanceof Set)) ref.profilesSelecionadosVariacao = new Set(profiles);
 
-            container.innerHTML = `<div class="flex items-center justify-between w-full mb-1"><span class="text-xs font-bold text-slate-500">Perfis na Variação:</span><div class="flex items-center gap-2"><button onclick="selecionarTodosVariacao(${ipdId})" class="text-[11px] font-bold text-quaest-teal hover:underline"><i class="fa-solid fa-check-double text-[10px]"></i> Selecionar Tudo</button><span class="text-slate-300">|</span><button onclick="desmarcarTodosVariacao(${ipdId})" class="text-[11px] font-bold text-rose-500 hover:underline"><i class="fa-solid fa-trash-can text-[10px]"></i> Remover Seleção</button></div></div><div id="botoes-variacao-list-${ipdId}" class="flex flex-wrap items-center gap-1.5"></div>`;
+            container.innerHTML = `<div class="flex items-center justify-between w-full mb-1"><span class="text-xs font-bold text-slate-500">Players na Variação:</span><div class="flex items-center gap-2"><button onclick="selecionarTodosVariacao(${ipdId})" class="text-[11px] font-bold text-quaest-teal hover:underline"><i class="fa-solid fa-check-double text-[10px]"></i> Selecionar Tudo</button><span class="text-slate-300">|</span><button onclick="desmarcarTodosVariacao(${ipdId})" class="text-[11px] font-bold text-rose-500 hover:underline"><i class="fa-solid fa-trash-can text-[10px]"></i> Remover Seleção</button></div></div><div id="botoes-variacao-list-${ipdId}" class="flex flex-wrap items-center gap-1.5"></div>`;
             const sub = document.getElementById(`botoes-variacao-list-${ipdId}`);
 
             profiles.forEach(profileName => {
@@ -2202,6 +2201,63 @@ function desmarcarTodosRanking(ipdId) {
             return paletaCores[index];
         }
 
+        /*
+         * normalizarUrlEmbedInstagram(postUrl)
+         * -------------------------------------------------------------
+         * Converte links públicos do Instagram para a URL /embed/.
+         * Isso evita depender de blockquote + embed.js em conteúdo
+         * carregado dinamicamente no Top Posts.
+         */
+        function normalizarUrlEmbedInstagram(postUrl) {
+            try {
+                const url = new URL(String(postUrl || '').trim());
+
+                const host = url.hostname
+                    .toLowerCase()
+                    .replace(/^www\./, '');
+
+                if (
+                    host !== 'instagram.com' &&
+                    host !== 'm.instagram.com'
+                ) {
+                    return null;
+                }
+
+                const partes = url.pathname
+                    .split('/')
+                    .filter(Boolean);
+
+                const tipoOriginal = partes[0]?.toLowerCase();
+                const codigo = partes[1];
+
+                const tiposValidos = new Set([
+                    'p',
+                    'reel',
+                    'reels',
+                    'tv'
+                ]);
+
+                if (!tiposValidos.has(tipoOriginal) || !codigo) {
+                    return null;
+                }
+
+                const tipo =
+                    tipoOriginal === 'reels'
+                        ? 'reel'
+                        : tipoOriginal;
+
+                return (
+                    `https://www.instagram.com/` +
+                    `${tipo}/${encodeURIComponent(codigo)}/embed/`
+                );
+
+            } catch (erro) {
+                console.warn('URL inválida do Instagram:', postUrl, erro);
+                return null;
+            }
+        }
+
+
         function renderizarEmbedConteudo(ipdId, postUrl) {
             const container = document.getElementById(`embed-box-${ipdId}`);
             if (!container) return;
@@ -2233,26 +2289,82 @@ function desmarcarTodosRanking(ipdId) {
                             allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share">
                         </iframe>
                     </div>`;
-            } else if (urlLimpa.includes('instagram.com')) {
-                container.innerHTML = `
-                    <div class="w-full max-h-[320px] overflow-y-auto ranking-scroll flex justify-center">
-                        <blockquote class="instagram-media" data-instgrm-captioned data-instgrm-permalink="${urlLimpa}" data-instgrm-version="14" style="background:#FFF; border:0; border-radius:12px; box-shadow:0 0 1px 0 rgba(0,0,0,0.5),0 1px 10px 0 rgba(0,0,0,0.15); margin: 1px; max-width:400px; min-width:260px; padding:0; width:99.375%;">
-                            <div style="padding:12px;"> 
-                                <a href="${urlLimpa}" style="background:#FFFFFF; line-height:0; padding:0 0; text-align:center; text-decoration:none; width:100%;" target="_blank"> 
-                                    <div style="color:#3897f0; font-family:Arial,sans-serif; font-size:13px; font-weight:550;">Ver essa publicação no Instagram</div>
-                                </a>
-                            </div>
-                        </blockquote>
-                    </div>`;
+            } else if (
+                urlLimpa.includes('instagram.com')
+            ) {
 
-                if (window.instgrm && window.instgrm.Embeds) {
-                    window.instgrm.Embeds.process();
-                } else {
-                    let script = document.createElement('script');
-                    script.src = "https://www.instagram.com/embed.js";
-                    script.async = true;
-                    document.body.appendChild(script);
+                // =====================================================
+                // INSTAGRAM
+                // =====================================================
+                // Usa iframe /embed/ para funcionar melhor quando
+                // o usuário troca dinamicamente entre os Top Posts.
+                // =====================================================
+
+                const urlEmbedInstagram =
+                    normalizarUrlEmbedInstagram(urlLimpa);
+
+                if (!urlEmbedInstagram) {
+                    container.innerHTML = `
+                        <div class="w-full flex flex-col items-center justify-center gap-3 p-5 text-center">
+                            <i class="fa-brands fa-instagram text-2xl text-slate-300"></i>
+
+                            <p class="text-xs text-slate-500">
+                                Não foi possível montar o preview desta URL do Instagram.
+                            </p>
+
+                            <a
+                                href="${urlLimpa}"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                class="px-4 py-2 rounded-xl bg-quaest-tealLight text-quaest-teal font-bold text-xs border border-quaest-teal/30 hover:bg-quaest-teal/10 transition"
+                            >
+                                Abrir no Instagram
+                                <i class="fa-solid fa-arrow-up-right-from-square ml-1"></i>
+                            </a>
+                        </div>
+                    `;
+
+                    return;
                 }
+
+                container.innerHTML = `
+                    <div class="w-full flex justify-center">
+                        <div class="w-full max-w-[500px] rounded-2xl overflow-hidden bg-white border border-slate-200 shadow-sm">
+                            <iframe
+                                src="${urlEmbedInstagram}"
+                                title="Publicação do Instagram"
+                                class="w-full bg-white"
+                                style="
+                                    display:block;
+                                    width:100%;
+                                    height:520px;
+                                    border:0;
+                                    overflow:hidden;
+                                "
+                                frameborder="0"
+                                scrolling="yes"
+                                allowtransparency="true"
+                                allow="encrypted-media; picture-in-picture; web-share"
+                                referrerpolicy="strict-origin-when-cross-origin"
+                                loading="lazy"
+                            ></iframe>
+                        </div>
+                    </div>
+
+                    <div class="mt-3 text-center">
+                        <a
+                            href="${urlLimpa}"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="inline-flex items-center gap-1 text-[11px] font-bold text-quaest-teal hover:underline"
+                        >
+                            <i class="fa-brands fa-instagram"></i>
+                            Abrir publicação original
+                            <i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i>
+                        </a>
+                    </div>
+                `;
+
             } else if (urlLimpa.includes('tiktok.com')) {
                 let videoId = urlLimpa.includes('/video/') ? urlLimpa.split('/video/')[1]?.split('?')[0] || '' : '';
                 container.innerHTML = `
@@ -3208,7 +3320,7 @@ function desmarcarTodosRanking(ipdId) {
 
                 if (elTexto) {
                     elTexto.innerText =
-                        "Selecione o perfil e informe o período.";
+                        "Selecione o player e informe o período.";
                 }
 
                 return;
@@ -3566,7 +3678,7 @@ function desmarcarTodosRanking(ipdId) {
                 document.getElementById(`top-post-data-${ipdId}`).innerText = "-";
                 document.getElementById(`top-post-likes-${ipdId}`).innerText = "0";
                 document.getElementById(`top-post-comentarios-${ipdId}`).innerText = "0";
-                document.getElementById(`top-post-texto-${ipdId}`).innerText = `Não há ${indexAba + 1}º post cadastrado para este perfil no mês.`;
+                document.getElementById(`top-post-texto-${ipdId}`).innerText = `Não há ${indexAba + 1}º post cadastrado para este player no mês.`;
                 
                 const linkEl = document.getElementById(`top-post-link-${ipdId}`);
                 if (linkEl) {
@@ -6199,7 +6311,7 @@ function toggleComparacaoRanking(ipdId) {
                                 </div>
                                 <div>
                                     <span class="text-[10px] font-black text-quaest-teal uppercase tracking-widest block">Classificação do Módulo</span>
-                                    <h3 class="text-xl font-black text-slate-900">Ranking do IPD por Perfil / Marca (${nomeIpd})</h3>
+                                    <h3 class="text-xl font-black text-slate-900">Ranking do IPD por Player / Marca (${nomeIpd})</h3>
                                 </div>
                             </div>
 
@@ -6224,7 +6336,7 @@ function toggleComparacaoRanking(ipdId) {
                             ${criarControlesTemporaisGrafico(ipdId, 'ranking')}
                             <div class="p-3.5 rounded-xl bg-sky-50/80 border border-sky-200 flex items-start gap-2.5 text-xs text-slate-700">
                                 <i class="fa-solid fa-circle-info text-sky-600 mt-0.5"></i>
-                                <p><strong>Como usar:</strong> escolha o período que deseja analisar e, se quiser, habilite a comparação com outro período. O ranking utiliza a média do IPD de cada perfil dentro do intervalo selecionado. Clique em um perfil para destacá-lo no gráfico.</p>
+                                <p><strong>Como usar:</strong> escolha o período que deseja analisar e, se quiser, habilite a comparação com outro período. O ranking utiliza a média do IPD de cada player dentro do intervalo selecionado. Clique em um player para destacá-lo no gráfico.</p>
                             </div>
                             <div id="container-highlights-ranking-${ipdId}" class="grid grid-cols-1 md:grid-cols-3 gap-3">
                             </div>
@@ -6254,7 +6366,7 @@ function toggleComparacaoRanking(ipdId) {
                                 </div>
                                 <div>
                                     <span class="text-[10px] font-black text-quaest-teal uppercase tracking-widest block">Comparação entre períodos</span>
-                                    <h3 class="text-xl font-black text-slate-900">Variação do IPD por Perfil / Marca (${nomeIpd})</h3>
+                                    <h3 class="text-xl font-black text-slate-900">Variação do IPD por Player / Marca (${nomeIpd})</h3>
                                 </div>
                             </div>
                             <div class="flex items-center gap-2">
@@ -6288,7 +6400,7 @@ function toggleComparacaoRanking(ipdId) {
                         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                             <div>
                                 <h3 class="text-xl font-black text-slate-900">Evolução Histórica do IPD (${nomeIpd})</h3>
-                                <p class="text-slate-500 text-xs mt-0.5">Clique em qualquer ponto ou linha do gráfico para consultar a alteração das dimensões dos perfis selecionados.</p>
+                                <p class="text-slate-500 text-xs mt-0.5">Clique em qualquer ponto ou linha do gráfico para consultar a alteração das dimensões dos players selecionados.</p>
                             </div>
                             <div class="flex items-center gap-3">
                                 <div class="flex items-center gap-1.5 bg-slate-50 p-1 rounded-xl border border-slate-200">
@@ -6351,7 +6463,7 @@ function toggleComparacaoRanking(ipdId) {
                                     <span class="text-[10px] font-black text-quaest-teal uppercase tracking-widest block">Posição real no período</span>
                                     <h3 class="text-xl font-black text-slate-900">Trajetória Histórica do Ranking — Top 10 (${nomeIpd})</h3>
                                     <p class="text-slate-500 text-xs mt-0.5">
-                                        Escolha um período e acompanhe em linhas como cada perfil mudou de posição entre 1º e 10º lugar.
+                                        Escolha um período e acompanhe em linhas como cada player mudou de posição entre 1º e 10º lugar.
                                     </p>
                                 </div>
                             </div>
@@ -6431,8 +6543,8 @@ function toggleComparacaoRanking(ipdId) {
                                 <i class="fa-solid fa-ranking-star text-quaest-teal mt-0.5"></i>
                                 <p>
                                     <strong>Leitura:</strong> o eixo vertical vai de <strong>1º a 10º</strong>.
-                                    Cada linha representa um perfil. Quanto mais alta a linha, melhor a posição.
-                                    Perfis fora do Top 10 naquele ponto ficam sem valor até voltarem ao Top 10.
+                                    Cada linha representa um player. Quanto mais alta a linha, melhor a posição.
+                                    Players fora do Top 10 naquele ponto ficam sem valor até voltarem ao Top 10.
                                 </p>
                             </div>
 
@@ -6791,7 +6903,7 @@ function toggleComparacaoRanking(ipdId) {
                                       </div>
                                   </div>
                                   <div class="text-[9px] text-slate-500 leading-tight">
-                                      Fatia do engajamento total do projeto que pertence a este perfil no período analisado.
+                                      Fatia do engajamento total do projeto que pertence a este player no período analisado.
                                   </div>
                               </div>
 
@@ -6811,7 +6923,7 @@ function toggleComparacaoRanking(ipdId) {
                                       </div>
                                   </div>
                                   <div class="text-[9px] text-slate-500 leading-tight">
-                                      Combina a tração média do perfil vs. o mercado (Qualidade) com a estabilidade do engajamento entre as postagens (Consistência).
+                                      Combina a tração média do player vs. o mercado (Qualidade) com a estabilidade do engajamento entre as postagens (Consistência).
                                   </div>
                               </div>
 
@@ -6831,7 +6943,7 @@ function toggleComparacaoRanking(ipdId) {
                                       </div>
                                   </div>
                                   <div class="text-[9px] text-slate-500 leading-tight">
-                                      Mede a capacidade do perfil em engajar a audiência em discussões ativas e aprofundadas em vez de apenas reações passivas.
+                                      Mede a capacidade do player em engajar a audiência em discussões ativas e aprofundadas em vez de apenas reações passivas.
                                   </div>
                               </div>
 
@@ -6964,7 +7076,7 @@ function toggleComparacaoRanking(ipdId) {
                                 </div>
                                 <div>
                                     <span class="text-[10px] font-black text-purple-600 uppercase tracking-widest block">Inteligência Preditiva</span>
-                                    <h3 class="text-xl font-black text-slate-900">Forecasting e Ranking Mensal do IPD (${nomeIpd})</h3>
+                                    <h3 class="text-xl font-black text-slate-900">Forecasting (${nomeIpd})</h3>
                                 </div>
                             </div>
                             <div class="flex items-center gap-3">
@@ -7042,7 +7154,7 @@ function toggleComparacaoRanking(ipdId) {
                                 </div>
 
                                 <div id="container-profiles-previsao-${ipdId}" class="flex flex-col gap-1.5">
-                                    <span class="text-xs font-bold text-slate-500">Perfis do gráfico de pontuação:</span>
+                                    <span class="text-xs font-bold text-slate-500">Players do gráfico de pontuação:</span>
                                 </div>
 
                                 <div class="p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
@@ -7112,7 +7224,7 @@ function toggleComparacaoRanking(ipdId) {
                             <div class="space-y-1 text-xs text-slate-700">
                                 <h4 class="font-extrabold text-quaest-tealDark text-sm">O que é a Análise de Controle Sintético (BSTS)?</h4>
                                 <p class="leading-relaxed">
-                                    Esta modelagem estatística isola o efeito real de ações, crises ou eventos de comunicação. Ela cria um "dublê virtual" (trajetória contrafactual) para prever como o perfil performaria sem o evento, demonstrando estatisticamente se a variação foi causal ou apenas uma oscilação natural do mercado. A trajetória e o intervalo de confiança são limitados à escala válida do IPD, de <strong>1.00 a 4.00 pontos</strong>.
+                                    Esta modelagem estatística isola o efeito real de ações, crises ou eventos de comunicação. Ela cria um "dublê virtual" (trajetória contrafactual) para prever como o player performaria sem o evento, demonstrando estatisticamente se a variação foi causal ou apenas uma oscilação natural do mercado. A trajetória e o intervalo de confiança são limitados à escala válida do IPD.
                                 </p>
                             </div>
                         </div>
@@ -7140,7 +7252,7 @@ function toggleComparacaoRanking(ipdId) {
                         <div id="box-causal-${ipdId}" class="space-y-6 transition-all">
                             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 bg-slate-50/80 p-5 rounded-2xl border border-slate-200">
                                 <div>
-                                    <label for="causal-perfil-${ipdId}" class="block text-xs font-bold text-slate-600 uppercase mb-1">Perfil Alvo</label>
+                                    <label for="causal-perfil-${ipdId}" class="block text-xs font-bold text-slate-600 uppercase mb-1">Player Alvo</label>
                                     <select id="causal-perfil-${ipdId}" required class="w-full bg-white text-slate-800 text-xs font-bold px-3 py-2 rounded-xl border border-slate-200 outline-none focus:border-quaest-teal">
                                         ${optionsPerfilHtml}
                                     </select>
@@ -8429,7 +8541,7 @@ function toggleComparacaoRanking(ipdId) {
             if (!ref || !container) return;
             const profiles = (ref.ipdObj?.profiles_usados?.length ? ref.ipdObj.profiles_usados : Object.keys(ref.profilesDataDiario?.profiles || {})).filter(Boolean).sort((a,b) => a.localeCompare(b,'pt-BR'));
             if (!(ref.profilesSelecionadosHistorico instanceof Set)) ref.profilesSelecionadosHistorico = new Set(profiles.slice(0,2));
-            container.innerHTML = `<div class="flex items-center justify-between w-full mb-1"><span class="text-xs font-bold text-slate-500">Perfis:</span><div class="flex items-center gap-2"><button onclick="selecionarTodosHistorico(${ipdId})" class="text-[11px] font-bold text-quaest-teal hover:underline"><i class="fa-solid fa-check-double text-[10px]"></i> Selecionar Tudo</button><span class="text-slate-300">|</span><button onclick="desmarcarTodosHistorico(${ipdId})" class="text-[11px] font-bold text-rose-500 hover:underline"><i class="fa-solid fa-trash-can text-[10px]"></i> Remover Seleção</button></div></div><div id="botoes-line-list-${ipdId}" class="flex flex-wrap items-center gap-1.5"></div>`;
+            container.innerHTML = `<div class="flex items-center justify-between w-full mb-1"><span class="text-xs font-bold text-slate-500">Players:</span><div class="flex items-center gap-2"><button onclick="selecionarTodosHistorico(${ipdId})" class="text-[11px] font-bold text-quaest-teal hover:underline"><i class="fa-solid fa-check-double text-[10px]"></i> Selecionar Tudo</button><span class="text-slate-300">|</span><button onclick="desmarcarTodosHistorico(${ipdId})" class="text-[11px] font-bold text-rose-500 hover:underline"><i class="fa-solid fa-trash-can text-[10px]"></i> Remover Seleção</button></div></div><div id="botoes-line-list-${ipdId}" class="flex flex-wrap items-center gap-1.5"></div>`;
             const sub = document.getElementById(`botoes-line-list-${ipdId}`);
             profiles.forEach(profileName => {
                 const ativo = ref.profilesSelecionadosHistorico.has(profileName);
@@ -9107,7 +9219,7 @@ function toggleComparacaoRanking(ipdId) {
                     `${formatarDataAnoCurto(inicio)} a ` +
                     `${formatarDataAnoCurto(fim)} · ` +
                     `${nomeAgrupamento}${complementoSemana} · ` +
-                    `${perfis.length} perfil(is) passaram pelo Top 10`;
+                    `${perfis.length} players passaram pelo Top 10`;
             }
         }
 
@@ -9378,7 +9490,7 @@ function toggleComparacaoRanking(ipdId) {
 
             container.innerHTML = `
                 <div class="flex items-center justify-between w-full mb-1">
-                    <span class="text-xs font-bold text-slate-500">Perfis do gráfico de pontuação:</span>
+                    <span class="text-xs font-bold text-slate-500">Players do gráfico de pontuação:</span>
                     <div class="flex items-center gap-2">
                         <button onclick="selecionarTodosPrevisao(${ipdId})" class="text-[11px] font-bold text-purple-600 hover:underline flex items-center gap-1 cursor-pointer">
                             <i class="fa-solid fa-check-double text-[10px]"></i> Selecionar Tudo

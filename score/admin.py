@@ -6,6 +6,7 @@ from import_export.widgets import ForeignKeyWidget, ManyToManyWidget
 from import_export.admin import ImportExportModelAdmin
 from .models import IPD, Conteudo
 from client.models import ProjetoIPD, ProjetoCliente
+from django.core.cache import cache
 
 
 class SmartForeignKeyWidget(ForeignKeyWidget):
@@ -70,8 +71,24 @@ class IPDResource(resources.ModelResource):
             'data',
         )
 
+    # =========================================================================
+    # NOVO: INÍCIO DA IMPORTAÇÃO
+    # =========================================================================
+
+    def before_import(self, dataset, **kwargs):
+        """
+        Executado uma única vez antes de começar a importar a planilha.
+
+        Guarda quais ProjetoIPD foram afetados para, no final da importação,
+        invalidar somente os caches dos ProjetoCliente relacionados.
+        """
+        super().before_import(dataset, **kwargs)
+
+        self.projetos_ipd_alterados = set()
+
     def before_import_row(self, row, **kwargs):
         """Prepara e traduz mapeamentos alternativos de colunas antes de importar."""
+
         # Tradução de colunas de Projeto IPD
         if 'pd' in row and ('projeto_ipd' not in row or not row['projeto_ipd']):
             row['projeto_ipd'] = row['pd']
@@ -85,31 +102,44 @@ class IPDResource(resources.ModelResource):
 
         # Tratamento de Data
         data_raw = row.get('data')
+
         if data_raw:
             if isinstance(data_raw, datetime):
                 row['data'] = data_raw.strftime('%Y-%m-%d')
+
             else:
                 data_str = str(data_raw).strip()
+
                 if ' ' in data_str:
                     data_str = data_str.split(' ')[0]
+
                 if '/' in data_str:
                     partes = data_str.split('/')
+
                     if len(partes) == 3:
                         # Converte DD/MM/YYYY para YYYY-MM-DD
                         data_str = f"{partes[2]}-{partes[1]}-{partes[0]}"
+
                 row['data'] = data_str
 
     def get_instance(self, instance_loader, row):
         """Busca se a medição já existe para atualizar, em vez de duplicar."""
+
         proj_ipd_val = row.get('projeto_ipd') or row.get('pd')
         profile = row.get('profile')
         data = row.get('data')
 
         if proj_ipd_val and profile and data:
+
             if str(proj_ipd_val).isdigit():
-                proj_ipd = ProjetoIPD.objects.filter(pk=int(proj_ipd_val)).first()
+                proj_ipd = ProjetoIPD.objects.filter(
+                    pk=int(proj_ipd_val)
+                ).first()
+
             else:
-                proj_ipd = ProjetoIPD.objects.filter(nome__iexact=str(proj_ipd_val).strip()).first()
+                proj_ipd = ProjetoIPD.objects.filter(
+                    nome__iexact=str(proj_ipd_val).strip()
+                ).first()
 
             if proj_ipd:
                 return IPD.objects.filter(
@@ -117,26 +147,121 @@ class IPDResource(resources.ModelResource):
                     profile=str(profile).strip(),
                     data=data
                 ).first()
+
         return None
 
     def before_save_instance(self, instance, *args, **kwargs):
         """
         GATILHO DE SEGURANÇA:
-        Como 'projeto_cliente' foi removido da planilha, verificamos se o banco 
-        ainda o exige. Se exigir e estiver vazio, vinculamos automaticamente 
+        Como 'projeto_cliente' foi removido da planilha, verificamos se o banco
+        ainda o exige. Se exigir e estiver vazio, vinculamos automaticamente
         ao primeiro cliente do 'projeto_ipd' para evitar erro 500.
         """
+
         # Verifica se o model possui o atributo projeto_cliente e se está vazio
         if hasattr(instance, 'projeto_cliente_id') and not instance.projeto_cliente_id:
+
             if instance.projeto_ipd_id:
+
                 # Pega o primeiro cliente vinculado a este IPD
                 primeiro_cliente = instance.projeto_ipd.projetos_cliente.first()
+
                 if primeiro_cliente:
                     instance.projeto_cliente = primeiro_cliente
 
-        # Chama a implementação da classe pai repassando os argumentos de forma segura
-        super().before_save_instance(instance, *args, **kwargs)
+        # =====================================================================
+        # NOVO: GUARDA O PROJETO IPD AFETADO
+        # =====================================================================
+        #
+        # Não apaga o Redis aqui.
+        #
+        # Apenas guarda o ID em um set.
+        #
+        # Se a planilha tiver 50.000 linhas do mesmo ProjetoIPD,
+        # teremos apenas:
+        #
+        # {5}
+        #
+        # em vez de executar cache.delete() 50.000 vezes.
+        # =====================================================================
 
+        if instance.projeto_ipd_id:
+
+            if not hasattr(self, 'projetos_ipd_alterados'):
+                self.projetos_ipd_alterados = set()
+
+            self.projetos_ipd_alterados.add(
+                instance.projeto_ipd_id
+            )
+
+        # Chama a implementação da classe pai repassando os argumentos
+        # de forma segura
+        super().before_save_instance(
+            instance,
+            *args,
+            **kwargs
+        )
+
+    # =========================================================================
+    # NOVO: FINAL DA IMPORTAÇÃO
+    # =========================================================================
+
+    def after_import(self, dataset, result, **kwargs):
+        """
+        Executado uma única vez quando a importação inteira termina.
+
+        Descobre quais ProjetoCliente estão associados aos ProjetoIPD
+        alterados e remove o cache da ProjetoProfilesAPIView.
+        """
+
+        super().after_import(
+            dataset,
+            result,
+            **kwargs
+        )
+
+        # ProjetoIPDs que realmente passaram pelo save
+        projetos_ipd_ids = getattr(
+            self,
+            'projetos_ipd_alterados',
+            set()
+        )
+
+        if not projetos_ipd_ids:
+            return
+
+        # =====================================================================
+        # Descobre todos os ProjetoCliente relacionados
+        # =====================================================================
+
+        projetos_cliente_ids = (
+            ProjetoIPD.objects
+            .filter(
+                id__in=projetos_ipd_ids
+            )
+            .values_list(
+                'projetos_cliente__id',
+                flat=True
+            )
+            .exclude(
+                projetos_cliente__id=None
+            )
+            .distinct()
+        )
+
+        # =====================================================================
+        # Remove SOMENTE o cache dos projetos afetados
+        # =====================================================================
+
+        for projeto_id in projetos_cliente_ids:
+
+            cache_key = (
+                f"projeto_profiles:"
+                f"v1:"
+                f"projeto:{projeto_id}"
+            )
+
+            cache.delete(cache_key)
 
 @admin.register(IPD)
 class IPDAdmin(ImportExportModelAdmin):
@@ -287,3 +412,71 @@ class ConteudoAdmin(ImportExportModelAdmin):
         if not projetos:
             return "-"
         return ", ".join([p.nome for p in projetos])
+
+
+from .models import ResumoExecutivo
+
+@admin.register(ResumoExecutivo)
+class ResumoExecutivoAdmin(admin.ModelAdmin):
+    list_display = (
+        "projeto",
+        "mes_referencia",
+        "criado_em",
+        "atualizado_em",
+    )
+
+    list_filter = (
+        "mes_referencia",
+        "criado_em",
+        "atualizado_em",
+    )
+
+    search_fields = (
+        "projeto__nome",
+        "mes_referencia",
+        "conteudo",
+    )
+
+    readonly_fields = (
+        "hash_insumo",
+        "criado_em",
+        "atualizado_em",
+    )
+
+    ordering = (
+        "-mes_referencia",
+        "-atualizado_em",
+    )
+
+    fieldsets = (
+        (
+            "Identificação",
+            {
+                "fields": (
+                    "projeto",
+                    "mes_referencia",
+                )
+            },
+        ),
+        (
+            "Resumo Executivo",
+            {
+                "fields": (
+                    "conteudo",
+                )
+            },
+        ),
+        (
+            "Controle",
+            {
+                "fields": (
+                    "hash_insumo",
+                    "criado_em",
+                    "atualizado_em",
+                ),
+                "classes": (
+                    "collapse",
+                ),
+            },
+        ),
+    )

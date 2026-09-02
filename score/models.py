@@ -99,3 +99,68 @@ class Conteudo(models.Model):
 
     def __str__(self):
         return f"Post {self.id_post}: {self.texto[:30]})"
+
+import hashlib
+
+from django.db import models
+from client.models import ProjetoCliente
+
+
+class ResumoExecutivo(models.Model):
+    projeto = models.ForeignKey(
+        ProjetoCliente,
+        on_delete=models.CASCADE,
+        related_name="resumos_executivos",
+    )
+
+    mes_referencia = models.CharField(
+        max_length=7,
+        db_index=True,
+    )
+
+    # Hash dos dados utilizados para gerar o resumo.
+    # Se os dados mudarem, o hash também muda.
+    hash_insumo = models.CharField(
+        max_length=64,
+        db_index=True,
+    )
+
+    conteudo = models.TextField()
+
+    criado_em = models.DateTimeField(
+        auto_now_add=True
+    )
+
+    atualizado_em = models.DateTimeField(
+        auto_now=True
+    )
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=[
+                    "projeto",
+                    "mes_referencia",
+                ],
+                name="unique_resumo_executivo_projeto_mes",
+            )
+        ]
+
+        indexes = [
+            models.Index(
+                fields=[
+                    "projeto",
+                    "mes_referencia",
+                    "hash_insumo",
+                ]
+            )
+        ]
+
+        verbose_name = "Resumo Executivo"
+        verbose_name_plural = "Resumos Executivos"
+
+    def __str__(self):
+        return (
+            f"{self.projeto} - "
+            f"{self.mes_referencia}"
+        )
