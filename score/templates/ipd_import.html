@@ -1,0 +1,832 @@
+{% extends "admin/import_export/import.html" %}
+
+{% block extrahead %}
+{{ block.super }}
+
+<style>
+    #ipd-import-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 999999;
+        background: rgba(0, 0, 0, 0.58);
+        align-items: center;
+        justify-content: center;
+    }
+
+    #ipd-import-overlay.ativo {
+        display: flex;
+    }
+
+    .ipd-import-box {
+        width: 440px;
+        max-width: calc(100vw - 40px);
+        padding: 34px;
+        box-sizing: border-box;
+        border-radius: 14px;
+        background: #fff;
+        box-shadow: 0 15px 60px rgba(0, 0, 0, 0.30);
+        text-align: center;
+    }
+
+    .ipd-import-titulo {
+        margin-bottom: 14px;
+        font-size: 21px;
+        font-weight: 600;
+        color: #333;
+    }
+
+    .ipd-import-percentual {
+        margin-bottom: 16px;
+        font-size: 40px;
+        font-weight: 700;
+        color: #417690;
+    }
+
+    .ipd-import-barra {
+        width: 100%;
+        height: 15px;
+        margin-bottom: 16px;
+        overflow: hidden;
+        border-radius: 30px;
+        background: #e8e8e8;
+    }
+
+    .ipd-import-barra-valor {
+        width: 0%;
+        height: 100%;
+        border-radius: 30px;
+        background: #417690;
+        transition: width 0.35s ease;
+    }
+
+    .ipd-import-mensagem {
+        min-height: 22px;
+        margin-top: 6px;
+        font-size: 14px;
+        color: #555;
+    }
+
+    .ipd-import-contador {
+        min-height: 18px;
+        margin-top: 8px;
+        font-size: 13px;
+        color: #777;
+    }
+
+    .ipd-import-aviso {
+        margin-top: 18px;
+        font-size: 12px;
+        color: #999;
+    }
+
+    #ipd-import-fechar {
+        display: none;
+        margin: 20px auto 0 auto;
+        padding: 10px 18px;
+        border: 0;
+        border-radius: 6px;
+        cursor: pointer;
+        background: #417690;
+        color: #fff;
+        font-weight: 600;
+    }
+
+    #ipd-import-fechar:hover {
+        opacity: 0.9;
+    }
+</style>
+
+<script>
+document.addEventListener(
+    "DOMContentLoaded",
+    function () {
+
+        // ============================================================
+        // ENCONTRA O FORM DE IMPORTAÇÃO
+        // ============================================================
+
+        let importForm = null;
+
+        document
+            .querySelectorAll("form")
+            .forEach(function (form) {
+
+                const fileInput =
+                    form.querySelector(
+                        'input[type="file"]'
+                    );
+
+                if (fileInput) {
+                    importForm = form;
+                }
+            });
+
+
+        if (!importForm) {
+            return;
+        }
+
+
+        let importando = false;
+        let pollingTimer = null;
+
+
+        // ============================================================
+        // CRIA OVERLAY
+        // ============================================================
+
+        const overlay =
+            document.createElement(
+                "div"
+            );
+
+        overlay.id =
+            "ipd-import-overlay";
+
+        overlay.innerHTML = `
+            <div class="ipd-import-box">
+
+                <div
+                    class="ipd-import-titulo"
+                >
+                    Importando IPD
+                </div>
+
+                <div
+                    id="ipd-import-percentual"
+                    class="ipd-import-percentual"
+                >
+                    0%
+                </div>
+
+                <div
+                    class="ipd-import-barra"
+                >
+                    <div
+                        id="ipd-import-barra-valor"
+                        class="ipd-import-barra-valor"
+                    ></div>
+                </div>
+
+                <div
+                    id="ipd-import-mensagem"
+                    class="ipd-import-mensagem"
+                >
+                    Preparando arquivo...
+                </div>
+
+                <div
+                    id="ipd-import-contador"
+                    class="ipd-import-contador"
+                ></div>
+
+                <div
+                    class="ipd-import-aviso"
+                >
+                    Não feche esta página durante a importação.
+                </div>
+
+                <button
+                    type="button"
+                    id="ipd-import-fechar"
+                >
+                    Fechar
+                </button>
+
+            </div>
+        `;
+
+        document.body.appendChild(
+            overlay
+        );
+
+
+        // ============================================================
+        // ELEMENTOS
+        // ============================================================
+
+        const percentualEl =
+            document.getElementById(
+                "ipd-import-percentual"
+            );
+
+        const barraEl =
+            document.getElementById(
+                "ipd-import-barra-valor"
+            );
+
+        const mensagemEl =
+            document.getElementById(
+                "ipd-import-mensagem"
+            );
+
+        const contadorEl =
+            document.getElementById(
+                "ipd-import-contador"
+            );
+
+        const fecharEl =
+            document.getElementById(
+                "ipd-import-fechar"
+            );
+
+
+        // ============================================================
+        // URLS
+        // ============================================================
+
+        const progressUrl =
+            "{% url 'admin:score_ipd_import_progress' %}";
+
+        const changelistUrl =
+            "{% url 'admin:score_ipd_changelist' %}";
+
+
+        // ============================================================
+        // ATUALIZA A TELA
+        // ============================================================
+
+        function atualizarTela(
+            dados
+        ) {
+
+            let percentual =
+                Number(
+                    dados.percentual || 0
+                );
+
+            percentual =
+                Math.max(
+                    0,
+                    Math.min(
+                        100,
+                        percentual
+                    )
+                );
+
+
+            percentualEl.textContent =
+                percentual + "%";
+
+
+            barraEl.style.width =
+                percentual + "%";
+
+
+            document.title =
+                "Importando IPD - "
+                + percentual
+                + "%";
+
+
+            if (dados.mensagem) {
+
+                mensagemEl.textContent =
+                    dados.mensagem;
+
+            }
+
+
+            const processados =
+                Number(
+                    dados.processados || 0
+                );
+
+            const total =
+                Number(
+                    dados.total || 0
+                );
+
+
+            if (total > 0) {
+
+                contadorEl.textContent =
+                    processados
+                        .toLocaleString(
+                            "pt-BR"
+                        )
+                    +
+                    " de "
+                    +
+                    total
+                        .toLocaleString(
+                            "pt-BR"
+                        )
+                    +
+                    " registros";
+
+            }
+            else {
+
+                contadorEl.textContent =
+                    "";
+
+            }
+        }
+
+
+        // ============================================================
+        // CONSULTA PROGRESSO
+        // ============================================================
+
+        async function consultarProgresso(
+            jobId
+        ) {
+
+            try {
+
+                const response =
+                    await fetch(
+                        progressUrl
+                        +
+                        "?job_id="
+                        +
+                        encodeURIComponent(
+                            jobId
+                        )
+                        +
+                        "&_="
+                        +
+                        Date.now(),
+                        {
+                            method: "GET",
+                            credentials:
+                                "same-origin",
+                            cache:
+                                "no-store",
+                        }
+                    );
+
+
+                if (!response.ok) {
+                    return null;
+                }
+
+
+                const dados =
+                    await response.json();
+
+
+                atualizarTela(
+                    dados
+                );
+
+
+                return dados;
+
+            }
+            catch (erro) {
+
+                console.log(
+                    "Aguardando progresso...",
+                    erro
+                );
+
+                return null;
+
+            }
+        }
+
+
+        // ============================================================
+        // HABILITA BOTÕES NOVAMENTE
+        // ============================================================
+
+        function habilitarBotoes() {
+
+            importForm
+                .querySelectorAll(
+                    'button[type="submit"],' +
+                    'input[type="submit"]'
+                )
+                .forEach(
+                    function (botao) {
+
+                        botao.disabled =
+                            false;
+
+                    }
+                );
+        }
+
+
+        // ============================================================
+        // FECHAR
+        // ============================================================
+
+        fecharEl.addEventListener(
+            "click",
+            function () {
+
+                overlay.classList.remove(
+                    "ativo"
+                );
+
+                fecharEl.style.display =
+                    "none";
+
+                habilitarBotoes();
+
+                importando = false;
+
+                document.title =
+                    "Importar IPD";
+            }
+        );
+
+
+        // ============================================================
+        // SUBMIT
+        // ============================================================
+
+        importForm.addEventListener(
+            "submit",
+            async function (event) {
+
+                event.preventDefault();
+
+
+                if (importando) {
+                    return;
+                }
+
+
+                importando = true;
+
+
+                // ====================================================
+                // JOB ID
+                // ====================================================
+
+                let jobId;
+
+                if (
+                    window.crypto
+                    &&
+                    typeof crypto.randomUUID
+                    === "function"
+                ) {
+
+                    jobId =
+                        crypto.randomUUID();
+
+                }
+                else {
+
+                    jobId =
+                        Date.now()
+                        +
+                        "-"
+                        +
+                        Math.random()
+                            .toString(36)
+                            .substring(2);
+
+                }
+
+
+                // ====================================================
+                // ADICIONA job_id NO FORM
+                // ====================================================
+
+                let jobInput =
+                    importForm.querySelector(
+                        'input[name="import_job_id"]'
+                    );
+
+
+                if (!jobInput) {
+
+                    jobInput =
+                        document.createElement(
+                            "input"
+                        );
+
+                    jobInput.type =
+                        "hidden";
+
+                    jobInput.name =
+                        "import_job_id";
+
+                    importForm.appendChild(
+                        jobInput
+                    );
+                }
+
+
+                jobInput.value =
+                    jobId;
+
+
+                // ====================================================
+                // MONTA FORM DATA
+                // ====================================================
+
+                const formData =
+                    new FormData(
+                        importForm
+                    );
+
+
+                // ====================================================
+                // MOSTRA LOADING
+                // ====================================================
+
+                overlay.classList.add(
+                    "ativo"
+                );
+
+                fecharEl.style.display =
+                    "none";
+
+
+                atualizarTela({
+                    percentual: 0,
+                    processados: 0,
+                    total: 0,
+                    mensagem:
+                        "Enviando arquivo...",
+                });
+
+
+                // ====================================================
+                // DESABILITA SUBMIT
+                // ====================================================
+
+                importForm
+                    .querySelectorAll(
+                        'button[type="submit"],' +
+                        'input[type="submit"]'
+                    )
+                    .forEach(
+                        function (botao) {
+
+                            botao.disabled =
+                                true;
+
+                        }
+                    );
+
+
+                // ====================================================
+                // POLLING
+                // ====================================================
+
+                pollingTimer =
+                    setInterval(
+                        function () {
+
+                            consultarProgresso(
+                                jobId
+                            );
+
+                        },
+                        700
+                    );
+
+
+                // Consulta imediatamente.
+                consultarProgresso(
+                    jobId
+                );
+
+
+                try {
+
+                    // =================================================
+                    // ENVIA IMPORTAÇÃO
+                    // =================================================
+
+                    const response =
+                        await fetch(
+                            importForm.action
+                            ||
+                            window.location.href,
+                            {
+                                method: "POST",
+
+                                body:
+                                    formData,
+
+                                credentials:
+                                    "same-origin",
+
+                                redirect:
+                                    "follow",
+                            }
+                        );
+
+
+                    clearInterval(
+                        pollingTimer
+                    );
+
+
+                    // =================================================
+                    // PEGA ESTADO FINAL DO REDIS
+                    // =================================================
+
+                    const dadosFinais =
+                        await consultarProgresso(
+                            jobId
+                        );
+
+
+                    // =================================================
+                    // ERRO HTTP
+                    // =================================================
+
+                    if (!response.ok) {
+
+                        atualizarTela({
+                            percentual:
+                                dadosFinais
+                                    ?.percentual
+                                || 0,
+
+                            processados:
+                                dadosFinais
+                                    ?.processados
+                                || 0,
+
+                            total:
+                                dadosFinais
+                                    ?.total
+                                || 0,
+
+                            mensagem:
+                                dadosFinais
+                                    ?.mensagem
+                                ||
+                                "Erro durante a importação.",
+                        });
+
+
+                        fecharEl.style.display =
+                            "block";
+
+                        habilitarBotoes();
+
+                        importando =
+                            false;
+
+                        return;
+                    }
+
+
+                    // =================================================
+                    // BACKEND REGISTROU ERRO
+                    // =================================================
+
+                    if (
+                        dadosFinais
+                        &&
+                        dadosFinais.status
+                        === "erro"
+                    ) {
+
+                        atualizarTela(
+                            dadosFinais
+                        );
+
+                        fecharEl.style.display =
+                            "block";
+
+                        habilitarBotoes();
+
+                        importando =
+                            false;
+
+                        return;
+                    }
+
+
+                    // =================================================
+                    // TERMINOU COM ERROS DE LINHA
+                    // =================================================
+
+                    if (
+                        dadosFinais
+                        &&
+                        dadosFinais.status
+                        === "concluido_com_erros"
+                    ) {
+
+                        atualizarTela(
+                            dadosFinais
+                        );
+
+                        fecharEl.style.display =
+                            "block";
+
+                        habilitarBotoes();
+
+                        importando =
+                            false;
+
+                        return;
+                    }
+
+
+                    // =================================================
+                    // SUCESSO
+                    // =================================================
+
+                    atualizarTela({
+                        percentual: 100,
+
+                        processados:
+                            dadosFinais
+                                ?.total
+                            || 0,
+
+                        total:
+                            dadosFinais
+                                ?.total
+                            || 0,
+
+                        mensagem:
+                            "Importação concluída com sucesso.",
+                    });
+
+
+                    // Mostra o 100% rapidamente.
+                    setTimeout(
+                        function () {
+
+                            if (
+                                response.redirected
+                                &&
+                                response.url
+                            ) {
+
+                                window.location.href =
+                                    response.url;
+
+                            }
+                            else {
+
+                                window.location.href =
+                                    changelistUrl;
+
+                            }
+
+                        },
+                        1000
+                    );
+
+                }
+                catch (erro) {
+
+                    clearInterval(
+                        pollingTimer
+                    );
+
+
+                    const dados =
+                        await consultarProgresso(
+                            jobId
+                        );
+
+
+                    atualizarTela({
+                        percentual:
+                            dados
+                                ?.percentual
+                            || 0,
+
+                        processados:
+                            dados
+                                ?.processados
+                            || 0,
+
+                        total:
+                            dados
+                                ?.total
+                            || 0,
+
+                        mensagem:
+                            dados
+                                ?.mensagem
+                            ||
+                            "Não foi possível concluir a importação.",
+                    });
+
+
+                    fecharEl.style.display =
+                        "block";
+
+                    habilitarBotoes();
+
+                    importando =
+                        false;
+                }
+            }
+        );
+    }
+);
+
+</script>
+
+{% endblock %}

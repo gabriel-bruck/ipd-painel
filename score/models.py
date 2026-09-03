@@ -10,7 +10,13 @@ class IPD(models.Model):
     engaj = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     valencia = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     mob = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
-    interesse = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    interesse = models.DecimalField(
+    max_digits=10,
+    decimal_places=2,
+    null=True,
+    blank=True,
+    default=None,
+)
     ipd = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     
     data = models.DateField()

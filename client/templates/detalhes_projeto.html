@@ -235,19 +235,19 @@
                         <div class="space-y-3">
                             <span class="text-xs font-black text-quaest-teal uppercase tracking-widest">Metodologia Oficial</span>
                             <h2 class="text-2xl md:text-3xl font-black text-slate-900">O que é o Índice de Popularidade Digital?</h2>
-                            <p class="text-slate-600 text-sm leading-relaxed">
+                            <p id="metodologia-texto-principal" class="text-slate-600 text-sm leading-relaxed">
                                 O IPD é construído a partir de <strong>175 variáveis coletadas em 7 plataformas</strong> ativas no Brasil. As variáveis são agrupadas em dimensões analíticas com notas variando de <strong>1.00 a 4.00</strong>.
                             </p>
                         </div>
 
                         <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                            <div class="p-4 bg-quaest-tealLight rounded-2xl border border-quaest-tealBorder">
+                            <div id="metodologia-card-variaveis" class="p-4 bg-quaest-tealLight rounded-2xl border border-quaest-tealBorder">
                                 <span class="block text-2xl font-black text-quaest-teal">175</span>
                                 <span class="text-[10px] text-slate-600 font-extrabold uppercase">Variáveis Coletadas</span>
                             </div>
                             <div class="p-4 bg-slate-50 rounded-2xl border border-slate-200">
-                                <span class="block text-2xl font-black text-slate-800">7</span>
-                                <span class="text-[10px] text-slate-500 font-extrabold uppercase">Plataformas</span>
+                                <span id="metodologia-num-plataformas" class="block text-2xl font-black text-slate-800">7</span>
+                                <span id="metodologia-label-plataformas" class="text-[10px] text-slate-500 font-extrabold uppercase">Plataformas</span>
                             </div>
                             <div class="p-4 bg-quaest-tealLight rounded-2xl border border-quaest-tealBorder col-span-2 sm:col-span-1">
                                 <span class="block text-2xl font-black text-quaest-teal">1.0 a 4.0</span>
@@ -319,7 +319,7 @@
                             <p class="text-slate-600 leading-relaxed">Razão entre reações positivas versus reações negativas.</p>
                         </div>
 
-                        <div class="p-5 rounded-2xl bg-quaest-tealLight/50 border border-quaest-tealBorder space-y-2 shadow-sm hover:bg-quaest-tealLight transition">
+                        <div id="metodologia-card-interesse" class="p-5 rounded-2xl bg-quaest-tealLight/50 border border-quaest-tealBorder space-y-2 shadow-sm hover:bg-quaest-tealLight transition">
                             <div class="flex items-center gap-2.5">
                                 <span id="metodologia-num-interesse" class="w-6 h-6 rounded-full bg-quaest-teal text-white font-black flex items-center justify-center text-xs shadow-sm">5</span>
                                 <strong class="font-extrabold text-sm text-slate-900">Interesse</strong>
@@ -481,6 +481,7 @@
         let relatorioFoiAberto = false;
         let carregamentoInicialConcluido = false;
         let dimensoesProjetoIPD = null;
+        const TIPO_IPD_PROJETO = Number("{{ projeto.tipo_ipd|default:'2' }}");
         const PROJETO_ID = "{{ projeto.id|default:'1' }}";
 
         window.onscroll = function() {
@@ -607,7 +608,11 @@
                     || chaves.has(normalizarChaveDimensao(dim.label))
                     || dim.aliases.some(alias => chaves.has(normalizarChaveDimensao(alias)))
                 );
-                if (dimensoesExplicitas.length > 0) return dimensoesExplicitas;
+                if (dimensoesExplicitas.length > 0) {
+                    return TIPO_IPD_PROJETO === 1
+                        ? dimensoesExplicitas.filter(dim => dim.key !== 'interesse')
+                        : dimensoesExplicitas;
+                }
             }
 
             const tipoIPD = obterTipoIPD(ipdObj);
@@ -625,21 +630,30 @@
             const dimensoes = obterDimensoesIPD();
             const titulo = document.getElementById('metodologia-dimensoes-titulo');
             const descricao = document.getElementById('metodologia-dimensoes-descricao');
-            const cardValencia = document.getElementById('metodologia-card-valencia');
-            const numInteresse = document.getElementById('metodologia-num-interesse');
-            if (!titulo || !descricao || !cardValencia || !numInteresse) return;
+            const textoPrincipal = document.getElementById('metodologia-texto-principal');
+            const cardVariaveis = document.getElementById('metodologia-card-variaveis');
+            const numPlataformas = document.getElementById('metodologia-num-plataformas');
+            const labelPlataformas = document.getElementById('metodologia-label-plataformas');
+            const cardInteresse = document.getElementById('metodologia-card-interesse');
 
-            const possuiValencia = dimensoes.some(dim => dim.key === 'valencia');
-            titulo.textContent = 'Dimensões de pontuação';
-            descricao.textContent = `${dimensoes.map(dim => dim.label).join(', ')}. Presença Digital permanece como critério metodológico.`;
-            if (possuiValencia) {
-                cardValencia.classList.remove('hidden');
-                numInteresse.textContent = '5';
+            if (titulo) titulo.textContent = 'Dimensões de pontuação';
+            if (descricao) descricao.textContent = `${dimensoes.map(dim => dim.label).join(', ')}. Presença Digital permanece como critério metodológico.`;
+
+            if (TIPO_IPD_PROJETO === 1) {
+                if (textoPrincipal) textoPrincipal.innerHTML = 'Nesta modalidade, o IPD considera dados das redes <strong>Instagram, Facebook e X</strong>. As variáveis são agrupadas nas dimensões analíticas <strong>Fama, Engajamento, Mobilização e Valência</strong>, com notas variando de <strong>1.00 a 4.00</strong>.';
+                if (cardVariaveis) cardVariaveis.classList.add('hidden');
+                if (numPlataformas) numPlataformas.textContent = '3';
+                if (labelPlataformas) labelPlataformas.textContent = 'Instagram • Facebook • X';
+                if (cardInteresse) cardInteresse.classList.add('hidden');
             } else {
-                cardValencia.classList.add('hidden');
-                numInteresse.textContent = '4';
+                if (textoPrincipal) textoPrincipal.innerHTML = 'O IPD é construído a partir de <strong>175 variáveis coletadas em 7 plataformas</strong> ativas no Brasil. As variáveis são agrupadas em dimensões analíticas com notas variando de <strong>1.00 a 4.00</strong>.';
+                if (cardVariaveis) cardVariaveis.classList.remove('hidden');
+                if (numPlataformas) numPlataformas.textContent = '7';
+                if (labelPlataformas) labelPlataformas.textContent = 'Plataformas';
+                if (cardInteresse) cardInteresse.classList.remove('hidden');
             }
         }
+
         const paletaCores = [
             '#0072B2', // azul
             '#E69F00', // laranja

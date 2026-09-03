@@ -1,0 +1,1099 @@
+{% extends "admin/import_export/import.html" %}
+
+{% block extrahead %}
+{{ block.super }}
+
+<style>
+
+    /* ============================================================
+       OVERLAY
+       ============================================================ */
+
+    #conteudo-import-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 999999;
+        background: rgba(0, 0, 0, 0.58);
+        align-items: center;
+        justify-content: center;
+    }
+
+    #conteudo-import-overlay.ativo {
+        display: flex;
+    }
+
+
+    /* ============================================================
+       CARD
+       ============================================================ */
+
+    .conteudo-import-box {
+        width: 460px;
+        max-width: calc(100vw - 40px);
+        padding: 34px;
+        box-sizing: border-box;
+        border-radius: 14px;
+        background: #ffffff;
+
+        box-shadow:
+            0 15px 60px
+            rgba(0, 0, 0, 0.30);
+
+        text-align: center;
+    }
+
+
+    .conteudo-import-titulo {
+        margin-bottom: 10px;
+
+        font-size: 22px;
+        font-weight: 600;
+
+        color: #333333;
+    }
+
+
+    .conteudo-import-subtitulo {
+        margin-bottom: 18px;
+
+        font-size: 13px;
+
+        color: #888888;
+    }
+
+
+    /* ============================================================
+       PORCENTAGEM
+       ============================================================ */
+
+    .conteudo-import-percentual {
+        margin-bottom: 16px;
+
+        font-size: 42px;
+        font-weight: 700;
+
+        color: #417690;
+    }
+
+
+    /* ============================================================
+       BARRA
+       ============================================================ */
+
+    .conteudo-import-barra {
+        width: 100%;
+        height: 16px;
+
+        margin-bottom: 18px;
+
+        overflow: hidden;
+
+        border-radius: 30px;
+
+        background: #e8e8e8;
+    }
+
+
+    .conteudo-import-barra-valor {
+        width: 0%;
+        height: 100%;
+
+        border-radius: 30px;
+
+        background: #417690;
+
+        transition:
+            width 0.35s ease;
+    }
+
+
+    /* ============================================================
+       TEXTOS
+       ============================================================ */
+
+    .conteudo-import-mensagem {
+        min-height: 22px;
+
+        margin-top: 6px;
+
+        font-size: 14px;
+        font-weight: 500;
+
+        color: #555555;
+    }
+
+
+    .conteudo-import-contador {
+        min-height: 20px;
+
+        margin-top: 8px;
+
+        font-size: 13px;
+
+        color: #777777;
+    }
+
+
+    .conteudo-import-aviso {
+        margin-top: 20px;
+
+        font-size: 12px;
+
+        color: #999999;
+    }
+
+
+    /* ============================================================
+       BOTÃO
+       ============================================================ */
+
+    #conteudo-import-fechar {
+        display: none;
+
+        margin: 20px auto 0;
+
+        padding: 10px 20px;
+
+        border: 0;
+        border-radius: 6px;
+
+        cursor: pointer;
+
+        background: #417690;
+
+        color: #ffffff;
+
+        font-weight: 600;
+    }
+
+
+    #conteudo-import-fechar:hover {
+        opacity: 0.9;
+    }
+
+</style>
+
+
+<script>
+
+document.addEventListener(
+    "DOMContentLoaded",
+    function () {
+
+        // ============================================================
+        // ENCONTRA O FORM DE IMPORTAÇÃO
+        // ============================================================
+
+        let importForm = null;
+
+
+        document
+            .querySelectorAll(
+                "form"
+            )
+            .forEach(
+                function (form) {
+
+                    const fileInput =
+                        form.querySelector(
+                            'input[type="file"]'
+                        );
+
+
+                    if (fileInput) {
+
+                        importForm =
+                            form;
+
+                    }
+
+                }
+            );
+
+
+        if (!importForm) {
+
+            return;
+
+        }
+
+
+        let importando =
+            false;
+
+
+        let pollingTimer =
+            null;
+
+
+        // ============================================================
+        // CRIA O OVERLAY
+        // ============================================================
+
+        const overlay =
+            document.createElement(
+                "div"
+            );
+
+
+        overlay.id =
+            "conteudo-import-overlay";
+
+
+        overlay.innerHTML = `
+
+            <div
+                class="conteudo-import-box"
+            >
+
+                <div
+                    class="conteudo-import-titulo"
+                >
+                    Importando conteúdos
+                </div>
+
+
+                <div
+                    class="conteudo-import-subtitulo"
+                >
+                    Aguarde enquanto os registros são processados
+                </div>
+
+
+                <div
+                    id="conteudo-import-percentual"
+                    class="conteudo-import-percentual"
+                >
+                    0%
+                </div>
+
+
+                <div
+                    class="conteudo-import-barra"
+                >
+
+                    <div
+                        id="conteudo-import-barra-valor"
+                        class="conteudo-import-barra-valor"
+                    >
+                    </div>
+
+                </div>
+
+
+                <div
+                    id="conteudo-import-mensagem"
+                    class="conteudo-import-mensagem"
+                >
+                    Preparando arquivo...
+                </div>
+
+
+                <div
+                    id="conteudo-import-contador"
+                    class="conteudo-import-contador"
+                >
+                </div>
+
+
+                <div
+                    class="conteudo-import-aviso"
+                >
+                    Não feche esta página durante a importação.
+                </div>
+
+
+                <button
+                    type="button"
+                    id="conteudo-import-fechar"
+                >
+                    Fechar
+                </button>
+
+            </div>
+
+        `;
+
+
+        document.body.appendChild(
+            overlay
+        );
+
+
+        // ============================================================
+        // ELEMENTOS
+        // ============================================================
+
+        const percentualEl =
+            document.getElementById(
+                "conteudo-import-percentual"
+            );
+
+
+        const barraEl =
+            document.getElementById(
+                "conteudo-import-barra-valor"
+            );
+
+
+        const mensagemEl =
+            document.getElementById(
+                "conteudo-import-mensagem"
+            );
+
+
+        const contadorEl =
+            document.getElementById(
+                "conteudo-import-contador"
+            );
+
+
+        const fecharEl =
+            document.getElementById(
+                "conteudo-import-fechar"
+            );
+
+
+        // ============================================================
+        // URLS DO ADMIN
+        // ============================================================
+
+        const progressUrl =
+            "{% url 'admin:score_conteudo_import_progress' %}";
+
+
+        const changelistUrl =
+            "{% url 'admin:score_conteudo_changelist' %}";
+
+
+        // ============================================================
+        // FORMATA NÚMEROS
+        // ============================================================
+
+        function formatarNumero(
+            numero
+        ) {
+
+            return Number(
+                numero || 0
+            ).toLocaleString(
+                "pt-BR"
+            );
+
+        }
+
+
+        // ============================================================
+        // ATUALIZA A TELA
+        // ============================================================
+
+        function atualizarTela(
+            dados
+        ) {
+
+            let percentual =
+                Number(
+                    dados.percentual
+                    || 0
+                );
+
+
+            percentual =
+                Math.max(
+                    0,
+                    Math.min(
+                        100,
+                        percentual
+                    )
+                );
+
+
+            percentualEl.textContent =
+                percentual
+                + "%";
+
+
+            barraEl.style.width =
+                percentual
+                + "%";
+
+
+            document.title =
+                "Importando conteúdos - "
+                + percentual
+                + "%";
+
+
+            if (
+                dados.mensagem
+            ) {
+
+                mensagemEl.textContent =
+                    dados.mensagem;
+
+            }
+
+
+            const processados =
+                Number(
+                    dados.processados
+                    || 0
+                );
+
+
+            const total =
+                Number(
+                    dados.total
+                    || 0
+                );
+
+
+            if (
+                total > 0
+            ) {
+
+                contadorEl.textContent =
+                    formatarNumero(
+                        processados
+                    )
+                    +
+                    " de "
+                    +
+                    formatarNumero(
+                        total
+                    )
+                    +
+                    " conteúdos";
+
+            }
+            else {
+
+                contadorEl.textContent =
+                    "";
+
+            }
+
+        }
+
+
+        // ============================================================
+        // CONSULTA PROGRESSO NO REDIS
+        // ============================================================
+
+        async function consultarProgresso(
+            jobId
+        ) {
+
+            try {
+
+                const response =
+                    await fetch(
+                        progressUrl
+                        +
+                        "?job_id="
+                        +
+                        encodeURIComponent(
+                            jobId
+                        )
+                        +
+                        "&_="
+                        +
+                        Date.now(),
+                        {
+                            method:
+                                "GET",
+
+                            credentials:
+                                "same-origin",
+
+                            cache:
+                                "no-store",
+                        }
+                    );
+
+
+                if (
+                    !response.ok
+                ) {
+
+                    return null;
+
+                }
+
+
+                const dados =
+                    await response.json();
+
+
+                atualizarTela(
+                    dados
+                );
+
+
+                return dados;
+
+            }
+            catch (
+                erro
+            ) {
+
+                console.log(
+                    "Aguardando progresso...",
+                    erro
+                );
+
+
+                return null;
+
+            }
+
+        }
+
+
+        // ============================================================
+        // DESABILITA BOTÕES
+        // ============================================================
+
+        function desabilitarBotoes() {
+
+            importForm
+                .querySelectorAll(
+                    'button[type="submit"],'
+                    +
+                    'input[type="submit"]'
+                )
+                .forEach(
+                    function (botao) {
+
+                        botao.disabled =
+                            true;
+
+                    }
+                );
+
+        }
+
+
+        // ============================================================
+        // HABILITA BOTÕES
+        // ============================================================
+
+        function habilitarBotoes() {
+
+            importForm
+                .querySelectorAll(
+                    'button[type="submit"],'
+                    +
+                    'input[type="submit"]'
+                )
+                .forEach(
+                    function (botao) {
+
+                        botao.disabled =
+                            false;
+
+                    }
+                );
+
+        }
+
+
+        // ============================================================
+        // FECHAR EM CASO DE ERRO
+        // ============================================================
+
+        fecharEl.addEventListener(
+            "click",
+            function () {
+
+                overlay
+                    .classList
+                    .remove(
+                        "ativo"
+                    );
+
+
+                fecharEl.style.display =
+                    "none";
+
+
+                habilitarBotoes();
+
+
+                importando =
+                    false;
+
+
+                document.title =
+                    "Importar conteúdos";
+
+            }
+        );
+
+
+        // ============================================================
+        // SUBMIT
+        // ============================================================
+
+        importForm.addEventListener(
+            "submit",
+            async function (
+                event
+            ) {
+
+                // ----------------------------------------------------
+                // NÃO DEIXA O NAVEGADOR TROCAR DE PÁGINA
+                // ----------------------------------------------------
+
+                event.preventDefault();
+
+
+                if (
+                    importando
+                ) {
+
+                    return;
+
+                }
+
+
+                importando =
+                    true;
+
+
+                // ====================================================
+                // GERA JOB ID
+                // ====================================================
+
+                let jobId;
+
+
+                if (
+                    window.crypto
+                    &&
+                    typeof crypto.randomUUID
+                        === "function"
+                ) {
+
+                    jobId =
+                        crypto.randomUUID();
+
+                }
+                else {
+
+                    jobId =
+                        Date.now()
+                        +
+                        "-"
+                        +
+                        Math.random()
+                            .toString(
+                                36
+                            )
+                            .substring(
+                                2
+                            );
+
+                }
+
+
+                // ====================================================
+                // ADICIONA JOB ID AO FORM
+                // ====================================================
+
+                let jobInput =
+                    importForm.querySelector(
+                        'input[name="import_job_id"]'
+                    );
+
+
+                if (
+                    !jobInput
+                ) {
+
+                    jobInput =
+                        document.createElement(
+                            "input"
+                        );
+
+
+                    jobInput.type =
+                        "hidden";
+
+
+                    jobInput.name =
+                        "import_job_id";
+
+
+                    importForm.appendChild(
+                        jobInput
+                    );
+
+                }
+
+
+                jobInput.value =
+                    jobId;
+
+
+                // ====================================================
+                // FORM DATA
+                // ====================================================
+
+                const formData =
+                    new FormData(
+                        importForm
+                    );
+
+
+                // ====================================================
+                // MOSTRA OVERLAY
+                // ====================================================
+
+                overlay
+                    .classList
+                    .add(
+                        "ativo"
+                    );
+
+
+                fecharEl.style.display =
+                    "none";
+
+
+                atualizarTela({
+                    percentual: 0,
+
+                    processados: 0,
+
+                    total: 0,
+
+                    mensagem:
+                        "Enviando arquivo...",
+                });
+
+
+                desabilitarBotoes();
+
+
+                // ====================================================
+                // POLLING
+                // ====================================================
+
+                pollingTimer =
+                    setInterval(
+                        function () {
+
+                            consultarProgresso(
+                                jobId
+                            );
+
+                        },
+
+                        // Não precisa consultar Redis
+                        // dezenas de vezes por segundo.
+                        700
+                    );
+
+
+                // Primeira consulta imediatamente.
+                consultarProgresso(
+                    jobId
+                );
+
+
+                try {
+
+                    // =================================================
+                    // ENVIA IMPORTAÇÃO
+                    // =================================================
+
+                    const response =
+                        await fetch(
+                            importForm.action
+                            ||
+                            window.location.href,
+                            {
+                                method:
+                                    "POST",
+
+                                body:
+                                    formData,
+
+                                credentials:
+                                    "same-origin",
+
+                                redirect:
+                                    "follow",
+                            }
+                        );
+
+
+                    // =================================================
+                    // POST TERMINOU
+                    // =================================================
+
+                    clearInterval(
+                        pollingTimer
+                    );
+
+
+                    // Faz uma última leitura do Redis.
+                    const dadosFinais =
+                        await consultarProgresso(
+                            jobId
+                        );
+
+
+                    // =================================================
+                    // ERRO HTTP
+                    // =================================================
+
+                    if (
+                        !response.ok
+                    ) {
+
+                        atualizarTela({
+
+                            percentual:
+                                dadosFinais
+                                    ?.percentual
+                                || 0,
+
+                            processados:
+                                dadosFinais
+                                    ?.processados
+                                || 0,
+
+                            total:
+                                dadosFinais
+                                    ?.total
+                                || 0,
+
+                            mensagem:
+                                dadosFinais
+                                    ?.mensagem
+                                ||
+                                (
+                                    "Erro durante "
+                                    +
+                                    "a importação."
+                                ),
+                        });
+
+
+                        fecharEl.style.display =
+                            "block";
+
+
+                        habilitarBotoes();
+
+
+                        importando =
+                            false;
+
+
+                        return;
+
+                    }
+
+
+                    // =================================================
+                    // ERRO REGISTRADO PELO BACKEND
+                    // =================================================
+
+                    if (
+                        dadosFinais
+                        &&
+                        dadosFinais.status
+                            === "erro"
+                    ) {
+
+                        atualizarTela(
+                            dadosFinais
+                        );
+
+
+                        fecharEl.style.display =
+                            "block";
+
+
+                        habilitarBotoes();
+
+
+                        importando =
+                            false;
+
+
+                        return;
+
+                    }
+
+
+                    // =================================================
+                    // IMPORTAÇÃO TERMINOU COM ERROS EM LINHAS
+                    // =================================================
+
+                    if (
+                        dadosFinais
+                        &&
+                        dadosFinais.status
+                            === "concluido_com_erros"
+                    ) {
+
+                        atualizarTela(
+                            dadosFinais
+                        );
+
+
+                        fecharEl.style.display =
+                            "block";
+
+
+                        habilitarBotoes();
+
+
+                        importando =
+                            false;
+
+
+                        return;
+
+                    }
+
+
+                    // =================================================
+                    // SUCESSO
+                    // =================================================
+
+                    atualizarTela({
+
+                        percentual:
+                            100,
+
+                        processados:
+                            dadosFinais
+                                ?.total
+                            || 0,
+
+                        total:
+                            dadosFinais
+                                ?.total
+                            || 0,
+
+                        mensagem:
+                            "Importação concluída com sucesso.",
+                    });
+
+
+                    // =================================================
+                    // MOSTRA 100% ANTES DE SAIR
+                    // =================================================
+
+                    setTimeout(
+                        function () {
+
+                            /*
+                            O fetch do django-import-export
+                            normalmente segue o redirect.
+
+                            Se existir uma URL final válida,
+                            usamos ela.
+
+                            Caso contrário,
+                            voltamos para a listagem.
+                            */
+
+                            if (
+                                response.redirected
+                                &&
+                                response.url
+                            ) {
+
+                                window.location.href =
+                                    response.url;
+
+                            }
+                            else {
+
+                                window.location.href =
+                                    changelistUrl;
+
+                            }
+
+                        },
+
+                        900
+                    );
+
+                }
+                catch (
+                    erro
+                ) {
+
+                    // =================================================
+                    // ERRO DE REDE / FETCH
+                    // =================================================
+
+                    clearInterval(
+                        pollingTimer
+                    );
+
+
+                    const dados =
+                        await consultarProgresso(
+                            jobId
+                        );
+
+
+                    atualizarTela({
+
+                        percentual:
+                            dados
+                                ?.percentual
+                            || 0,
+
+                        processados:
+                            dados
+                                ?.processados
+                            || 0,
+
+                        total:
+                            dados
+                                ?.total
+                            || 0,
+
+                        mensagem:
+                            dados
+                                ?.mensagem
+                            ||
+                            (
+                                "Não foi possível "
+                                +
+                                "concluir a importação."
+                            ),
+                    });
+
+
+                    fecharEl.style.display =
+                        "block";
+
+
+                    habilitarBotoes();
+
+
+                    importando =
+                        false;
+
+                }
+
+            }
+        );
+
+    }
+);
+
+</script>
+
+{% endblock %}
