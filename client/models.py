@@ -20,9 +20,18 @@ class ProjetoIPD(models.Model):
 
 
 class ProjetoCliente(models.Model):
+    TIPO_IPD_CHOICES = [
+        (1, "Tipo 1"),
+        (2, "Tipo 2"),
+    ]
+
     nome = models.CharField(max_length=200)
     slug = models.SlugField(max_length=250, unique=True, blank=True)
     descricao = models.TextField(blank=True, null=True)
+    tipo_ipd = models.PositiveSmallIntegerField(
+        choices=TIPO_IPD_CHOICES,
+        default=1,
+    )
     cliente = models.CharField(max_length=200)
     projetos_ipd = models.ManyToManyField(
         ProjetoIPD, 

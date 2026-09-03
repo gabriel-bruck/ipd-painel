@@ -7,7 +7,7 @@ from .models import ProjetoIPD, ProjetoCliente
 
 @admin.register(ProjetoCliente)
 class ProjetoClienteAdmin(admin.ModelAdmin):
-    list_display = ('id','nome', 'cliente', 'descricao')
+    list_display = ('id','nome', 'cliente', 'descricao', 'tipo_ipd')
     prepopulated_fields = {'slug': ('nome',)}
     search_fields = ('nome', 'cliente')
     filter_horizontal = ('projetos_ipd',)
