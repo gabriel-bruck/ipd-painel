@@ -1,14 +1,8 @@
-
 from django.db import models
 from django.contrib.auth.models import User
 
 class ProjetoIPD(models.Model):
     nome = models.CharField(max_length=200)
-   
-    profiles_usados = models.JSONField(
-        default=list, 
-        help_text="Lista de perfis/handles monitorados neste IPD"
-    )
 
     class Meta:
         db_table = 'projeto_ipd'
@@ -34,10 +28,12 @@ class ProjetoCliente(models.Model):
     )
     cliente = models.CharField(max_length=200)
     projetos_ipd = models.ManyToManyField(
-        ProjetoIPD, 
-        related_name='projetos_cliente', 
-        blank=True
-    )
+    ProjetoIPD, 
+    through='ProjetoClienteIPD',
+    related_name='projetos_cliente', 
+    blank=True
+)
+    
 
     class Meta:
         db_table = 'projeto_cliente'
@@ -48,3 +44,17 @@ class ProjetoCliente(models.Model):
         return f"{self.cliente} - {self.nome}"
 
 
+class ProjetoClienteIPD(models.Model):
+    projeto_cliente = models.ForeignKey(ProjetoCliente, on_delete=models.CASCADE)
+    projeto_ipd = models.ForeignKey(ProjetoIPD, on_delete=models.CASCADE)
+    profiles_usados = models.JSONField(
+        default=list, 
+        help_text="Lista de perfis monitorados para este IPD neste cliente específico"
+    )
+
+    class Meta:
+        db_table = 'projeto_cliente_ipd'
+        unique_together = ('projeto_cliente', 'projeto_ipd')
+
+    def __str__(self):
+        return f"{self.projeto_cliente.nome} -> {self.projeto_ipd.nome}"

@@ -17,7 +17,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from client.models import ProjetoCliente, ProjetoIPD
+from client.models import ProjetoCliente, ProjetoIPD, ProjetoClienteIPD
 from score.models import IPD, Conteudo
 from .services import (
     extrair_insumo_mes,
@@ -44,67 +44,42 @@ def usuario_tem_acesso_ao_projeto(user, projeto_cliente):
 # ==============================================================================
 # 1. API VIEW: PROFILES DO PROJETO
 # ==============================================================================
-
 class ProjetoProfilesAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
-    # 1 hora
-    CACHE_TIMEOUT =604800
-
-    # Versão da chave.
-    # Se futuramente mudar a estrutura do payload,
-    # basta trocar v1 para v2.
-    CACHE_VERSION = "v1"
-
+    CACHE_TIMEOUT = 604800
+    # Alterado para v2 para invalidar o cache antigo dos 19 perfis no Redis
+    CACHE_VERSION = "v2" 
 
     def _get_cache_key(self, projeto_id):
-        """
-        Uma chave diferente para cada ProjetoCliente.
-
-        Exemplo:
-        projeto_profiles:v1:projeto:15
-        """
         return (
             f"projeto_profiles:"
             f"{self.CACHE_VERSION}:"
             f"projeto:{projeto_id}"
         )
 
+    def _processar_medicoes_ipd(self, vinculo):
+        ipd = vinculo.projeto_ipd
+        # Pega a lista do vinculo específico deste cliente
+        profiles_usados = vinculo.profiles_usados or []
 
-    def _processar_medicoes_ipd(self, ipd):
-
+        # FILTRO CRÍTICO: Busca no banco APENAS as medições dos perfis selecionados
         medicoes = IPD.objects.filter(
-            projeto_ipd=ipd
+            projeto_ipd=ipd,
+            profile__in=profiles_usados
         )
 
-        # ==============================================================
-        # MÉDIA GERAL
-        # ==============================================================
-
+        # Média geral apenas dos perfis selecionados
         media_geral = (
-            medicoes.aggregate(
-                media=Avg("ipd")
-            )["media"]
-            or 0.00
+            medicoes.aggregate(media=Avg("ipd"))["media"] or 0.00
         )
 
-
-        # ==============================================================
-        # DIÁRIO
-        # ==============================================================
-
+        # Diário
         diarios = (
             medicoes
-            .values(
-                "profile",
-                "data"
-            )
+            .values("profile", "data")
             .annotate(
-                data_str=Cast(
-                    "data",
-                    CharField()
-                ),
-
+                data_str=Cast("data", CharField()),
                 media_ipd=Avg("ipd"),
                 media_fama=Avg("fama"),
                 media_engaj=Avg("engaj"),
@@ -112,26 +87,14 @@ class ProjetoProfilesAPIView(APIView):
                 media_mob=Avg("mob"),
                 media_interesse=Avg("interesse"),
             )
-            .order_by(
-                "profile",
-                "-data"
-            )
+            .order_by("profile", "-data")
         )
 
-
-        # ==============================================================
-        # SEMANAL
-        # ==============================================================
-
+        # Semanal
         semanais = (
             medicoes
-            .annotate(
-                semana=TruncWeek("data")
-            )
-            .values(
-                "profile",
-                "semana"
-            )
+            .annotate(semana=TruncWeek("data"))
+            .values("profile", "semana")
             .annotate(
                 media_ipd=Avg("ipd"),
                 media_fama=Avg("fama"),
@@ -140,26 +103,14 @@ class ProjetoProfilesAPIView(APIView):
                 media_mob=Avg("mob"),
                 media_interesse=Avg("interesse"),
             )
-            .order_by(
-                "profile",
-                "-semana"
-            )
+            .order_by("profile", "-semana")
         )
 
-
-        # ==============================================================
-        # MENSAL
-        # ==============================================================
-
+        # Mensal
         mensais = (
             medicoes
-            .annotate(
-                mes=TruncMonth("data")
-            )
-            .values(
-                "profile",
-                "mes"
-            )
+            .annotate(mes=TruncMonth("data"))
+            .values("profile", "mes")
             .annotate(
                 media_ipd=Avg("ipd"),
                 media_fama=Avg("fama"),
@@ -168,204 +119,79 @@ class ProjetoProfilesAPIView(APIView):
                 media_mob=Avg("mob"),
                 media_interesse=Avg("interesse"),
             )
-            .order_by(
-                "profile",
-                "-mes"
-            )
+            .order_by("profile", "-mes")
         )
-
-
-        # ==============================================================
-        # PROFILES
-        # ==============================================================
-
-        profiles_usados = (
-            ipd.profiles_usados
-            if hasattr(ipd, "profiles_usados")
-            else list(
-                medicoes
-                .values_list(
-                    "profile",
-                    flat=True
-                )
-                .distinct()
-            )
-        )
-
-
-        # ==============================================================
-        # RESULTADO
-        # ==============================================================
 
         return {
             "ipd_id": ipd.id,
             "ipd_nome": ipd.nome,
-
             "profiles_usados": profiles_usados,
-
-            "ipd_media": round(
-                media_geral,
-                2
-            ),
-
-            "medias_diarias": list(
-                diarios
-            ),
-
-            "medias_semanais": list(
-                semanais
-            ),
-
-            "medias_mensais": list(
-                mensais
-            ),
+            "ipd_media": round(media_geral, 2),
+            "medias_diarias": list(diarios),
+            "medias_semanais": list(semanais),
+            "medias_mensais": list(mensais),
         }
 
-
     def get(self, request, projeto_id):
+        # 1. Projeto
+        projeto = get_object_or_404(ProjetoCliente, pk=projeto_id)
 
-        # ==============================================================
-        # 1. PROJETO
-        # ==============================================================
-
-        projeto = get_object_or_404(
-            ProjetoCliente,
-            pk=projeto_id
-        )
-
-
-        # ==============================================================
-        # 2. PERMISSÃO
-        #
-        # IMPORTANTE:
-        # verificamos permissão ANTES de retornar o Redis.
-        # ==============================================================
-
-        if not usuario_tem_acesso_ao_projeto(
-            request.user,
-            projeto
-        ):
+        # 2. Permissão
+        if not usuario_tem_acesso_ao_projeto(request.user, projeto):
             return Response(
-                {
-                    "error":
-                    "Você não tem permissão para acessar "
-                    "os dados deste projeto."
-                },
+                {"error": "Você não tem permissão para acessar os dados deste projeto."},
                 status=status.HTTP_403_FORBIDDEN,
             )
 
-
-        # ==============================================================
-        # 3. PROCURA NO REDIS
-        # ==============================================================
-
-        cache_key = self._get_cache_key(
-            projeto.id
-        )
-
-        payload_cache = cache.get(
-            cache_key
-        )
-
-
-        # ==============================================================
-        # 4. CACHE HIT
-        #
-        # Se encontrou, não executamos as agregações de IPD.
-        # ==============================================================
+        # 3. Procura no Redis
+        cache_key = self._get_cache_key(projeto.id)
+        payload_cache = cache.get(cache_key)
 
         if payload_cache is not None:
-
             return Response(
                 payload_cache,
                 status=status.HTTP_200_OK,
-                headers={
-                    "X-Cache": "HIT"
-                }
+                headers={"X-Cache": "HIT"}
             )
 
+        # 4. Busca os vínculos através da tabela intermediária ProjetoClienteIPD
+        vinculos = ProjetoClienteIPD.objects.filter(
+            projeto_cliente=projeto
+        ).select_related("projeto_ipd")
 
-        # ==============================================================
-        # 5. CACHE MISS
-        #
-        # Agora sim vamos ao PostgreSQL.
-        # ==============================================================
-
-        projetos_ipd = (
-            ProjetoIPD.objects
-            .filter(
-                projetos_cliente=projeto
-            )
-        )
-
-        total_ipds = projetos_ipd.count()
-
+        total_ipds = vinculos.count()
 
         if total_ipds == 0:
-
             return Response(
-                {
-                    "error":
-                    "Nenhum IPD encontrado para este projeto."
-                },
+                {"error": "Nenhum IPD encontrado para este projeto."},
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-
-        # ==============================================================
-        # 6. MONTA PAYLOAD
-        # ==============================================================
-
+        # 5. Monta o Payload chamando a função com o 'vinculo'
         if total_ipds == 1:
-
-            dados_ipd = (
-                self._processar_medicoes_ipd(
-                    projetos_ipd.first()
-                )
-            )
-
+            dados_ipd = self._processar_medicoes_ipd(vinculos.first())
             payload = {
                 "total_ipds": 1,
                 **dados_ipd,
             }
-
         else:
-
             lista_ipds = [
-                self._processar_medicoes_ipd(ipd)
-                for ipd in projetos_ipd
+                self._processar_medicoes_ipd(vinculo)
+                for vinculo in vinculos
             ]
-
             payload = {
                 "total_ipds": total_ipds,
                 "projeto_id": projeto.id,
                 "ipds": lista_ipds,
             }
 
-
-        # ==============================================================
-        # 7. SALVA NO REDIS
-        #
-        # 3600 segundos = 1 hora
-        # ==============================================================
-
-        cache.set(
-            cache_key,
-            payload,
-            timeout=self.CACHE_TIMEOUT
-        )
-
-
-        # ==============================================================
-        # 8. RETORNA
-        # ==============================================================
+        # 6. Salva no Redis
+        cache.set(cache_key, payload, timeout=self.CACHE_TIMEOUT)
 
         return Response(
             payload,
             status=status.HTTP_200_OK,
-            headers={
-                "X-Cache": "MISS"
-            }
+            headers={"X-Cache": "MISS"}
         )
 import hashlib
 

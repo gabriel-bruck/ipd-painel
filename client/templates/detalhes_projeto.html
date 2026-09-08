@@ -593,34 +593,137 @@
         }
 
         function resolverDimensoesProjetoIPD(ipdObj) {
-            const listaExplicita = ipdObj?.dimensoes_usadas
-                || ipdObj?.dimensoes_ipd
-                || ipdObj?.dimensoes
-                || ipdObj?.projeto_ipd?.dimensoes_usadas;
 
-            if (Array.isArray(listaExplicita) && listaExplicita.length > 0) {
-                const chaves = new Set(listaExplicita.map(item =>
-                    normalizarChaveDimensao(typeof item === 'object' ? (item.key || item.nome || item.label) : item)
-                ));
+    // ============================================================
+    // TIPO DO IPD
+    // ============================================================
+    //
+    // Projeto tipo 1 tem prioridade absoluta.
+    //
+    // Tipo 1:
+    // Fama
+    // Engajamento
+    // Mobilização
+    // Valência
+    //
+    // Interesse NÃO deve aparecer.
+    // ============================================================
 
-                const dimensoesExplicitas = CATALOGO_DIMENSOES_IPD.filter(dim =>
-                    chaves.has(normalizarChaveDimensao(dim.key))
-                    || chaves.has(normalizarChaveDimensao(dim.label))
-                    || dim.aliases.some(alias => chaves.has(normalizarChaveDimensao(alias)))
-                );
-                if (dimensoesExplicitas.length > 0) {
-                    return TIPO_IPD_PROJETO === 1
-                        ? dimensoesExplicitas.filter(dim => dim.key !== 'interesse')
-                        : dimensoesExplicitas;
-                }
-            }
+    const tipoDetectado =
+        obterTipoIPD(ipdObj);
 
-            const tipoIPD = obterTipoIPD(ipdObj);
-            if (tipoIPD === 1) {
-                return CATALOGO_DIMENSOES_IPD.filter(dim => dim.key !== 'valencia');
-            }
-            return [...CATALOGO_DIMENSOES_IPD];
-        }
+    const tipoIPD =
+        TIPO_IPD_PROJETO === 1
+            ? 1
+            : (
+                tipoDetectado
+                || TIPO_IPD_PROJETO
+                || 2
+            );
+
+
+    // ============================================================
+    // DIMENSÕES EXPLICITAMENTE ENVIADAS PELA API
+    // ============================================================
+
+    const listaExplicita =
+        ipdObj?.dimensoes_usadas
+        || ipdObj?.dimensoes_ipd
+        || ipdObj?.dimensoes
+        || ipdObj?.projeto_ipd?.dimensoes_usadas;
+
+
+    let dimensoes;
+
+
+    if (
+        Array.isArray(listaExplicita)
+        &&
+        listaExplicita.length > 0
+    ) {
+
+        const chaves =
+            new Set(
+                listaExplicita.map(
+                    item =>
+                        normalizarChaveDimensao(
+                            typeof item === 'object'
+                                ? (
+                                    item.key
+                                    || item.nome
+                                    || item.label
+                                )
+                                : item
+                        )
+                )
+            );
+
+
+        dimensoes =
+            CATALOGO_DIMENSOES_IPD.filter(
+                dim =>
+
+                    chaves.has(
+                        normalizarChaveDimensao(
+                            dim.key
+                        )
+                    )
+
+                    ||
+
+                    chaves.has(
+                        normalizarChaveDimensao(
+                            dim.label
+                        )
+                    )
+
+                    ||
+
+                    dim.aliases.some(
+                        alias =>
+                            chaves.has(
+                                normalizarChaveDimensao(
+                                    alias
+                                )
+                            )
+                    )
+            );
+
+    }
+    else {
+
+        dimensoes =
+            [...CATALOGO_DIMENSOES_IPD];
+
+    }
+
+
+    // ============================================================
+    // REGRA ABSOLUTA DO IPD 1
+    // ============================================================
+    //
+    // Mesmo que:
+    //
+    // - API envie Interesse
+    // - exista valor no banco
+    // - exista valor no objeto JS
+    //
+    // Interesse NÃO entra nas dimensões visuais.
+    // ============================================================
+
+    if (tipoIPD === 1) {
+
+        dimensoes =
+            dimensoes.filter(
+                dim =>
+                    dim.key !== 'interesse'
+            );
+
+    }
+
+
+    return dimensoes;
+}
 
         function obterDimensoesIPD() {
             return [...(dimensoesProjetoIPD || CATALOGO_DIMENSOES_IPD)];
@@ -6130,7 +6233,10 @@ function toggleComparacaoRanking(ipdId) {
                 const ipdId = ipdObj.ipd_id || index;
                 const nomeIpd = ipdObj.ipd_nome || ipdObj.nome || ipdObj.titulo || `IPD #${ipdId}`;
                 const mediaGeral = ipdObj.ipd_media || '0.00';
-                const dimensoesModulo = obterDimensoesIPD();
+                const dimensoesModulo =
+    resolverDimensoesProjetoIPD(
+        ipdObj
+    );
                 const nomesDimensoesModulo = dimensoesModulo.map(dim => dim.label).join(', ');
                 
                 const profiles = (ipdObj.profiles_usados || []).sort((a, b) => a.localeCompare(b, 'pt-BR'));
@@ -7371,7 +7477,10 @@ function toggleComparacaoRanking(ipdId) {
 
             stateIPDs[ipdId] = {
                 ipdObj: ipdObj,
-                dimensoesAtivas: obterDimensoesIPD(),
+                dimensoesAtivas:
+    resolverDimensoesProjetoIPD(
+        ipdObj
+    ),
                 rawDiarias: rawDiarias,
                 modoTemporal: 'mes',
                 periodoPersonalizado: null,

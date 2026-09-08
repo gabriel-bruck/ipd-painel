@@ -1,43 +1,48 @@
 from django.shortcuts import render, get_object_or_404,redirect
-from django.http import Http404
 from .models import ProjetoIPD, ProjetoCliente
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
+from django.http import Http404, JsonResponse
 from django.contrib import messages
 # Exemplo se você tiver um Model no Django:
 # from .models import Projeto
 
 @login_required(login_url='home')
-def detalhe_projeto_view(request, slug):
-    """
-    View responsável por renderizar a página e o relatório do projeto.
-    Garante que APENAS usuários autorizados consigam visualizar o conteúdo.
-    """
-    # 1. Busca o projeto pelo slug
-    projeto = get_object_or_404(ProjetoCliente, slug=slug)
+def detalhe_projeto_view(request, slug, json_response=False):
+    projeto = get_object_or_404(
+        ProjetoCliente.objects.prefetch_related('projetoclienteipd_set__projeto_ipd'), 
+        slug=slug
+    )
     
-    # 2. VERIFICAÇÃO DE SEGURANÇA: O usuário logado possui permissão para este projeto?
     tem_permissao = (
         request.user.is_superuser or 
         request.user.is_staff or 
         projeto.usuarios_autorizados.filter(user=request.user).exists()
     )
     
-    # 3. Se NÃO tiver acesso, bloqueia a exibição
     if not tem_permissao:
+        if json_response:
+            return JsonResponse({'error': 'Acesso não autorizado.'}, status=403)
         messages.error(request, 'Você não possui permissão para acessar este projeto.')
-        # Redireciona de volta para a lista de projetos permitidos
         return redirect('meus_projetos')
-        
-        # OU se preferir exibir uma página padrão do Django de "Acesso Negado (403)":
-        # raise PermissionDenied("Acesso não autorizado a este projeto.")
 
-    # 4. Se tiver acesso, renderiza o template normalmente
+    # Se a requisição for da API de perfis, devolve JSON direto
+    if json_response or request.headers.get('Accept') == 'application/json':
+        vinculos = projeto.projetoclienteipd_set.all()
+        ipds_json = [
+            {
+                'ipd_id': vinculo.projeto_ipd.id,
+                'ipd_nome': vinculo.projeto_ipd.nome,
+                'profiles_usados': vinculo.profiles_usados,
+            }
+            for vinculo in vinculos
+        ]
+        return JsonResponse({'ipds': ipds_json})
+
     context = {
         'projeto': projeto,
     }
     return render(request, 'detalhes_projeto.html', context)
-
 
 from django.views.generic import TemplateView
 
@@ -66,18 +71,12 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from .models import ProjetoCliente
 
 class MeusProjetosView(LoginRequiredMixin, ListView):
-    """
-    Lista os Projetos Clientes aos quais o usuário logado possui permissão,
-    utilizando a model PermissoesUsuario.
-    """
     model = ProjetoCliente
     template_name = 'meus_projetos.html'
     context_object_name = 'projetos'
-    login_url = '/'  # Redireciona para a Home se estiver deslogado
+    login_url = '/'
 
     def get_queryset(self):
-        # O filtro acessa a relação 'usuarios_autorizados' (PermissoesUsuario)
-        # buscando onde o usuário da permissão é o usuário logado
         return ProjetoCliente.objects.filter(
             usuarios_autorizados__user=self.request.user
-        ).distinct().prefetch_related('projetos_ipd')
+        ).distinct().prefetch_related('projetoclienteipd_set__projeto_ipd')
