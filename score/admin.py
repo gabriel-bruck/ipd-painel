@@ -1,68 +1,62 @@
-from datetime import datetime
+from datetime import datetime, date, timedelta, time
 import hashlib
-from django.contrib import admin
-from django.urls import path
-from django.http import JsonResponse
-from django.core.cache import cache
+from decimal import Decimal, InvalidOperation
+import re
+import traceback
 
+from django import forms
+from django.contrib import admin, messages
+from django.contrib.admin.actions import delete_selected
+from django.contrib.admin.views.main import ChangeList
+from django.core.cache import cache
+from django.core.exceptions import PermissionDenied, ValidationError
+from django.db import transaction, models
+from django.http import JsonResponse, HttpResponseRedirect
+from django.template import engines
+from django.template.response import TemplateResponse
+from django.urls import path, reverse
+from django.utils import timezone
+from django.conf import settings
+from django.utils.safestring import mark_safe
+
+from tablib import Dataset
 from import_export import resources, fields
 from import_export.admin import ImportExportModelAdmin
-
-from .models import IPD, Conteudo, ResumoExecutivo
-from client.models import ProjetoIPD, ProjetoCliente
-from django.contrib.admin.views.main import ChangeList
-
-
+from import_export.forms import ImportForm, ConfirmImportForm
 from import_export.widgets import (
     ForeignKeyWidget,
     ManyToManyWidget,
     IntegerWidget,
 )
+
+from .models import IPD, Conteudo, ResumoExecutivo
+from client.models import ProjetoIPD, ProjetoCliente, ProjetoClienteIPD
+
+
+# =============================================================================
+# WIDGETS
+# =============================================================================
+
 class SmartForeignKeyWidget(ForeignKeyWidget):
-    """
-    Aceita tanto ID numérico quanto nome do projeto.
-    """
-
+    """Aceita tanto ID numérico quanto nome do projeto."""
     def clean(self, value, row=None, *args, **kwargs):
-
         if not value:
             return None
-
         val_str = str(value).strip()
-
         if val_str.isdigit():
-            return self.model.objects.filter(
-                pk=int(val_str)
-            ).first()
-
-        return self.model.objects.filter(
-            nome__iexact=val_str
-        ).first()
+            return self.model.objects.filter(pk=int(val_str)).first()
+        return self.model.objects.filter(nome__iexact=val_str).first()
 
 
 class SmartManyToManyWidget(ManyToManyWidget):
-    """
-    Aceita IDs ou nomes separados por vírgula ou ponto e vírgula.
-
-    Exemplos:
-
-        1
-        1,2
-        1;2
-        Streaming
-        Streaming,Itaú
-    """
-
+    """Aceita IDs ou nomes separados por vírgula ou ponto e vírgula."""
     def clean(self, value, row=None, *args, **kwargs):
-
         if not value:
             return self.model.objects.none()
 
         raw_values = [
             valor.strip()
-            for valor in str(value)
-            .replace(';', ',')
-            .split(',')
+            for valor in str(value).replace(';', ',').split(',')
             if valor.strip()
         ]
 
@@ -70,37 +64,24 @@ class SmartManyToManyWidget(ManyToManyWidget):
         names = []
 
         for valor in raw_values:
-
             if valor.isdigit():
-                pks.append(
-                    int(valor)
-                )
-
+                pks.append(int(valor))
             else:
-                names.append(
-                    valor
-                )
+                names.append(valor)
 
         qs_pk = (
-            self.model.objects.filter(
-                pk__in=pks
-            )
+            self.model.objects.filter(pk__in=pks)
             if pks
             else self.model.objects.none()
         )
 
         qs_name = (
-            self.model.objects.filter(
-                nome__in=names
-            )
+            self.model.objects.filter(nome__in=names)
             if names
             else self.model.objects.none()
         )
 
-        return (
-            qs_pk |
-            qs_name
-        ).distinct()
+        return (qs_pk | qs_name).distinct()
 
 
 # =============================================================================
@@ -108,87 +89,55 @@ class SmartManyToManyWidget(ManyToManyWidget):
 # =============================================================================
 
 def normalizar_data_importacao(valor):
+    """Normaliza datas vindas de CSV/Excel.
+    Ignora horas e formata obrigatoriamente para YYYY-MM-DD.
     """
-    Normaliza datas vindas de CSV/Excel.
-
-    Aceita, por exemplo:
-
-        datetime
-        2026-09-03
-        2026-09-03 00:00:00
-        03/09/2026
-
-    Retorna:
-
-        2026-09-03
-    """
-
     if not valor:
         return valor
 
-    if isinstance(valor, datetime):
-        return valor.strftime(
-            '%Y-%m-%d'
-        )
+    if isinstance(valor, (datetime, date)):
+        return valor.strftime('%Y-%m-%d')
 
-    data_str = str(
-        valor
-    ).strip()
+    data_str = str(valor).strip()
 
     if ' ' in data_str:
-        data_str = data_str.split(
-            ' '
-        )[0]
+        data_str = data_str.split(' ')[0]
+    elif 'T' in data_str:
+        data_str = data_str.split('T')[0]
 
-    if '/' in data_str:
+    data_str = data_str.replace('/', '-')
 
-        partes = data_str.split(
-            '/'
-        )
-
+    if '-' in data_str:
+        partes = data_str.split('-')
         if len(partes) == 3:
-
-            data_str = (
-                f"{partes[2]}-"
-                f"{partes[1]}-"
-                f"{partes[0]}"
-            )
+            if len(partes[2]) == 4:
+                data_str = f"{partes[2]}-{partes[1].zfill(2)}-{partes[0].zfill(2)}"
+            elif len(partes[0]) == 4:
+                data_str = f"{partes[0]}-{partes[1].zfill(2)}-{partes[2].zfill(2)}"
 
     return data_str
 
 
 # =============================================================================
-# IPD
-# =============================================================================
-# =============================================================================
-# IPD
+# IPD RESOURCE
 # =============================================================================
 
 class IPDResource(resources.ModelResource):
 
-    # =========================================================================
-    # CAMPOS
-    # =========================================================================
-
-    # Hash é interno.
-    # Não precisa existir no Excel.
     hash_indice = fields.Field(
         column_name='hash_indice',
         attribute='hash_indice',
         readonly=True,
     )
 
-    # O arquivo sempre contém o ID real do ProjetoIPD.
     projeto_ipd = fields.Field(
-    column_name='projeto_ipd',
-    attribute='projeto_ipd_id',
-    widget=IntegerWidget(),
-)
-
+        column_name='projeto_ipd',
+        attribute='projeto_ipd_id',
+        widget=IntegerWidget(),
+    )
 
     class Meta:
         model = IPD
-
         fields = (
             'hash_indice',
             'projeto_ipd',
@@ -201,63 +150,30 @@ class IPDResource(resources.ModelResource):
             'ipd',
             'data',
         )
-
-        # Chave lógica da medição.
         import_id_fields = (
             'projeto_ipd',
             'profile',
             'data',
         )
-
         ignore_unknown_fields = True
-
-        # Importação em lote.
         use_bulk = True
         batch_size = 1000
-
         skip_diff = True
         skip_unchanged = False
         report_skipped = False
         store_instance = False
 
-
-    # =========================================================================
-    # PROGRESSO
-    # =========================================================================
-
     def _progress_key(self):
-        """
-        Chave única no Redis por usuário + importação.
-        """
-
-        request = getattr(
-            self,
-            '_progress_request',
-            None,
-        )
-
-        job_id = getattr(
-            self,
-            '_progress_job_id',
-            None,
-        )
+        request = getattr(self, '_progress_request', None)
+        job_id = getattr(self, '_progress_job_id', None)
 
         if not request or not job_id:
             return None
 
-        if not getattr(
-            request,
-            'user',
-            None,
-        ):
+        if not getattr(request, 'user', None):
             return None
 
-        return (
-            f"ipd_import_progress:"
-            f"{request.user.pk}:"
-            f"{job_id}"
-        )
-
+        return f"ipd_import_progress:{request.user.pk}:{job_id}"
 
     def _salvar_progresso(
         self,
@@ -266,54 +182,23 @@ class IPDResource(resources.ModelResource):
         percentual=None,
         mensagem=None,
     ):
-        """
-        Salva o progresso no Redis.
-
-        Falha do Redis não pode derrubar a importação.
-        """
-
         chave = self._progress_key()
-
         if not chave:
             return
 
-        total = getattr(
-            self,
-            '_progress_total',
-            0,
-        )
+        total = getattr(self, '_progress_total', 0)
 
         if processados is None:
-            processados = getattr(
-                self,
-                '_progress_processados',
-                0,
-            )
+            processados = getattr(self, '_progress_processados', 0)
 
         if percentual is None:
-
             if total:
-
-                percentual = int(
-                    (
-                        processados
-                        / total
-                    )
-                    * 100
-                )
-
-                # 100% somente depois que
-                # super().import_data() terminar.
-                percentual = min(
-                    percentual,
-                    99,
-                )
-
+                percentual = int((processados / total) * 100)
+                percentual = min(percentual, 99)
             else:
                 percentual = 0
 
         try:
-
             cache.set(
                 chave,
                 {
@@ -325,481 +210,156 @@ class IPDResource(resources.ModelResource):
                 },
                 timeout=3600,
             )
-
         except Exception as exc:
+            print(f"Erro ao salvar progresso da importação IPD: {exc}")
 
-            # Progresso é auxiliar.
-            # Redis fora do ar não pode cancelar o import.
-            print(
-                f"Erro ao salvar progresso "
-                f"da importação IPD: {exc}"
-            )
-
-
-    # =========================================================================
-    # IMPORTAÇÃO
-    # =========================================================================
-
-    def import_data(
-        self,
-        dataset,
-        *args,
-        **kwargs
-    ):
-        """
-        Envolve toda a importação para sabermos exatamente
-        quando começou, terminou ou deu erro.
-
-        O 100% somente é enviado depois que
-        super().import_data() terminou.
-        """
-
-        request = kwargs.get(
-            'request'
-        )
-
+    def import_data(self, dataset, *args, **kwargs):
+        request = kwargs.get('request')
         self._progress_request = request
-
-        self._progress_job_id = None
-
-        if request:
-
-            self._progress_job_id = (
-                request.POST.get(
-                    'import_job_id'
-                )
-            )
-
-        self._progress_total = len(
-            dataset
-        )
-
+        self._progress_job_id = request.POST.get('import_job_id') if request else None
+        self._progress_total = len(dataset)
         self._progress_processados = 0
 
         self._salvar_progresso(
             status='processando',
             processados=0,
             percentual=0,
-            mensagem=(
-                f"Preparando "
-                f"{self._progress_total:,} "
-                f"registros..."
-            ),
+            mensagem=f"Preparando {self._progress_total:,} registros...",
         )
 
         try:
-
-            result = super().import_data(
-                dataset,
-                *args,
-                **kwargs
-            )
-
-            # ================================================================
-            # IMPORTAÇÃO FINALIZADA
-            # ================================================================
+            result = super().import_data(dataset, *args, **kwargs)
 
             if result.has_errors():
-
                 self._salvar_progresso(
                     status='concluido_com_erros',
-                    processados=
-                        self._progress_total,
+                    processados=self._progress_total,
                     percentual=100,
-                    mensagem=(
-                        "Importação finalizada, "
-                        "mas existem registros "
-                        "com erro."
-                    ),
+                    mensagem="Importação finalizada, mas existem registros com erro.",
                 )
-
             else:
-
                 self._salvar_progresso(
                     status='concluido',
-                    processados=
-                        self._progress_total,
+                    processados=self._progress_total,
                     percentual=100,
-                    mensagem=(
-                        f"Importação concluída. "
-                        f"{self._progress_total:,} "
-                        f"registros processados."
-                    ),
+                    mensagem=f"Importação concluída. {self._progress_total:,} registros processados.",
                 )
 
             return result
 
         except Exception as exc:
-
             self._salvar_progresso(
                 status='erro',
-                processados=getattr(
-                    self,
-                    '_progress_processados',
-                    0,
-                ),
-                mensagem=(
-                    str(exc)[:500]
-                ),
+                processados=getattr(self, '_progress_processados', 0),
+                mensagem=str(exc)[:500],
             )
-
             raise
 
+    def before_import(self, dataset, **kwargs):
+        if dataset.headers:
+            headers_limpos = []
+            indices_validos = []
+            for i, h in enumerate(dataset.headers):
+                h_str = str(h).strip().lstrip('\ufeff') if h else ''
+                if h_str:
+                    headers_limpos.append(h_str)
+                    indices_validos.append(i)
 
-    # =========================================================================
-    # INÍCIO DA IMPORTAÇÃO
-    # =========================================================================
+            if len(indices_validos) < len(dataset.headers):
+                novo_dataset = []
+                for row in dataset:
+                    novo_dataset.append([row[i] for i in indices_validos])
+                dataset.wipe()
+                dataset.headers = headers_limpos
+                for row in novo_dataset:
+                    dataset.append(row)
+            else:
+                dataset.headers = headers_limpos
 
-    def before_import(
-        self,
-        dataset,
-        **kwargs
-    ):
-
-        super().before_import(
-            dataset,
-            **kwargs
-        )
-
+        super().before_import(dataset, **kwargs)
         self.projetos_ipd_alterados = set()
 
-        # ============================================================
-        # PRÉ-CARREGA TODOS OS IPDs QUE PODEM EXISTIR
-        # ============================================================
-        #
-        # Em vez de:
-        #
-        # 15.000 linhas = 15.000 SELECTs
-        #
-        # fazemos:
-        #
-        # 15.000 hashes
-        #       ↓
-        # 1 SELECT hash_indice IN (...)
-        #       ↓
-        # dict em memória
-        #
-        # ============================================================
-
         hashes_arquivo = set()
-
         for row in dataset.dict:
+            projeto_ipd_id = row.get('projeto_ipd')
+            profile = row.get('profile')
+            data = row.get('data')
 
-            projeto_ipd_id = row.get(
-                'projeto_ipd'
-            )
-
-            profile = row.get(
-                'profile'
-            )
-
-            data = row.get(
-                'data'
-            )
-
-            if not (
-                projeto_ipd_id
-                and profile
-                and data
-            ):
+            if not (projeto_ipd_id and profile and data):
                 continue
-
-            # --------------------------------------------------------
-            # ID
-            # --------------------------------------------------------
 
             try:
-
-                projeto_ipd_id = int(
-                    float(
-                        projeto_ipd_id
-                    )
-                )
-
-            except (
-                TypeError,
-                ValueError,
-            ):
+                projeto_ipd_id = int(float(projeto_ipd_id))
+            except (TypeError, ValueError):
                 continue
 
-
-            # --------------------------------------------------------
-            # PROFILE
-            # --------------------------------------------------------
-
-            profile = str(
-                profile
-            ).strip()
-
-
-            # --------------------------------------------------------
-            # DATA
-            # --------------------------------------------------------
-
-            data = (
-                normalizar_data_importacao(
-                    data
-                )
-            )
+            profile = str(profile).strip()
+            data = normalizar_data_importacao(data)
 
             if not data:
                 continue
 
-
-            # --------------------------------------------------------
-            # HASH
-            # --------------------------------------------------------
-
-            raw_string = (
-                f"{projeto_ipd_id}-"
-                f"{profile}-"
-                f"{data}"
-            )
-
-            hash_indice = (
-                hashlib.sha256(
-                    raw_string.encode(
-                        'utf-8'
-                    )
-                ).hexdigest()
-            )
-
-            hashes_arquivo.add(
-                hash_indice
-            )
-
-
-        # ============================================================
-        # UMA CONSULTA AO BANCO
-        # ============================================================
+            raw_string = f"{projeto_ipd_id}-{profile}-{data}"
+            hash_indice = hashlib.sha256(raw_string.encode('utf-8')).hexdigest()
+            hashes_arquivo.add(hash_indice)
 
         if hashes_arquivo:
-
-            self.ipds_existentes = (
-                IPD.objects.in_bulk(
-                    hashes_arquivo,
-                    field_name='hash_indice',
-                )
+            self.ipds_existentes = IPD.objects.in_bulk(
+                hashes_arquivo, field_name='hash_indice'
             )
-
         else:
-
             self.ipds_existentes = {}
 
-    # =========================================================================
-    # PREPARAÇÃO DE CADA LINHA
-    # =========================================================================
-
-    def before_import_row(
-        self,
-        row,
-        **kwargs
-    ):
-
-        # ============================================================
-        # PROJETO IPD
-        # ============================================================
-
-        if row.get('projeto_ipd') not in (
-            None,
-            '',
-        ):
-
-            row['projeto_ipd'] = int(
-                float(
-                    row['projeto_ipd']
-                )
-            )
-
-
-        # ============================================================
-        # PROFILE
-        # ============================================================
+    def before_import_row(self, row, **kwargs):
+        if row.get('projeto_ipd') not in (None, ''):
+            row['projeto_ipd'] = int(float(row['projeto_ipd']))
 
         if row.get('profile') is not None:
+            row['profile'] = str(row['profile']).strip()
 
-            row['profile'] = str(
-                row['profile']
-            ).strip()
-
-
-        # ============================================================
-        # INTERESSE
-        # ============================================================
-
-        if (
-            'interesse' not in row
-            or row.get('interesse') in (
-                '',
-                None,
-            )
-        ):
-
+        if 'interesse' not in row or row.get('interesse') in ('', None):
             row['interesse'] = None
 
-
-        # ============================================================
-        # DATA
-        # ============================================================
-
         if row.get('data'):
+            row['data'] = normalizar_data_importacao(row['data'])
 
-            row['data'] = (
-                normalizar_data_importacao(
-                    row['data']
-                )
-            )
+    def get_instance(self, instance_loader, row):
+        projeto_ipd_id = row.get('projeto_ipd')
+        profile = row.get('profile')
+        data = row.get('data')
 
-    # =========================================================================
-    # DEPOIS DE CADA LINHA
-    # =========================================================================
-
-    def get_instance(
-        self,
-        instance_loader,
-        row,
-    ):
-        """
-        Procura o IPD no dict carregado em memória.
-
-        ZERO consulta SQL por linha.
-        """
-
-        projeto_ipd_id = row.get(
-            'projeto_ipd'
-        )
-
-        profile = row.get(
-            'profile'
-        )
-
-        data = row.get(
-            'data'
-        )
-
-        if not (
-            projeto_ipd_id
-            and profile
-            and data
-        ):
+        if not (projeto_ipd_id and profile and data):
             return None
-
 
         try:
-
-            projeto_ipd_id = int(
-                float(
-                    projeto_ipd_id
-                )
-            )
-
-        except (
-            TypeError,
-            ValueError,
-        ):
+            projeto_ipd_id = int(float(projeto_ipd_id))
+        except (TypeError, ValueError):
             return None
 
+        profile = str(profile).strip()
+        data = normalizar_data_importacao(data)
 
-        profile = str(
-            profile
-        ).strip()
+        raw_string = f"{projeto_ipd_id}-{profile}-{data}"
+        hash_indice = hashlib.sha256(raw_string.encode('utf-8')).hexdigest()
 
+        return self.ipds_existentes.get(hash_indice)
 
-        data = (
-            normalizar_data_importacao(
-                data
-            )
-        )
-
-
-        raw_string = (
-            f"{projeto_ipd_id}-"
-            f"{profile}-"
-            f"{data}"
-        )
-
-
-        hash_indice = (
-            hashlib.sha256(
-                raw_string.encode(
-                    'utf-8'
-                )
-            ).hexdigest()
-        )
-
-
-        return (
-            self.ipds_existentes.get(
-                hash_indice
-            )
-        )
-
-    def after_import_row(
-        self,
-        row,
-        row_result,
-        **kwargs
-    ):
-
-        super().after_import_row(
-            row,
-            row_result,
-            **kwargs
-        )
-
+    def after_import_row(self, row, row_result, **kwargs):
+        super().after_import_row(row, row_result, **kwargs)
         self._progress_processados += 1
 
-        processados = (
-            self._progress_processados
-        )
+        processados = self._progress_processados
+        total = self._progress_total
 
-        total = (
-            self._progress_total
-        )
+        if processados % 100 == 0 or processados == total:
+            percentual = int((processados / total) * 100) if total else 0
+            percentual = min(percentual, 99)
 
-        # Não precisamos escrever no Redis
-        # 15 mil vezes.
-        #
-        # A cada 100 registros é mais que suficiente.
-        if (
-            processados % 100 == 0
-            or processados == total
-        ):
-
-            if total:
-
-                percentual = int(
-                    (
-                        processados
-                        / total
-                    )
-                    * 100
-                )
-
-            else:
-                percentual = 0
-
-            # Nunca mostra 100 antes da importação
-            # realmente terminar.
-            percentual = min(
-                percentual,
-                99,
+            mensagem = (
+                "Finalizando gravação no banco de dados..."
+                if processados >= total
+                else f"Processando {processados:,} de {total:,} registros..."
             )
-
-            if processados >= total:
-
-                mensagem = (
-                    "Finalizando gravação "
-                    "no banco de dados..."
-                )
-
-            else:
-
-                mensagem = (
-                    f"Processando "
-                    f"{processados:,} de "
-                    f"{total:,} registros..."
-                )
 
             self._salvar_progresso(
                 status='processando',
@@ -808,195 +368,143 @@ class IPDResource(resources.ModelResource):
                 mensagem=mensagem,
             )
 
+    def before_save_instance(self, instance, row, **kwargs):
+        instance.profile = str(instance.profile or '').strip()
 
-    # =========================================================================
-    # ANTES DE SALVAR
-    # =========================================================================
-
-    def before_save_instance(
-        self,
-        instance,
-        row,
-        **kwargs
-    ):
-
-        # ================================================================
-        # PROFILE
-        # ================================================================
-
-        instance.profile = str(
-            instance.profile or ''
-        ).strip()
-
-
-        # ================================================================
-        # HASH
-        # ================================================================
-
-        if (
-            instance.projeto_ipd_id
-            and instance.profile
-            and instance.data
-        ):
-
+        if instance.projeto_ipd_id and instance.profile and instance.data:
             raw_string = (
                 f"{instance.projeto_ipd_id}-"
                 f"{instance.profile}-"
                 f"{instance.data.strftime('%Y-%m-%d')}"
             )
+            instance.hash_indice = hashlib.sha256(raw_string.encode('utf-8')).hexdigest()
+            self.projetos_ipd_alterados.add(instance.projeto_ipd_id)
 
-            instance.hash_indice = (
-                hashlib.sha256(
-                    raw_string.encode(
-                        'utf-8'
-                    )
-                ).hexdigest()
-            )
-
-            self.projetos_ipd_alterados.add(
-                instance.projeto_ipd_id
-            )
-
-
-        # ================================================================
-        # COMPATIBILIDADE projeto_cliente
-        # ================================================================
-
-        if (
-            hasattr(
-                instance,
-                'projeto_cliente_id'
-            )
-            and
-            not instance.projeto_cliente_id
-        ):
-
-            primeiro_cliente = (
-                instance
-                .projeto_ipd
-                .projetos_cliente
-                .first()
-            )
-
+        if hasattr(instance, 'projeto_cliente_id') and not instance.projeto_cliente_id:
+            primeiro_cliente = instance.projeto_ipd.projetos_cliente.first()
             if primeiro_cliente:
+                instance.projeto_cliente = primeiro_cliente
 
-                instance.projeto_cliente = (
-                    primeiro_cliente
-                )
+        super().before_save_instance(instance, row, **kwargs)
 
-
-        super().before_save_instance(
-            instance,
-            row,
-            **kwargs
-        )
-
-
-    # =========================================================================
-    # FINAL
-    # =========================================================================
-
-    def after_import(
-        self,
-        dataset,
-        result,
-        **kwargs
-    ):
-
-        super().after_import(
-            dataset,
-            result,
-            **kwargs
-        )
-
-        projetos_ipd_ids = getattr(
-            self,
-            'projetos_ipd_alterados',
-            set(),
-        )
+    def after_import(self, dataset, result, **kwargs):
+        super().after_import(dataset, result, **kwargs)
+        projetos_ipd_ids = getattr(self, 'projetos_ipd_alterados', set())
 
         if not projetos_ipd_ids:
             return
 
-        # ================================================================
-        # PROJETOS CLIENTE AFETADOS
-        # ================================================================
-
         projetos_cliente_ids = (
-            ProjetoIPD.objects
-            .filter(
-                id__in=
-                    projetos_ipd_ids
-            )
-            .values_list(
-                'projetos_cliente__id',
-                flat=True,
-            )
-            .exclude(
-                projetos_cliente__id=None
-            )
+            ProjetoIPD.objects.filter(id__in=projetos_ipd_ids)
+            .values_list('projetos_cliente__id', flat=True)
+            .exclude(projetos_cliente__id=None)
             .distinct()
         )
 
-
-        # ================================================================
-        # INVALIDAÇÃO DOS CACHES
-        # ================================================================
-
-        for projeto_id in (
-            projetos_cliente_ids
-        ):
-
-            cache_key = (
-                f"projeto_profiles:"
-                f"v1:"
-                f"projeto:{projeto_id}"
-            )
-
+        for projeto_id in projetos_cliente_ids:
+            cache_key = f"projeto_profiles:v1:projeto:{projeto_id}"
             try:
-
-                cache.delete(
-                    cache_key
-                )
-
+                cache.delete(cache_key)
             except Exception as exc:
-
-                print(
-                    f"Erro ao invalidar cache "
-                    f"{cache_key}: {exc}"
-                )
+                print(f"Erro ao invalidar cache {cache_key}: {exc}")
 
 
 # =============================================================================
-# CHANGELIST LIMITADO
+# INLINES E CLIENTE (com desregistro seguro para evitar AlreadyRegistered)
 # =============================================================================
 
-# =============================================================================
-# GESTÃO MANUAL: filtros, vínculos e exclusões em lotes
-# =============================================================================
-from datetime import timedelta, time
-from django import forms
-from django.contrib import messages
-from django.contrib.admin.actions import delete_selected
-from django.core.exceptions import PermissionDenied, ValidationError
-from django.db import transaction, models
-from django.http import HttpResponseRedirect
-from django.template import engines
-from django.template.response import TemplateResponse
-from django.urls import reverse
-from django.utils import timezone
-from django.conf import settings
+class ProjetoClienteIPDInline(admin.TabularInline):
+    model = ProjetoClienteIPD
+    extra = 1
+    verbose_name = "Projeto IPD e Perfis"
+    verbose_name_plural = "Projetos IPD Vinculados"
 
+
+try:
+    admin.site.unregister(ProjetoCliente)
+except admin.sites.NotRegistered:
+    pass
+
+
+@admin.register(ProjetoCliente)
+class ProjetoClienteAdmin(admin.ModelAdmin):
+    list_display = ('id', 'nome', 'cliente', 'descricao', 'get_tipo_ipd')
+    prepopulated_fields = {'slug': ('nome',)}
+    search_fields = ('nome', 'cliente')
+    inlines = [ProjetoClienteIPDInline]
+
+    @admin.display(description='Tipo IPD')
+    def get_tipo_ipd(self, obj):
+        return obj.get_tipo_ipd_display()
+
+    def save_formset(self, request, form, formset, change):
+        super().save_formset(request, form, formset, change)
+        cache.delete(f"projeto_profiles:v2:projeto:{form.instance.id}")
+
+
+class ProjetoIPDLoteForm(forms.Form):
+    nomes = forms.CharField(
+        label='Nomes dos Projetos (um por linha)',
+        widget=forms.Textarea(attrs={'rows': 15, 'cols': 80, 'placeholder': 'Ex:\nProjeto A\nProjeto B\nProjeto C'}),
+        required=True,
+        help_text="Insira os nomes dos projetos que deseja criar, um por linha. Projetos com nomes idênticos aos que já existem não serão duplicados."
+    )
+
+LISTA_PROJETO_IPD_TEMPLATE = '''{% extends "admin/change_list.html" %}
+{% block object-tools-items %}
+<li><a href="adicionar-lote/" class="addlink">Adicionar Projetos em Lote</a></li>
+{{ block.super }}
+{% endblock %}'''
+
+FORM_LOTE_TEMPLATE = '''{% extends "admin/base_site.html" %}
+{% block content %}
+<style>
+    #loading-overlay {
+        display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0, 0, 0, 0.6); z-index: 9999; text-align: center; color: #ffffff; font-family: sans-serif;
+    }
+    .spinner {
+        border: 8px solid rgba(255,255,255, 0.3); border-top: 8px solid #ffffff; border-radius: 50%;
+        width: 60px; height: 60px; animation: spin 1s linear infinite; margin: 25vh auto 20px auto;
+    }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+</style>
+<div id="loading-overlay">
+    <div class="spinner"></div>
+    <h2>Processando, por favor aguarde...</h2>
+</div>
+<p><a href="../">&lsaquo; Voltar para a lista de Projetos IPD</a></p>
+<h1>Adicionar Projetos IPD em Lote</h1>
+<form method="post" id="lote-form">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <div class="submit-row" style="text-align: left;">
+        <input type="submit" value="Criar Projetos" class="default" id="submit-btn">
+    </div>
+</form>
+<script>
+    document.getElementById('lote-form').addEventListener('submit', function() {
+        document.getElementById('loading-overlay').style.display = 'block';
+        var btn = document.getElementById('submit-btn');
+        btn.style.pointerEvents = 'none'; btn.style.opacity = '0.6'; btn.value = 'Processando...';
+    });
+</script>
+{% endblock %}'''
+
+
+# =============================================================================
+# GESTÃO MANUAL E ADMIN MIXIN
+# =============================================================================
 
 MODOS_PROJETOS = (
     ('adicionar', 'Adicionar aos projetos atuais'),
     ('substituir', 'Substituir todos os projetos atuais'),
 )
 
-
 class ConteudoAdminForm(forms.ModelForm):
     modo_projetos = forms.ChoiceField(
-        label='Como salvar os projetos IPD', choices=MODOS_PROJETOS,
+        label='Como salvar os projetos IPD',
+        choices=MODOS_PROJETOS,
         initial='adicionar',
         help_text='Adicionar preserva vínculos antigos. Substituir mantém apenas os projetos informados.',
     )
@@ -1013,7 +521,8 @@ class GestaoPeriodoForm(forms.Form):
     fim = forms.DateField(label='Data final (inclusive)', widget=forms.DateInput(attrs={'type': 'date'}))
     operacao = forms.ChoiceField(label='Operação', choices=(('excluir', 'Excluir registros'),))
     projetos_destino = forms.CharField(
-        label='IDs dos projetos de destino', required=False,
+        label='IDs dos projetos de destino',
+        required=False,
         help_text='Para adicionar/substituir vínculos: IDs separados por vírgula.',
     )
     confirmar = forms.BooleanField(required=False, label='Confirmo a operação nos registros deste filtro')
@@ -1116,7 +625,6 @@ class GestaoAdminMixin:
         qs = super().get_queryset(request)
         if self.model is IPD:
             qs = qs.select_related('projeto_ipd')
-        # Não carregar textos grandes na listagem; formulários individuais continuam completos.
         if self.model is Conteudo and request.resolver_match and request.resolver_match.url_name.endswith('_changelist'):
             qs = qs.defer('texto')
         return qs
@@ -1128,12 +636,14 @@ class GestaoAdminMixin:
         clientes = ProjetoIPD.objects.filter(pk__in=projetos).values_list(
             'projetos_cliente__pk', flat=True).distinct()
         chaves = [f'projeto_profiles:v1:projeto:{pk}' for pk in clientes if pk is not None]
+
         def limpar():
             try:
                 cache.delete_many(chaves)
             except Exception:
                 import logging
                 logging.getLogger(__name__).exception('Falha ao invalidar cache de profiles IPD')
+
         transaction.on_commit(limpar, using=queryset.db)
 
     def delete_queryset(self, request, queryset):
@@ -1165,11 +675,8 @@ class GestaoAdminMixin:
             raise PermissionDenied
         if operacao != 'excluir' and not self.has_change_permission(request):
             raise PermissionDenied
-        # Transação única: erro/PROTECT/permissão cancela toda esta execução.
-        # Apenas 200 registros e seus relacionamentos por lote em Python.
         total = 0
         with transaction.atomic(using=queryset.db):
-            # Cursor por PK evita OFFSET e continua funcionando se os vínculos mudarem.
             ultima_pk = None
             while True:
                 pagina = queryset if ultima_pk is None else queryset.filter(pk__gt=ultima_pk)
@@ -1188,7 +695,6 @@ class GestaoAdminMixin:
                         raise PermissionDenied
                     if protegidos:
                         raise ValidationError('Há registros relacionados protegidos. Nenhum item desta execução foi excluído.')
-                    # Django 5 registra exclusões por queryset.
                     self.log_deletions(request, lote)
                     self.delete_queryset(request, lote)
                 else:
@@ -1250,143 +756,192 @@ class LimitedAdminChangeList(ChangeList):
         return qs if filtros else qs.none()
 
 
-
 # =============================================================================
 # ADMIN IPD
 # =============================================================================
 
+try:
+    admin.site.unregister(ProjetoIPD)
+except admin.sites.NotRegistered:
+    pass
+
+
+@admin.register(ProjetoIPD)
+class ProjetoIPDAdmin(admin.ModelAdmin):
+    list_display = ('id', 'nome')
+    search_fields = ('nome',)
+
+    def get_urls(self):
+        urls = super().get_urls()
+        custom_urls = [
+            path(
+                'adicionar-lote/',
+                self.admin_site.admin_view(self.adicionar_lote_view),
+                name=f'{self.model._meta.app_label}_{self.model._meta.model_name}_lote'
+            ),
+        ]
+        return custom_urls + urls
+
+    def changelist_view(self, request, extra_context=None):
+        response = super().changelist_view(request, extra_context)
+        if hasattr(response, 'template_name'):
+            response.template_name = engines['django'].from_string(LISTA_PROJETO_IPD_TEMPLATE)
+        return response
+
+    def adicionar_lote_view(self, request):
+        if not self.has_add_permission(request):
+            raise PermissionDenied
+
+        form = ProjetoIPDLoteForm(request.POST or None)
+
+        if request.method == 'POST' and form.is_valid():
+            nomes_raw = form.cleaned_data['nomes']
+            nomes = [n.strip() for n in nomes_raw.split('\n') if n.strip()]
+
+            criados = []
+            existentes = []
+
+            for nome in nomes:
+                obj, created = ProjetoIPD.objects.get_or_create(nome=nome)
+                if created:
+                    criados.append(obj)
+                else:
+                    existentes.append(obj)
+
+            msg_partes = []
+            if criados:
+                lista_criados = " | ".join([f"{p.nome} (ID: {p.id})" for p in criados])
+                msg_partes.append(f"<b>{len(criados)} CRIADOS:</b> {lista_criados}.")
+            
+            if existentes:
+                lista_existentes = " | ".join([f"{p.nome} (ID: {p.id})" for p in existentes])
+                msg_partes.append(f"<b>{len(existentes)} JÁ EXISTIAM:</b> {lista_existentes}.")
+
+            if msg_partes:
+                self.message_user(request, mark_safe("<br><br>".join(msg_partes)), messages.SUCCESS)
+            else:
+                self.message_user(request, "Nenhum nome válido foi inserido.", messages.WARNING)
+
+            return redirect(f'admin:{self.model._meta.app_label}_{self.model._meta.model_name}_changelist')
+
+        context = {
+            **self.admin_site.each_context(request),
+            'form': form,
+            'opts': self.model._meta,
+            'title': 'Adicionar Projetos IPD em Lote',
+        }
+        
+        return TemplateResponse(request, engines['django'].from_string(FORM_LOTE_TEMPLATE), context)
+
+
 @admin.register(IPD)
 class IPDAdmin(GestaoAdminMixin, ImportExportModelAdmin):
 
-    resource_classes = [
-        IPDResource
-    ]
-
+    resource_classes = [IPDResource]
     skip_import_confirm = True
-
-    # Template com barra de progresso.
     import_template_name = "ipd_import.html"
 
     # =========================================================================
-    # URL DO PROGRESSO
+    # URL DO PROGRESSO E FATIAMENTO
     # =========================================================================
 
     def get_urls(self):
-
         urls = super().get_urls()
-
         custom_urls = [
             path(
                 'import-progress/',
-                self.admin_site.admin_view(
-                    self.import_progress
-                ),
-                name=
-                    'score_ipd_import_progress',
+                self.admin_site.admin_view(self.import_progress),
+                name='score_ipd_import_progress',
+            ),
+            path(
+                'importar-fatiado/',
+                self.admin_site.admin_view(self.importar_fatiado_view),
+                name='score_ipd_importar_fatiado',
             ),
         ]
-
         return custom_urls + urls
 
+    def importar_fatiado_view(self, request):
+        if request.method == 'POST':
+            arquivo = request.FILES.get('file')
+            if not arquivo:
+                return JsonResponse({'erro': 'Nenhum arquivo enviado'}, status=400)
 
-    # =========================================================================
-    # API DO PROGRESSO
-    # =========================================================================
+            try:
+                dataset = Dataset()
+                conteudo = arquivo.read().decode('utf-8-sig')
+                dataset.load(conteudo, format='csv')
 
-    def import_progress(
-        self,
-        request
-    ):
+                resource = IPDResource()
+                result = resource.import_data(dataset, request=request, raise_errors=False)
 
-        job_id = request.GET.get(
-            'job_id'
-        )
+                if result.has_errors() or result.has_validation_errors():
+                    mensagens = []
+                    for erro in getattr(result, 'base_errors', []):
+                        mensagens.append(str(getattr(erro, 'error', erro)))
+                    try:
+                        for linha, erros in result.row_errors():
+                            for erro in erros:
+                                mensagens.append(f'Linha {linha}: {getattr(erro, "error", erro)}')
+                                if len(mensagens) >= 3: break
+                            if len(mensagens) >= 3: break
+                    except Exception:
+                        pass
+                    
+                    if not mensagens:
+                        for linha_invalida in getattr(result, 'invalid_rows', [])[:3]:
+                            mensagens.append(f'Linha {linha_invalida.number}: {linha_invalida.error}')
+
+                    erro_msg = ' | '.join(mensagens) if mensagens else 'Erro de validação ao processar lote.'
+                    return JsonResponse({'erro': erro_msg}, status=400)
+
+                return JsonResponse({'status': 'ok'})
+
+            except Exception as e:
+                erro_python = traceback.format_exc()
+                print("ERRO CRITICO EM IPD:", erro_python)
+                return JsonResponse({'erro': f'Erro Crítico no Servidor: {str(e)}'}, status=400)
+
+        return JsonResponse({'erro': 'Método não permitido'}, status=405)
+
+    def import_progress(self, request):
+        job_id = request.GET.get('job_id')
 
         if not job_id:
-
             response = JsonResponse({
                 'status': 'aguardando',
                 'percentual': 0,
                 'processados': 0,
                 'total': 0,
-                'mensagem':
-                    'Aguardando importação...',
+                'mensagem': 'Aguardando importação...',
             })
-
-            response[
-                'Cache-Control'
-            ] = 'no-store'
-
+            response['Cache-Control'] = 'no-store'
             return response
 
-
-        chave = (
-            f"ipd_import_progress:"
-            f"{request.user.pk}:"
-            f"{job_id}"
-        )
+        chave = f"ipd_import_progress:{request.user.pk}:{job_id}"
 
         try:
-
-            progresso = cache.get(
-                chave
-            )
-
+            progresso = cache.get(chave)
         except Exception:
-
             progresso = None
 
-
         if progresso is None:
-
             progresso = {
                 'status': 'aguardando',
                 'percentual': 0,
                 'processados': 0,
                 'total': 0,
-                'mensagem':
-                    'Enviando e preparando arquivo...',
+                'mensagem': 'Enviando e preparando arquivo...',
             }
 
-
-        response = JsonResponse(
-            progresso
-        )
-
-        response[
-            'Cache-Control'
-        ] = (
-            'no-store, no-cache, '
-            'must-revalidate, max-age=0'
-        )
-
+        response = JsonResponse(progresso)
+        response['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
         return response
 
-
-    # =========================================================================
-    # CHANGELIST
-    # =========================================================================
-
-    def get_changelist(
-        self,
-        request,
-        **kwargs
-    ):
+    def get_changelist(self, request, **kwargs):
         return LimitedAdminChangeList
 
-
-    # =========================================================================
-    # EXCLUSÃO
-    # =========================================================================
-
-
-
     actions = ['excluir_selecionados_limitados']
-
-
-    # =========================================================================
-    # LISTAGEM
-    # =========================================================================
 
     list_display = (
         'profile',
@@ -1395,53 +950,38 @@ class IPDAdmin(GestaoAdminMixin, ImportExportModelAdmin):
         'projeto_ipd',
     )
 
-
     list_filter = (
         'projeto_ipd',
         'data',
     )
 
-
     search_fields = (
         'profile',
     )
 
-
     ordering = (
         '-data',
     )
-
 
     readonly_fields = (
         'hash_indice',
         'data_registro',
     )
 
-
     list_per_page = 50
     list_max_show_all = 0
     show_full_result_count = False
 
-
     autocomplete_fields = (
         'projeto_ipd',
     )
-# =============================================================================
-# CONTEÚDO
-# =============================================================================
 
-from decimal import Decimal, InvalidOperation
-import re
-from import_export.forms import ImportForm, ConfirmImportForm
 
+# =============================================================================
+# CONTEÚDO RESOURCE
+# =============================================================================
 
 def normalizar_id_conteudo(valor):
-    """Expande notação científica sem passar textos por float.
-
-    Retorna (id textual, risco de precisão). Mantém IDs alfanuméricos
-    e zeros à esquerda em identificadores que já vieram como texto.
-    Não recupera dígitos que a origem já arredondou.
-    """
     if valor is None or isinstance(valor, bool):
         raise ValueError('id_post vazio ou inválido.')
     texto = str(valor).strip()
@@ -1460,11 +1000,15 @@ def normalizar_id_conteudo(valor):
             raise ValueError('id_post numérico deve ser inteiro e não negativo.')
         if numero.adjusted() >= 255:
             raise ValueError('id_post excede 255 caracteres.')
-        normalizado = format(numero.quantize(Decimal(1)) if numero.adjusted() < 25 else numero, 'f').split('.')[0]
+        normalizado = format(
+            numero.quantize(Decimal(1)) if numero.adjusted() < 25 else numero, 'f'
+        ).split('.')[0]
     else:
         normalizado = texto
+
     if len(normalizado) > 255:
         raise ValueError('id_post excede 255 caracteres.')
+
     risco = isinstance(valor, float) and len(normalizado.lstrip('0')) > 15
     return normalizado, risco
 
@@ -1489,8 +1033,10 @@ def normalizar_projetos_conteudo(valor):
 
 class ConteudoImportForm(ImportForm):
     modo_projetos = forms.ChoiceField(
-        label='Projetos IPD dos conteúdos importados', choices=MODOS_PROJETOS,
-        initial='adicionar', widget=forms.RadioSelect,
+        label='Projetos IPD dos conteúdos importados',
+        choices=MODOS_PROJETOS,
+        initial='adicionar',
+        widget=forms.RadioSelect,
         help_text='Adicionar preserva os vínculos atuais. Substituir mantém somente os IDs da coluna projeto_ipd para cada post do arquivo. Coluna vazia preserva os vínculos nos dois modos.',
     )
 
@@ -1500,7 +1046,6 @@ class ConteudoConfirmImportForm(ConfirmImportForm):
 
 
 class ConteudoResource(resources.ModelResource):
-    # Defaults explícitos: célula vazia vira zero; zero informado continua zero.
     curtidas = fields.Field(
         column_name='curtidas', attribute='curtidas', widget=IntegerWidget(), default=0,
     )
@@ -1512,8 +1057,10 @@ class ConteudoResource(resources.ModelResource):
     class Meta:
         model = Conteudo
         import_id_fields = ('id_post',)
-        fields = ('id_post', 'projeto_ipd', 'profile', 'texto', 'link_post',
-                  'curtidas', 'comentarios', 'data', 'categoria_tema')
+        fields = (
+            'id_post', 'projeto_ipd', 'profile', 'texto', 'link_post',
+            'curtidas', 'comentarios', 'data', 'categoria_tema'
+        )
         ignore_unknown_fields = True
         use_bulk = True
         batch_size = 1000
@@ -1524,114 +1071,43 @@ class ConteudoResource(resources.ModelResource):
         store_instance = False
 
     def _progress_key(self):
+        request = getattr(self, '_progress_request', None)
+        job_id = getattr(self, '_progress_job_id', None)
+        if not request or not job_id: return None
+        if not getattr(request, 'user', None): return None
+        return f"conteudo_import_progress:{request.user.pk}:{job_id}"
 
-        request = getattr(
-            self,
-            '_progress_request',
-            None,
-        )
-
-        job_id = getattr(
-            self,
-            '_progress_job_id',
-            None,
-        )
-
-        if not request or not job_id:
-            return None
-
-        if not getattr(
-            request,
-            'user',
-            None,
-        ):
-            return None
-
-        return (
-            f"conteudo_import_progress:"
-            f"{request.user.pk}:"
-            f"{job_id}"
-        )
-
-    def _salvar_progresso(
-        self,
-        status,
-        processados=None,
-        percentual=None,
-        mensagem=None,
-    ):
-
+    def _salvar_progresso(self, status, processados=None, percentual=None, mensagem=None):
         chave = self._progress_key()
-
-        if not chave:
-            return
-
-        total = getattr(
-            self,
-            '_progress_total',
-            0,
-        )
-
-        if processados is None:
-
-            processados = getattr(
-                self,
-                '_progress_processados',
-                0,
-            )
-
-
+        if not chave: return
+        total = getattr(self, '_progress_total', 0)
+        if processados is None: processados = getattr(self, '_progress_processados', 0)
         if percentual is None:
-
             if total:
-
-                percentual = int(
-                    (
-                        processados
-                        / total
-                    )
-                    * 100
-                )
-
-                percentual = min(
-                    percentual,
-                    99,
-                )
-
+                percentual = int((processados / total) * 100)
+                percentual = min(percentual, 99)
             else:
-
                 percentual = 0
-
-
         try:
-
             cache.set(
                 chave,
                 {
-                    'status': status,
-                    'total': total,
-                    'processados': processados,
-                    'percentual': percentual,
+                    'status': status, 'total': total,
+                    'processados': processados, 'percentual': percentual,
                     'mensagem': mensagem,
                 },
                 timeout=3600,
             )
-
         except Exception as exc:
-
-            # Redis nunca deve derrubar a importação.
-            print(
-                f"Erro ao salvar progresso "
-                f"de Conteudo: {exc}"
-            )
+            print(f"Erro ao salvar progresso de Conteudo: {exc}")
 
     def get_bulk_update_fields(self):
-        # ManyToMany e chave primária não entram no bulk_update.
-        return ['profile', 'texto', 'data', 'curtidas', 'comentarios',
-                'link_post', 'categoria_tema']
+        return [
+            'profile', 'texto', 'data', 'curtidas', 'comentarios',
+            'link_post', 'categoria_tema'
+        ]
 
     def _preparar_arquivo(self, dataset, modo):
-        """Normaliza e separa linhas inválidas antes dos lotes bulk."""
         if modo not in {'adicionar', 'substituir'}:
             raise ValueError('Escolha adicionar ou substituir projetos IPD.')
         self.modo_projetos = modo
@@ -1639,17 +1115,27 @@ class ConteudoResource(resources.ModelResource):
         self.relacoes_projetos = set()
         self.conteudos_existentes = {}
         self.linhas_ignoradas = []
-        headers = [str(h).strip().lstrip('\ufeff') for h in (dataset.headers or [])]
-        if len(headers) != len(set(headers)):
+
+        headers_totais = [str(h).strip().lstrip('\ufeff') if h else '' for h in (dataset.headers or [])]
+        headers_validos = [h for h in headers_totais if h]
+
+        if len(headers_validos) != len(set(headers_validos)):
             raise ValueError('Existem nomes de colunas repetidos no arquivo.')
+
         obrigatorias = {'id_post', 'projeto_ipd', 'texto', 'data'}
-        faltantes = obrigatorias - set(headers)
+        faltantes = obrigatorias - set(headers_validos)
         if faltantes:
             raise ValueError('Colunas ausentes: ' + ', '.join(sorted(faltantes)))
 
         candidatas, vistos, riscos, convertidos = [], {}, [], 0
         for indice, valores in enumerate(dataset):
-            row, linha = dict(zip(headers, valores)), indice + 2
+            row = {}
+            for h, v in zip(headers_totais, valores):
+                if h:
+                    row[h] = v
+
+            linha = indice + 2
+
             try:
                 original = row['id_post']
                 identificador, risco = normalizar_id_conteudo(original)
@@ -1674,16 +1160,20 @@ class ConteudoResource(resources.ModelResource):
                 if not row.get('data'):
                     raise ValueError('data é obrigatória.')
                 row['data'] = normalizar_data_importacao(row['data'])
-                # Validação explícita antes do bulk: vazio e zero são ambos aceitos.
+
                 for campo in ('curtidas', 'comentarios'):
                     valor = row.get(campo)
                     if valor is None or str(valor).strip() == '':
                         row[campo] = 0
                     else:
-                        numero = Decimal(str(valor).strip())
+                        try:
+                            numero = Decimal(str(valor).strip().replace(',', '.'))
+                        except InvalidOperation:
+                            raise ValueError(f'{campo}: número inválido.')
                         if not numero.is_finite() or numero != numero.to_integral_value() or not 0 <= numero <= 2147483647:
                             raise ValueError(f'{campo}: informe um inteiro entre 0 e 2147483647.')
                         row[campo] = int(numero)
+
                 row['id_post'] = identificador
                 row['projeto_ipd'] = ','.join(map(str, projetos))
                 candidatas.append((linha, row, projetos))
@@ -1695,6 +1185,7 @@ class ConteudoResource(resources.ModelResource):
             pk__in=projetos_arquivo
         ).values_list('pk', flat=True))
         validas = []
+
         for linha, row, projetos in candidatas:
             ausentes = set(projetos) - projetos_validos
             if ausentes:
@@ -1705,12 +1196,11 @@ class ConteudoResource(resources.ModelResource):
             validas.append((row, projetos))
             self.projetos_por_post[row['id_post']] = projetos
 
-        # O Resource recebe apenas linhas já verificadas. Assim os lotes bulk não
-        # são interrompidos por uma célula inválida.
         dataset.wipe()
-        dataset.headers = headers
+        dataset.headers = headers_validos
         for row, _ in validas:
-            dataset.append([row[h] for h in headers])
+            dataset.append([row.get(h) for h in headers_validos])
+
         if not validas:
             raise ValueError('Nenhuma linha válida para importar. ' + ' | '.join(self.linhas_ignoradas[:10]))
 
@@ -1728,9 +1218,7 @@ class ConteudoResource(resources.ModelResource):
                 + ('...' if len(self.linhas_ignoradas) > 5 else '')
             )
 
-
     def _resumo_erros_importacao(self, result):
-        """Mensagem curta para a barra de progresso sem expor traceback."""
         mensagens = []
         for erro in getattr(result, 'base_errors', []):
             mensagens.append(str(getattr(erro, 'error', erro)))
@@ -1746,10 +1234,7 @@ class ConteudoResource(resources.ModelResource):
             pass
         if not mensagens:
             for linha_invalida in getattr(result, 'invalid_rows', [])[:3]:
-                mensagens.append(
-                    f'Linha {linha_invalida.number}: '
-                    f'{linha_invalida.error}'
-                )
+                mensagens.append(f'Linha {linha_invalida.number}: {linha_invalida.error}')
         return ' | '.join(mensagens)[:900] or 'Erro não detalhado pelo importador. Verifique os logs do servidor.'
 
     def import_data(self, dataset, dry_run=False, raise_errors=False,
@@ -1760,8 +1245,14 @@ class ConteudoResource(resources.ModelResource):
         self._progress_job_id = request.POST.get('import_job_id') if request else None
         self._progress_total = len(dataset)
         self._progress_processados = 0
-        self._salvar_progresso('processando', processados=0, percentual=0,
-                              mensagem='Normalizando IDs e validando projetos...')
+
+        self._salvar_progresso(
+            'processando',
+            processados=0,
+            percentual=0,
+            mensagem='Normalizando IDs e validando projetos...',
+        )
+
         try:
             self._preparar_arquivo(dataset, kwargs.get('modo_projetos', 'adicionar'))
         except ValueError as exc:
@@ -1773,8 +1264,10 @@ class ConteudoResource(resources.ModelResource):
             result.diff_headers = self.get_diff_headers()
             result.append_base_error(self.get_error_result_class()(exc))
             return result
+
         if request:
             request._conteudo_import_avisos = self._avisos_ids
+
         try:
             result = super().import_data(
                 dataset, dry_run=dry_run, raise_errors=raise_errors,
@@ -1784,11 +1277,13 @@ class ConteudoResource(resources.ModelResource):
             erro = result.has_errors() or result.has_validation_errors()
             self._salvar_progresso(
                 'concluido_com_erros' if erro else 'concluido',
-                processados=len(dataset), percentual=100,
+                processados=len(dataset),
+                percentual=100,
                 mensagem=(
                     'Importação cancelada: ' + self._resumo_erros_importacao(result)
-                    if erro else
-                    'Validação concluída; nenhuma alteração salva.' if dry_run
+                    if erro
+                    else 'Validação concluída; nenhuma alteração salva.'
+                    if dry_run
                     else f'Importação concluída: {len(dataset)} registros importados; {len(self.linhas_ignoradas)} ignorados. Modo: {self.modo_projetos}.'
                 ),
             )
@@ -1799,31 +1294,36 @@ class ConteudoResource(resources.ModelResource):
 
     def before_import(self, dataset, **kwargs):
         super().before_import(dataset, **kwargs)
-        # Todos os IDs já são textos canônicos, iguais aos usados no import.
-        self.conteudos_existentes = Conteudo.objects.using(self.get_db_connection_name()).in_bulk(self.projetos_por_post)
+        self.conteudos_existentes = Conteudo.objects.using(
+            self.get_db_connection_name()
+        ).in_bulk(self.projetos_por_post)
 
     def before_import_row(self, row, **kwargs):
-        # Não converter IDs para float em nenhuma etapa.
         row['id_post'] = normalizar_id_conteudo(row['id_post'])[0]
         if row.get('profile') is not None:
             row['profile'] = str(row['profile']).strip()
+
         if not row.get('data'):
             raise ValueError('data é obrigatória.')
+
         row['data'] = normalizar_data_importacao(row['data'])
+
         for campo in ('curtidas', 'comentarios'):
             valor = row.get(campo)
             if valor is None or str(valor).strip() == '':
                 row[campo] = 0
             else:
                 try:
-                    numero = Decimal(str(valor).strip())
+                    numero = Decimal(str(valor).strip().replace(',', '.'))
                 except InvalidOperation:
                     raise ValueError(f'{campo}: número inválido.')
                 if not numero.is_finite() or numero != numero.to_integral_value() or not 0 <= numero <= 2147483647:
                     raise ValueError(f'{campo}: informe um inteiro entre 0 e 2147483647.')
                 row[campo] = int(numero)
+
         if not row.get('categoria_tema'):
             row['categoria_tema'] = 'Outros'
+
         if row.get('link_post'):
             link = str(row['link_post']).strip().replace('\n', '').replace('\r', '')
             if link and not link.startswith(('http://', 'https://')):
@@ -1834,7 +1334,6 @@ class ConteudoResource(resources.ModelResource):
         return self.conteudos_existentes.get(row['id_post'])
 
     def save_m2m(self, instance, row, *args, **kwargs):
-        # Relações gravadas em bulk somente depois que os conteúdos forem salvos.
         pass
 
     def after_import_row(self, row, row_result, **kwargs):
@@ -1852,6 +1351,7 @@ class ConteudoResource(resources.ModelResource):
         super().after_import(dataset, result, **kwargs)
         if not self.relacoes_projetos:
             return
+
         self._salvar_progresso('processando', percentual=99, mensagem='Salvando vínculos com projetos IPD...')
         m2m = Conteudo._meta.get_field('projeto_ipd')
         through = m2m.remote_field.through
@@ -1860,21 +1360,25 @@ class ConteudoResource(resources.ModelResource):
         db = self.get_db_connection_name()
         manager = through.objects.using(db)
         posts = sorted({identificador for identificador, _ in self.relacoes_projetos})
+
         with transaction.atomic(using=db):
-            # Bloqueia os conteúdos afetados durante a troca de vínculos.
             for inicio in range(0, len(posts), 1000):
                 lote_ids = posts[inicio:inicio + 1000]
-                list(Conteudo.objects.using(db).select_for_update().filter(pk__in=lote_ids).order_by('pk').values_list('pk', flat=True))
+                list(Conteudo.objects.using(db).select_for_update().filter(id_post__in=lote_ids).order_by('id_post').values_list('id_post', flat=True))
+                
                 if self.modo_projetos == 'substituir':
                     manager.filter(**{campo_conteudo + '__in': lote_ids}).delete()
+
             lote = []
             for identificador, projeto_id in self.relacoes_projetos:
                 lote.append(through(**{campo_conteudo: identificador, campo_projeto: projeto_id}))
                 if len(lote) >= 1000:
                     manager.bulk_create(lote, batch_size=1000, ignore_conflicts=True)
                     lote = []
+
             if lote:
                 manager.bulk_create(lote, batch_size=1000, ignore_conflicts=True)
+
 
 # =============================================================================
 # ADMIN CONTEÚDO
@@ -1884,6 +1388,114 @@ class ConteudoResource(resources.ModelResource):
 class ConteudoAdmin(GestaoAdminMixin, ImportExportModelAdmin):
     import_form_class = ConteudoImportForm
     confirm_form_class = ConteudoConfirmImportForm
+
+    resource_classes = [ConteudoResource]
+    import_template_name = "conteudo_import.html"
+    skip_import_confirm = True
+
+    # =========================================================================
+    # URL DO PROGRESSO E FATIAMENTO
+    # =========================================================================
+
+    def get_urls(self):
+        urls = super().get_urls()
+        custom_urls = [
+            path(
+                'import-progress/',
+                self.admin_site.admin_view(self.import_progress),
+                name='score_conteudo_import_progress',
+            ),
+            path(
+                'importar-fatiado/',
+                self.admin_site.admin_view(self.importar_fatiado_view),
+                name='score_conteudo_importar_fatiado',
+            ),
+        ]
+        return custom_urls + urls
+
+    def importar_fatiado_view(self, request):
+        if request.method == 'POST':
+            arquivo = request.FILES.get('file')
+            modo_projetos = request.POST.get('modo_projetos', 'adicionar')
+
+            if not arquivo:
+                return JsonResponse({'erro': 'Nenhum arquivo enviado'}, status=400)
+
+            try:
+                dataset = Dataset()
+                conteudo = arquivo.read().decode('utf-8-sig')
+                dataset.load(conteudo, format='csv')
+
+                resource = ConteudoResource()
+                result = resource.import_data(
+                    dataset,
+                    request=request,
+                    modo_projetos=modo_projetos,
+                    raise_errors=False
+                )
+
+                if result.has_errors() or result.has_validation_errors():
+                    mensagens = []
+                    for erro in getattr(result, 'base_errors', []):
+                        mensagens.append(str(getattr(erro, 'error', erro)))
+                    try:
+                        for linha, erros in result.row_errors():
+                            for erro in erros:
+                                mensagens.append(f'Linha {linha}: {getattr(erro, "error", erro)}')
+                                if len(mensagens) >= 3: break
+                            if len(mensagens) >= 3: break
+                    except Exception:
+                        pass
+                    
+                    if not mensagens:
+                        for linha_invalida in getattr(result, 'invalid_rows', [])[:3]:
+                            mensagens.append(f'Linha {linha_invalida.number}: {linha_invalida.error}')
+
+                    erro_msg = ' | '.join(mensagens) if mensagens else 'Erro de validação ao processar lote.'
+                    return JsonResponse({'erro': erro_msg}, status=400)
+
+                return JsonResponse({'status': 'ok'})
+
+            except Exception as e:
+                erro_python = traceback.format_exc()
+                print("ERRO CRITICO EM CONTEUDO:", erro_python)
+                return JsonResponse({'erro': f'Erro Crítico no Servidor: {str(e)}'}, status=400)
+
+        return JsonResponse({'erro': 'Método não permitido'}, status=405)
+
+    def import_progress(self, request):
+        job_id = request.GET.get('job_id')
+
+        if not job_id:
+            response = JsonResponse({
+                'status': 'aguardando',
+                'percentual': 0,
+                'processados': 0,
+                'total': 0,
+                'mensagem': 'Aguardando importação...',
+            })
+            response['Cache-Control'] = 'no-store'
+            return response
+
+        chave = f"conteudo_import_progress:{request.user.pk}:{job_id}"
+
+        try:
+            progresso = cache.get(chave)
+        except Exception:
+            progresso = None
+
+        if progresso is None:
+            progresso = {
+                'status': 'aguardando',
+                'percentual': 0,
+                'processados': 0,
+                'total': 0,
+                'mensagem': 'Preparando arquivo...',
+            }
+
+        response = JsonResponse(progresso)
+        response['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+        return response
 
     def get_import_data_kwargs(self, request, *args, **kwargs):
         form = kwargs.get('form')
@@ -1913,137 +1525,8 @@ class ConteudoAdmin(GestaoAdminMixin, ImportExportModelAdmin):
         if form.cleaned_data.get("modo_projetos") == "adicionar" and antigos:
             form.instance.projeto_ipd.add(*antigos)
 
-
-    resource_classes = [
-        ConteudoResource
-    ]
-
-
-    # ============================================================
-    # TEMPLATE DE IMPORTAÇÃO
-    # ============================================================
-
-    import_template_name = "conteudo_import.html"
-
-    skip_import_confirm = True
-
-
-    # ============================================================
-    # URL PROGRESSO
-    # ============================================================
-
-    def get_urls(self):
-
-        urls = super().get_urls()
-
-        custom_urls = [
-            path(
-                'import-progress/',
-                self.admin_site.admin_view(
-                    self.import_progress
-                ),
-                name=
-                    'score_conteudo_import_progress',
-            ),
-        ]
-
-        return custom_urls + urls
-
-
-    # ============================================================
-    # API PROGRESSO
-    # ============================================================
-
-    def import_progress(
-        self,
-        request,
-    ):
-
-        job_id = request.GET.get(
-            'job_id'
-        )
-
-
-        if not job_id:
-
-            response = JsonResponse({
-                'status': 'aguardando',
-                'percentual': 0,
-                'processados': 0,
-                'total': 0,
-                'mensagem':
-                    'Aguardando importação...',
-            })
-
-            response[
-                'Cache-Control'
-            ] = 'no-store'
-
-            return response
-
-
-        chave = (
-            f"conteudo_import_progress:"
-            f"{request.user.pk}:"
-            f"{job_id}"
-        )
-
-
-        try:
-
-            progresso = cache.get(
-                chave
-            )
-
-        except Exception:
-
-            progresso = None
-
-
-        if progresso is None:
-
-            progresso = {
-                'status': 'aguardando',
-                'percentual': 0,
-                'processados': 0,
-                'total': 0,
-                'mensagem':
-                    'Preparando arquivo...',
-            }
-
-
-        response = JsonResponse(
-            progresso
-        )
-
-
-        response[
-            'Cache-Control'
-        ] = (
-            'no-store, no-cache, '
-            'must-revalidate, max-age=0'
-        )
-
-
-        return response
-
-
-    # ============================================================
-    # CHANGELIST
-    # ============================================================
-
-    def get_changelist(
-        self,
-        request,
-        **kwargs
-    ):
-
+    def get_changelist(self, request, **kwargs):
         return LimitedAdminChangeList
-
-
-    # ============================================================
-    # LISTAGEM
-    # ============================================================
 
     list_display = (
         'id_post',
@@ -2051,34 +1534,28 @@ class ConteudoAdmin(GestaoAdminMixin, ImportExportModelAdmin):
         'profile',
     )
 
-
     list_filter = (
         'projeto_ipd',
         'data',
     )
-
 
     search_fields = (
         '=id_post',
         'profile',
     )
 
-
     ordering = (
         '-data',
     )
-
 
     list_per_page = 50
     list_max_show_all = 0
     show_full_result_count = False
 
 
-    # ============================================================
-    # EDIÇÃO/EXCLUSÃO CONFORME AS PERMISSÕES DO DJANGO
-    # ============================================================
-
-
+# =============================================================================
+# ADMIN RESUMO EXECUTIVO
+# =============================================================================
 
 @admin.register(ResumoExecutivo)
 class ResumoExecutivoAdmin(admin.ModelAdmin):
@@ -2090,13 +1567,11 @@ class ResumoExecutivoAdmin(admin.ModelAdmin):
         "atualizado_em",
     )
 
-
     list_filter = (
         "mes_referencia",
         "criado_em",
         "atualizado_em",
     )
-
 
     search_fields = (
         "projeto__nome",
@@ -2104,27 +1579,21 @@ class ResumoExecutivoAdmin(admin.ModelAdmin):
         "conteudo",
     )
 
-
     readonly_fields = (
         "hash_insumo",
         "criado_em",
         "atualizado_em",
     )
 
-
     ordering = (
         "-mes_referencia",
         "-atualizado_em",
     )
 
-
     list_per_page = 50
-
     show_full_result_count = False
 
-
     fieldsets = (
-
         (
             "Identificação",
             {
@@ -2134,7 +1603,6 @@ class ResumoExecutivoAdmin(admin.ModelAdmin):
                 )
             },
         ),
-
         (
             "Resumo Executivo",
             {
@@ -2143,7 +1611,6 @@ class ResumoExecutivoAdmin(admin.ModelAdmin):
                 )
             },
         ),
-
         (
             "Controle",
             {
