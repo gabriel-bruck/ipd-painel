@@ -357,7 +357,7 @@ if __name__ == "__main__":
         coluna_id="id_post",
         coluna_texto="texto",
         coluna_perfil="profile",
-        openrouter_api_key="",
+        openrouter_api_key=""
         n_componentes_reducao=30  # Reduz a dimensão para 15 componentes antes do K-Means
     )
 
