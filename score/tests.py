@@ -277,7 +277,9 @@ def classificar_tabela_centroids(
             
         grupos_amostras[int(cid)] = amostras
 
+    # --- ETAPA 4 (Ajustada com Retry e Fallback) ---
     parser_cluster = JsonOutputParser(pydantic_object=ResultadoClusters)
+    
     prompt_cluster = ChatPromptTemplate.from_messages([
         ("system", 
          "Classifique os grupos de postagens abaixo escolhendo EXATAMENTE UMA categoria da lista fornecida para cada grupo, só repita se inevitavelmente\n\n"
@@ -286,19 +288,46 @@ def classificar_tabela_centroids(
         ("human", "Classifique estes grupos de posts (centroids):\n{dados_grupos}")
     ])
 
-    res_raw = (prompt_cluster | llm).invoke({
-        "format_instructions": parser_cluster.get_format_instructions(),
-        "dados_grupos": json.dumps(grupos_amostras, ensure_ascii=False),
-        "lista_categorias": lista_formatada
-    }).content
-    
-    match = re.search(r'\{.*\}', str(res_raw), re.DOTALL)
-    res_json = parser_cluster.parse(match.group(0) if match else str(res_raw))
-    
-    cats = res_json.get('categorias', []) if isinstance(res_json, dict) else res_json
-    mapa_categorias_clusters = {c['cluster_id']: c['nome_categoria'] for c in cats if isinstance(c, dict)}
+    chain = prompt_cluster | llm
 
-    # Atribuição da categoria aos centroids
+    max_tentativas = 3
+    res_json = None
+
+    for tentativa in range(1, max_tentativas + 1):
+        try:
+            print(f"  ✓ Enviando requisição para a LLM (Tentativa {tentativa}/{max_tentativas})...")
+            resposta_raw = chain.invoke({
+                "format_instructions": parser_cluster.get_format_instructions(),
+                "dados_grupos": json.dumps(grupos_amostras, ensure_ascii=False),
+                "lista_categorias": lista_formatada
+            }).content
+
+            # 1. Remove marcadores de código Markdown que a LLM costuma adicionar
+            texto_limpo = re.sub(r"```(?:json)?", "", str(resposta_raw)).strip("` \n\r")
+            
+            # 2. Captura o objeto JSON isolando chaves externas
+            match = re.search(r'\{.*\}', texto_limpo, re.DOTALL)
+            string_json = match.group(0) if match else texto_limpo
+
+            # 3. Tenta realizar o parser do JSON
+            res_json = parser_cluster.parse(string_json)
+            print("  ✓ Resposta parseada com sucesso!")
+            break
+
+        except Exception as e:
+            print(f"  ⚠️ Erro na tentativa {tentativa} de processar o JSON da LLM: {e}")
+            if tentativa == max_tentativas:
+                print("  ❌ Limite de tentativas atingido. Prosseguindo com categorização padrão para evitar interrupção.")
+                res_json = {"categorias": []}
+
+    # Extração resiliente dos dados do dicionário
+    cats = res_json.get('categorias', []) if isinstance(res_json, dict) else []
+    mapa_categorias_clusters = {
+        c['cluster_id']: c['nome_categoria'] 
+        for c in cats if isinstance(c, dict) and 'cluster_id' in c and 'nome_categoria' in c
+    }
+
+    # Atribuição da categoria aos centroids (Caso o ID não seja mapeado, 'Outros' assume)
     df_validos['categoria_tema'] = df_validos['cluster_id'].map(mapa_categorias_clusters).fillna('Outros')
 
     # --- ETAPA 5: Consolidação Final ---
@@ -320,7 +349,7 @@ def classificar_tabela_centroids(
 # 6. EXECUÇÃO DO SCRIPT
 # -----------------------------------------------------------------------------
 if __name__ == "__main__":
-    caminho_entrada = r"C:\Users\gabri\Desktop\itau.xlsx"
+    caminho_entrada = r"C:\Users\gabri\Downloads\data.xlsx"
     df_input = pd.read_excel(caminho_entrada)
 
     df_resultado = classificar_tabela_centroids(
