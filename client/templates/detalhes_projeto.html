@@ -63,7 +63,82 @@
         .blob-bg-2 {
             border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
         }
+    
+        /* ===== UX EXECUTIVA 2026 ===== */
+        .ux-sticky-module { position: sticky; top: 72px; z-index: 25; backdrop-filter: blur(14px); }
+        .ux-control-summary { display:flex; flex-wrap:wrap; gap:.5rem; align-items:center; }
+        .ux-chip { display:inline-flex; align-items:center; gap:.35rem; padding:.38rem .65rem; border-radius:.7rem; border:1px solid #e2e8f0; background:#fff; color:#475569; font-size:11px; font-weight:800; }
+        .ux-fullscreen-host:fullscreen { background:#fff; padding:24px; width:100vw; height:100vh; }
+        .ux-fullscreen-host:fullscreen canvas { max-height:calc(100vh - 48px)!important; }
+        .ux-fullscreen-btn { position:absolute; top:10px; right:10px; z-index:12; width:34px; height:34px; border-radius:10px; border:1px solid #e2e8f0; background:rgba(255,255,255,.94); color:#0f766e; box-shadow:0 4px 14px rgba(15,23,42,.08); }
+        .ux-fullscreen-btn:hover { background:#f0fdfa; }
+        .ux-section-nav a { white-space:nowrap; }
+
+        .ux-periodo-selecionado { display:flex; align-items:center; gap:.45rem; width:fit-content; max-width:100%; padding:.48rem .72rem; border-radius:.75rem; border:1px solid #d1eef2; background:#f0f9fa; color:#0f766e; font-size:11px; line-height:1.35; font-weight:800; }
+        .ux-periodo-selecionado::before { content:'\f073'; font-family:'Font Awesome 6 Free'; font-weight:900; flex:0 0 auto; }
+
+</style>
+
+    <style>
+        /* Cores por gráfico: painel fica fora do topo e abre como drawer/modal. */
+        .ux-color-panel-hidden { display: none; }
+        .ux-color-panel-hidden.ux-color-overlay {
+            display: block !important;
+            position: fixed;
+            inset: 0;
+            z-index: 99999;
+            background: rgba(15, 23, 42, .48);
+            padding: min(7vh, 56px) 16px 24px;
+            overflow-y: auto;
+            backdrop-filter: blur(4px);
+        }
+        .ux-color-overlay > details {
+            display: block;
+            width: min(920px, 100%);
+            max-height: 84vh;
+            overflow-y: auto;
+            margin: 0 auto;
+            background: #fff;
+            border-radius: 20px;
+            box-shadow: 0 24px 70px rgba(15,23,42,.24);
+        }
+        .ux-color-close {
+            position: fixed;
+            top: 18px;
+            right: 20px;
+            z-index: 100001;
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            border: 1px solid rgba(255,255,255,.35);
+            border-radius: 12px;
+            padding: 8px 12px;
+            background: #fff;
+            color: #0f766e;
+            font-size: 11px;
+            font-weight: 900;
+            box-shadow: 0 8px 24px rgba(15,23,42,.18);
+        }
+        .ux-color-chart-btn {
+            position: absolute;
+            top: 10px;
+            right: 48px;
+            z-index: 15;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 10px;
+            border: 1px solid #e2e8f0;
+            background: rgba(255,255,255,.94);
+            color: #0f766e;
+            box-shadow: 0 4px 14px rgba(15,23,42,.08);
+            transition: .15s ease;
+        }
+        .ux-color-chart-btn:hover { background: #f0fdfa; transform: translateY(-1px); }
     </style>
+
 </head>
 <body class="bg-slate-50 text-quaest-textDark font-sans antialiased selection:bg-quaest-teal selection:text-white">
 
@@ -1345,80 +1420,127 @@
             });
         }
 
-        function montarPersonalizadorCores(ipdId, nomesPerfis = []) {
-            const container = document.getElementById(`personalizador-cores-${ipdId}`);
-            if (!container) return;
+        function fecharPersonalizadorCoresOverlay() {
+    document.querySelectorAll('[id^="personalizador-cores-"]').forEach(painel => {
+        painel.classList.remove('ux-color-overlay');
+    });
+    // Remove TODOS os botões flutuantes de fechar duplicados
+    document.querySelectorAll('.ux-color-close').forEach(btn => btn.remove());
+    document.body.classList.remove('overflow-hidden');
+}
 
-            registrarCoresPerfis(nomesPerfis);
-            container.innerHTML = '';
+function abrirPersonalizadorCoresDoGrafico(ipdId) {
+    fecharPersonalizadorCoresOverlay();
 
-            const detalhes = document.createElement('details');
-            detalhes.className = 'group rounded-2xl border border-slate-200 bg-slate-50/80 overflow-hidden';
+    const painel = document.getElementById(`personalizador-cores-${ipdId}`);
+    const detalhes = painel?.querySelector('details');
+    if (!painel || !detalhes) return;
 
-            const resumo = document.createElement('summary');
-            resumo.className = 'flex items-center justify-between gap-3 px-4 py-3 cursor-pointer select-none list-none';
-            resumo.innerHTML = `
-                <span class="flex items-center gap-2 text-xs font-black text-slate-700 uppercase tracking-wider">
-                    <i class="fa-solid fa-palette text-quaest-teal"></i>
-                    Personalizar cores dos perfis
-                </span>
-                <span class="text-[11px] font-bold text-slate-400 group-open:hidden">Abrir</span>
-                <span class="text-[11px] font-bold text-slate-400 hidden group-open:inline">Fechar</span>
-            `;
+    detalhes.open = true;
+    painel.classList.add('ux-color-overlay');
+    document.body.classList.add('overflow-hidden');
 
-            const conteudo = document.createElement('div');
-            conteudo.className = 'border-t border-slate-200 bg-white px-4 py-4 space-y-3';
+    // Sincroniza a lista de temas sempre que o modal for aberto
+    montarPersonalizadorCoresTemas(ipdId);
 
-            const topo = document.createElement('div');
-            topo.className = 'flex flex-col sm:flex-row sm:items-center justify-between gap-2';
-            topo.innerHTML = '<p class="text-xs text-slate-500">As escolhas são aplicadas aos gráficos com linhas ou barras diferenciadas e ficam salvas neste navegador.</p>';
+    // Cria apenas um botão flutuante de fechar no canto do modal
+    const fechar = document.createElement('button');
+    fechar.type = 'button';
+    fechar.className = 'ux-color-close';
+    fechar.innerHTML = '<i class="fa-solid fa-xmark"></i><span>Fechar</span>';
+    fechar.onclick = fecharPersonalizadorCoresOverlay;
+    painel.appendChild(fechar);
+}
 
-            const btnRestaurar = document.createElement('button');
-            btnRestaurar.type = 'button';
-            btnRestaurar.className = 'text-[11px] font-black text-quaest-teal hover:underline shrink-0';
-            btnRestaurar.innerHTML = '<i class="fa-solid fa-rotate-left mr-1"></i> Restaurar padrão';
-            btnRestaurar.onclick = restaurarCoresPerfis;
-            topo.appendChild(btnRestaurar);
+function montarPersonalizadorCores(ipdId, nomesPerfis = []) {
+    const container = document.getElementById(`personalizador-cores-${ipdId}`);
+    if (!container) return;
 
-            const grade = document.createElement('div');
-            grade.className = 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2';
+    registrarCoresPerfis(nomesPerfis);
+    container.innerHTML = '';
 
-            [...new Set(nomesPerfis)].sort((a, b) => a.localeCompare(b, 'pt-BR')).forEach(nomePerfil => {
-                const item = document.createElement('label');
-                item.className = 'flex items-center gap-2.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 cursor-pointer hover:border-slate-300 transition';
+    const detalhes = document.createElement('details');
+    detalhes.className = 'group rounded-2xl border border-slate-200 bg-slate-50/80 overflow-hidden';
 
-                const input = document.createElement('input');
-                input.type = 'color';
-                input.value = obterCorPerfil(nomePerfil);
-                input.dataset.corPerfil = normalizarNomePerfil(nomePerfil);
-                input.dataset.nomePerfil = nomePerfil;
-                input.title = `Alterar cor de ${nomePerfil}`;
-                input.className = 'w-8 h-8 rounded-lg border-0 bg-transparent cursor-pointer shrink-0';
-                input.addEventListener('input', event => alterarCorPerfil(nomePerfil, event.target.value));
+    const resumo = document.createElement('summary');
+    resumo.className = 'flex items-center justify-between gap-3 px-4 py-3 cursor-pointer select-none list-none';
+    // REMOVIDO o "Fechar" duplicado da tag summary
+    resumo.innerHTML = `
+        <span class="flex items-center gap-2 text-xs font-black text-slate-700 uppercase tracking-wider">
+            <i class="fa-solid fa-palette text-quaest-teal"></i>
+            Personalizar cores
+        </span>
+        <span class="text-[11px] font-bold text-slate-400 group-open:hidden"><i class="fa-solid fa-chevron-down mr-1"></i>Opções</span>
+    `;
 
-                const texto = document.createElement('span');
-                texto.className = 'text-xs font-extrabold text-slate-700 truncate';
-                texto.textContent = nomePerfil;
+    const conteudo = document.createElement('div');
+    conteudo.className = 'border-t border-slate-200 bg-white px-4 py-4 space-y-3';
 
-                item.append(input, texto);
-                grade.appendChild(item);
-            });
+    const topo = document.createElement('div');
+    topo.className = 'flex flex-col sm:flex-row sm:items-center justify-between gap-2';
+    topo.innerHTML = '<p class="text-xs text-slate-500">As escolhas são aplicadas aos gráficos e ficam salvas neste navegador.</p>';
 
-            conteudo.append(topo, grade);
-            detalhes.append(resumo, conteudo);
-            container.appendChild(detalhes);
-        }
+    const btnRestaurar = document.createElement('button');
+    btnRestaurar.type = 'button';
+    btnRestaurar.className = 'text-[11px] font-black text-quaest-teal hover:underline shrink-0';
+    btnRestaurar.innerHTML = '<i class="fa-solid fa-rotate-left mr-1"></i> Restaurar padrão';
+    btnRestaurar.onclick = restaurarCoresPerfis;
+    topo.appendChild(btnRestaurar);
+
+    const grade = document.createElement('div');
+    grade.className = 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2';
+
+    [...new Set(nomesPerfis)].sort((a, b) => a.localeCompare(b, 'pt-BR')).forEach(nomePerfil => {
+        const item = document.createElement('label');
+        item.className = 'flex items-center gap-2.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 cursor-pointer hover:border-slate-300 transition';
+
+        const input = document.createElement('input');
+        input.type = 'color';
+        input.value = obterCorPerfil(nomePerfil);
+        input.dataset.corPerfil = normalizarNomePerfil(nomePerfil);
+        input.dataset.nomePerfil = nomePerfil;
+        input.title = `Alterar cor de ${nomePerfil}`;
+        input.className = 'w-8 h-8 rounded-lg border-0 bg-transparent cursor-pointer shrink-0';
+        input.addEventListener('input', event => alterarCorPerfil(nomePerfil, event.target.value));
+
+        const texto = document.createElement('span');
+        texto.className = 'text-xs font-extrabold text-slate-700 truncate';
+        texto.textContent = nomePerfil;
+
+        item.append(input, texto);
+        grade.appendChild(item);
+    });
+
+    conteudo.append(topo, grade);
+
+    const separadorTemas = document.createElement('div');
+    separadorTemas.className = 'border-t border-slate-200 pt-4 mt-4';
+    separadorTemas.innerHTML = `
+        <div class="flex items-center gap-2 mb-3">
+            <div class="w-8 h-8 rounded-lg bg-indigo-50 border border-indigo-200 flex items-center justify-center text-indigo-600">
+                <i class="fa-solid fa-hashtag"></i>
+            </div>
+            <div>
+                <span class="block text-xs font-black text-slate-800 uppercase tracking-wider">Cores dos temas</span>
+                <span class="text-[10px] text-slate-400">Aplicadas às matrizes e legendas temáticas</span>
+            </div>
+        </div>
+        <div id="personalizador-cores-temas-${ipdId}">
+            <p class="text-xs text-slate-400 italic">Carregando temas...</p>
+        </div>
+    `;
+    conteudo.appendChild(separadorTemas);
+
+    detalhes.append(resumo, conteudo);
+    container.appendChild(detalhes);
+}
 
         function abrirPersonalizadorCoresAtivo() {
             const moduloAtivo = [...document.querySelectorAll('article[id^="modulo-article-ipd-"]')]
                 .find(article => !article.classList.contains('hidden'));
-            const painel = moduloAtivo?.querySelector('[id^="personalizador-cores-"]');
-            const detalhes = painel?.querySelector('details');
-
-            if (!painel || !detalhes) return;
-
-            detalhes.open = true;
-            painel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            if (!moduloAtivo) return;
+            const ipdId = moduloAtivo.id.replace('modulo-article-ipd-', '');
+            abrirPersonalizadorCoresDoGrafico(ipdId);
         }
 
         let listaIPDsGlobais = [];
@@ -1800,7 +1922,7 @@ function desmarcarTodosRanking(ipdId) {
                 }
             });
 
-            if (resumo) resumo.textContent = `Atual: ${formatarDataAnoCurto(inicio)} a ${formatarDataAnoCurto(fim)} • anterior: ${formatarDataAnoCurto(compInicio)} a ${formatarDataAnoCurto(compFim)}`;
+            if (resumo) resumo.textContent = textoComparacaoPeriodoUX(inicio, fim, compInicio, compFim); estilizarResumoPeriodoUX(resumo);
         }
 
         function selecionarTodosHistorico(ipdId) {
@@ -2307,24 +2429,185 @@ function desmarcarTodosRanking(ipdId) {
             return dataStr;
         }
 
-        function obterCorDoTema(nomeTema) {
+
+        // ============================================================
+        // UX PADRAO DE PERIODO DOS GRAFICOS
+        // ============================================================
+        function formatarDataPeriodoUX(dataStr) {
+            if (!dataStr) return '—';
+            const iso = String(dataStr).split('T')[0];
+            const partes = iso.split('-');
+            if (partes.length === 3) return `${partes[2]}/${partes[1]}/${partes[0]}`;
+            if (partes.length === 2) return `${partes[1]}/${partes[0]}`;
+            return String(dataStr);
+        }
+
+        function textoPeriodoUX(inicio, fim) {
+            return `Período: ${formatarDataPeriodoUX(inicio)} — ${formatarDataPeriodoUX(fim)}`;
+        }
+
+        function textoComparacaoPeriodoUX(inicio, fim, compInicio = null, compFim = null) {
+            let texto = textoPeriodoUX(inicio, fim);
+            if (compInicio && compFim) {
+                texto += `  •  Comparação: ${formatarDataPeriodoUX(compInicio)} — ${formatarDataPeriodoUX(compFim)}`;
+            }
+            return texto;
+        }
+
+        function estilizarResumoPeriodoUX(elemento) {
+            if (!elemento) return;
+            elemento.className = 'ux-periodo-selecionado';
+        }
+
+        // ============================================================
+        // CORES PERSONALIZAVEIS DOS TEMAS
+        // ============================================================
+        const mapaCoresTemasPersonalizadas = new Map();
+        const CHAVE_CORES_TEMAS = 'ipd_cores_temas_personalizadas';
+
+        try {
+            const coresTemasSalvas = JSON.parse(localStorage.getItem(CHAVE_CORES_TEMAS) || '{}');
+            Object.entries(coresTemasSalvas).forEach(([tema, cor]) => {
+                if (/^#[0-9a-f]{6}$/i.test(String(cor))) {
+                    mapaCoresTemasPersonalizadas.set(tema, String(cor).toUpperCase());
+                }
+            });
+        } catch (error) {
+            console.warn('Nao foi possivel recuperar as cores personalizadas dos temas.', error);
+        }
+
+        function normalizarNomeTema(nomeTema) {
+            return String(nomeTema || '').trim().toLocaleLowerCase('pt-BR');
+        }
+
+        function obterCorPadraoTema(nomeTema) {
             if (!nomeTema) return paletaCores[0];
             let hash = 5381;
-            const str = String(nomeTema).trim().toLowerCase();
+            const str = normalizarNomeTema(nomeTema);
             for (let i = 0; i < str.length; i++) {
                 hash = ((hash << 5) + hash) + str.charCodeAt(i);
             }
-            const index = Math.abs(hash) % paletaCores.length;
-            return paletaCores[index];
+            return paletaCores[Math.abs(hash) % paletaCores.length];
         }
 
-        /*
-         * normalizarUrlEmbedInstagram(postUrl)
-         * -------------------------------------------------------------
-         * Converte links públicos do Instagram para a URL /embed/.
-         * Isso evita depender de blockquote + embed.js em conteúdo
-         * carregado dinamicamente no Top Posts.
-         */
+        function obterCorDoTema(nomeTema) {
+            const chave = normalizarNomeTema(nomeTema);
+            if (!chave) return paletaCores[0];
+            return mapaCoresTemasPersonalizadas.get(chave) || obterCorPadraoTema(nomeTema);
+        }
+
+        function salvarCoresTemasPersonalizadas() {
+            try {
+                localStorage.setItem(CHAVE_CORES_TEMAS, JSON.stringify(Object.fromEntries(mapaCoresTemasPersonalizadas)));
+            } catch (error) {
+                console.warn('Nao foi possivel salvar as cores personalizadas dos temas.', error);
+            }
+        }
+
+        function redesenharGraficosTematicos() {
+            Object.keys(stateIPDs).forEach(ipdId => {
+                if (!stateIPDs[ipdId]?.dadosTemas) return;
+                if (typeof renderizarMatrizGeralTemas === 'function') renderizarMatrizGeralTemas(ipdId);
+                if (typeof renderizarMatrizPerfilTemas === 'function') renderizarMatrizPerfilTemas(ipdId);
+            });
+        }
+
+        function alterarCorTema(nomeTema, novaCor) {
+            if (!/^#[0-9a-f]{6}$/i.test(String(novaCor))) return;
+            const chave = normalizarNomeTema(nomeTema);
+            const corNormalizada = String(novaCor).toUpperCase();
+            mapaCoresTemasPersonalizadas.set(chave, corNormalizada);
+            salvarCoresTemasPersonalizadas();
+
+            document.querySelectorAll('input[data-cor-tema]').forEach(input => {
+                if (input.dataset.corTema === chave) input.value = corNormalizada;
+            });
+
+            redesenharGraficosTematicos();
+        }
+
+        function restaurarCoresTemas() {
+            mapaCoresTemasPersonalizadas.clear();
+            salvarCoresTemasPersonalizadas();
+
+            document.querySelectorAll('input[data-cor-tema]').forEach(input => {
+                input.value = obterCorDoTema(input.dataset.nomeTema);
+            });
+
+            redesenharGraficosTematicos();
+        }
+
+       function obterTodosTemasDisponiveis(ipdId) {
+    const dados = stateIPDs[ipdId]?.dadosTemas;
+    if (!dados) return [];
+
+    const temas = new Set();
+    const adicionar = item => {
+        const tema = String(item?.categoria_tema || item?.tema || item?.nome || '').trim();
+        if (tema && tema.toLowerCase() !== 'sem categoria') temas.add(tema);
+    };
+
+    if (Array.isArray(dados.temas_geral)) dados.temas_geral.forEach(adicionar);
+    if (Array.isArray(dados.temas_por_perfil)) dados.temas_por_perfil.forEach(adicionar);
+    if (Array.isArray(dados.temas)) dados.temas.forEach(adicionar);
+
+    return [...temas].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+}
+
+function montarPersonalizadorCoresTemas(ipdId) {
+    const container = document.getElementById(`personalizador-cores-temas-${ipdId}`);
+    if (!container) return;
+
+    const temas = obterTodosTemasDisponiveis(ipdId);
+
+    if (!temas.length) {
+        const carregouDados = !!stateIPDs[ipdId]?.dadosTemas;
+        container.innerHTML = carregouDados
+            ? '<p class="text-xs text-slate-400 italic">Nenhum tema encontrado para o período selecionado.</p>'
+            : '<p class="text-xs text-slate-400 italic"><i class="fa-solid fa-spinner animate-spin mr-1 text-indigo-500"></i>Aguardando carregamento dos temas...</p>';
+        return;
+    }
+
+    container.innerHTML = '';
+
+    const topo = document.createElement('div');
+    topo.className = 'flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3';
+    topo.innerHTML = '<p class="text-xs text-slate-500">Escolha uma cor fixa para cada tema. As cores ficam salvas neste navegador.</p>';
+
+    const btnRestaurar = document.createElement('button');
+    btnRestaurar.type = 'button';
+    btnRestaurar.className = 'text-[11px] font-black text-indigo-600 hover:underline shrink-0 cursor-pointer';
+    btnRestaurar.innerHTML = '<i class="fa-solid fa-rotate-left mr-1"></i>Restaurar temas';
+    btnRestaurar.onclick = restaurarCoresTemas;
+    topo.appendChild(btnRestaurar);
+
+    const grade = document.createElement('div');
+    grade.className = 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2';
+
+    temas.forEach(nomeTema => {
+        const item = document.createElement('label');
+        item.className = 'flex items-center gap-2.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 cursor-pointer hover:border-slate-300 transition';
+
+        const input = document.createElement('input');
+        input.type = 'color';
+        input.value = obterCorDoTema(nomeTema);
+        input.dataset.corTema = normalizarNomeTema(nomeTema);
+        input.dataset.nomeTema = nomeTema;
+        input.title = `Alterar cor do tema ${nomeTema}`;
+        input.className = 'w-8 h-8 rounded-lg border-0 bg-transparent cursor-pointer shrink-0';
+        input.addEventListener('input', event => alterarCorTema(nomeTema, event.target.value));
+
+        const texto = document.createElement('span');
+        texto.className = 'text-xs font-extrabold text-slate-700 truncate';
+        texto.textContent = nomeTema;
+
+        item.append(input, texto);
+        grade.appendChild(item);
+    });
+
+    container.append(topo, grade);
+}
+         
         function normalizarUrlEmbedInstagram(postUrl) {
             try {
                 const url = new URL(String(postUrl || '').trim());
@@ -2709,6 +2992,9 @@ function desmarcarTodosRanking(ipdId) {
                 stateIPDs[ipdId].dadosTemas =
                     data;
 
+                // Atualiza o painel de cores com os temas retornados pela API.
+                montarPersonalizadorCoresTemas(ipdId);
+
 
                 // =====================================================
                 // PERFIS DISPONÍVEIS
@@ -2804,12 +3090,8 @@ function desmarcarTodosRanking(ipdId) {
                         dataFim;
 
 
-                    resumo.textContent =
-                        `${formatarDataAnoCurto(
-                            inicioResposta
-                        )} a ${formatarDataAnoCurto(
-                            fimResposta
-                        )}`;
+                    resumo.textContent = textoPeriodoUX(inicioResposta, fimResposta);
+                    estilizarResumoPeriodoUX(resumo);
                 }
 
 
@@ -3725,12 +4007,8 @@ function desmarcarTodosRanking(ipdId) {
                     );
 
                 if (resumo) {
-                    resumo.textContent =
-                        `${formatarDataAnoCurto(
-                            data.data_inicio || dataInicio
-                        )} a ${formatarDataAnoCurto(
-                            data.data_fim || dataFim
-                        )}`;
+                    resumo.textContent = textoPeriodoUX(data.data_inicio || dataInicio, data.data_fim || dataFim);
+                    estilizarResumoPeriodoUX(resumo);
                 }
 
             } catch (err) {
@@ -5021,13 +5299,13 @@ function toggleComparacaoRanking(ipdId) {
 
         if (comparar) {
 
-            resumo.innerText =
-                `Período analisado: ${formatarDataAnoCurto(inicio)} a ${formatarDataAnoCurto(fim)} • comparação: ${formatarDataAnoCurto(comparacaoInicio)} a ${formatarDataAnoCurto(comparacaoFim)}`;
+            resumo.innerText = textoComparacaoPeriodoUX(inicio, fim, comparacaoInicio, comparacaoFim);
+            estilizarResumoPeriodoUX(resumo);
 
         } else {
 
-            resumo.innerText =
-                `Período analisado: ${formatarDataAnoCurto(inicio)} a ${formatarDataAnoCurto(fim)} • comparação desativada`;
+            resumo.innerText = textoPeriodoUX(inicio, fim);
+            estilizarResumoPeriodoUX(resumo);
         }
     }
 }
@@ -6324,7 +6602,19 @@ function toggleComparacaoRanking(ipdId) {
                             <p id="resumo-periodo-${ipdId}" class="text-[11px] font-bold text-quaest-tealDark"></p>
                         </div>
 
-                        <div id="personalizador-cores-${ipdId}"></div>
+                        <div id="personalizador-cores-${ipdId}" class="ux-color-panel-hidden"></div>
+
+                        <!-- LEITURA RÁPIDA DO IPD — 3 CARDS EXECUTIVOS -->
+                        <div class="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 md:p-5 space-y-3">
+                            <div class="flex items-center justify-between gap-3">
+                                <div>
+                                    <span class="text-[10px] font-black uppercase tracking-[0.18em] text-quaest-teal">Leitura rápida</span>
+                                    <h3 class="text-sm font-black text-slate-900 mt-0.5">Resumo do IPD</h3>
+                                </div>
+                                <span class="text-[10px] font-bold text-slate-400">Último período disponível</span>
+                            </div>
+                            <div id="ux-resumo-cards-${ipdId}" class="grid grid-cols-1 md:grid-cols-3 gap-3"></div>
+                        </div>
 
                         <!-- CONSTRUTOR LIVRE DE JANELAS (ex.: Pré-Copa, Copa e Pós-Copa) -->
                         <div class="hidden rounded-2xl border border-violet-200 bg-violet-50/50 p-4 space-y-4">
@@ -6531,11 +6821,7 @@ function toggleComparacaoRanking(ipdId) {
                                         <i class="fa-solid fa-file-csv text-emerald-600"></i> CSV
                                     </button>
                                 </div>
-                                <div class="hidden p-1 bg-slate-100 rounded-xl border border-slate-200 text-xs font-bold shrink-0">
-                                    <button id="btn-periodo-diario-${ipdId}" onclick="alterarPeriodoHistorico(${ipdId}, 'diario')" class="px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition">Diário</button>
-                                    <button id="btn-periodo-semana-${ipdId}" onclick="alterarPeriodoHistorico(${ipdId}, 'semana')" class="px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition">Semanal</button>
-                                    <button id="btn-periodo-mes-${ipdId}" onclick="alterarPeriodoHistorico(${ipdId}, 'mes')" class="px-3 py-1.5 rounded-lg bg-white text-quaest-teal shadow-sm transition">Mensal</button>
-                                </div>
+                                
                                 <button onclick="toggleMinimizarCard('box-historico-${ipdId}', this)" title="Minimizar Seção" class="p-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 transition">
                                     <i class="fa-solid fa-chevron-up text-xs"></i>
                                 </button>
@@ -6553,8 +6839,17 @@ function toggleComparacaoRanking(ipdId) {
                             </div>
 
                             <div class="p-6 rounded-2xl bg-slate-50 border border-slate-200 space-y-4">
-                                <div class="h-80 w-full cursor-pointer relative">
-                                    <canvas id="chart-line-${ipdId}"></canvas>
+                                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2">
+                                    <label class="inline-flex items-center gap-2 cursor-pointer text-[11px] font-black text-slate-700">
+                                        <input id="historico-mostrar-valores-${ipdId}" type="checkbox" onchange="alternarValoresHistorico(${ipdId}, this.checked)" class="rounded border-slate-300 text-quaest-teal focus:ring-quaest-teal">
+                                        <span><i class="fa-solid fa-tag mr-1 text-quaest-teal"></i>Mostrar valores nos pontos</span>
+                                    </label>
+                                    <span class="text-[10px] font-semibold text-slate-400">Desativado por padrão · com valores, use a rolagem horizontal para preservar a leitura.</span>
+                                </div>
+                                <div id="historico-scroll-${ipdId}" class="w-full overflow-x-auto overflow-y-hidden ranking-scroll pb-2">
+                                    <div id="historico-chart-wrapper-${ipdId}" class="h-80 w-full cursor-pointer relative" style="min-width: 100%;">
+                                        <canvas id="chart-line-${ipdId}"></canvas>
+                                    </div>
                                 </div>
 
                                 <div id="box-diagnostico-ponto-${ipdId}" class="hidden p-5 rounded-2xl bg-sky-50/80 border border-quaest-teal/30 text-xs space-y-4 shadow-sm">
@@ -6694,8 +6989,7 @@ function toggleComparacaoRanking(ipdId) {
                     <div class="space-y-6">
                         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                             <div>
-                                <span class="text-xs font-black text-quaest-teal uppercase tracking-widest">Equilíbrio Multidimensão</span>
-                                <h3 id="titulo-radar-${ipdId}" class="text-xl font-black text-slate-900 mt-1">Radar comparativo — período atual vs. anterior</h3>
+                                <h3 id="titulo-radar-${ipdId}" class="text-xl font-black text-slate-900">Radar de Dimensões (${nomeIpd})</h3>
                             </div>
                             
                             <div class="flex items-center gap-3">
@@ -6798,9 +7092,8 @@ function toggleComparacaoRanking(ipdId) {
                     <div class="space-y-6">
                         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
                             <div>
-                                <span class="text-xs font-black text-quaest-teal uppercase tracking-widest">Matriz de Eficiência Temática</span>
-                                <h3 class="text-xl font-black text-slate-900 mt-1">Análise Temática e Matriz de Retorno</h3>
-                                <p class="text-slate-500 text-xs mt-0.5">Cruze o volume de publicações (Total de Posts) contra o engajamento retornado (Média de Interações/Post).</p>
+                                <h3 class="text-xl font-black text-slate-900">Matriz de Eficiência Temática</h3>
+                                <p class="text-slate-500 text-xs mt-1">Volume de publicações × média de interações por post.</p>
                             </div>
                             
                             <div class="flex flex-wrap items-end gap-2">
@@ -6834,17 +7127,8 @@ function toggleComparacaoRanking(ipdId) {
                         </div>
 
                         <div id="box-temas-${ipdId}" class="space-y-6 transition-all">
-                            <div class="flex flex-wrap items-center gap-2 text-[10px] font-bold">
-                                <span class="text-slate-500">
-                                    Período analisado:
-                                </span>
-                                <span id="resumo-periodo-temas-${ipdId}"
-                                      class="px-2.5 py-1 rounded-full bg-quaest-tealLight text-quaest-tealDark border border-quaest-tealBorder">
-                                    —
-                                </span>
-                                <span id="erro-periodo-temas-${ipdId}"
-                                      class="hidden text-rose-600"></span>
-                            </div>
+                            <span id="resumo-periodo-temas-${ipdId}" class="hidden"></span>
+                            <span id="erro-periodo-temas-${ipdId}" class="hidden text-[10px] font-bold text-rose-600"></span>
                             <div class="p-3.5 rounded-xl bg-indigo-50/70 border border-indigo-200 flex items-start gap-2.5 text-xs text-slate-700">
                                 <i class="fa-solid fa-table-cells-large text-indigo-600 mt-0.5"></i>
                                 <p><strong>Guia rápido:</strong> os quadrantes cruzam frequência de publicação e retorno médio. Temas no alto entregam mais interação por post; temas à direita recebem maior volume de conteúdo. O comparativo final coloca os perfis lado a lado.</p>
@@ -7212,9 +7496,6 @@ function toggleComparacaoRanking(ipdId) {
                                 <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-50 text-purple-700 text-xs font-bold border border-purple-200 w-fit">
                                     <i class="fa-solid fa-robot"></i> Modelo Preditivo Relacional
                                 </span>
-                                <button onclick="toggleMinimizarCard('box-previsao-${ipdId}', this)" title="Minimizar Seção" class="p-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 transition">
-                                    <i class="fa-solid fa-chevron-up text-xs"></i>
-                                </button>
                             </div>
                         </div>
 
@@ -7363,9 +7644,6 @@ function toggleComparacaoRanking(ipdId) {
                                 <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 text-slate-600 text-xs font-bold w-fit">
                                     <i class="fa-solid fa-microchip text-quaest-teal"></i> Controle Sintético
                                 </span>
-                                <button onclick="toggleMinimizarCard('box-causal-${ipdId}', this)" title="Minimizar Seção" class="p-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 transition">
-                                    <i class="fa-solid fa-chevron-up text-xs"></i>
-                                </button>
                             </div>
                         </div>
 
@@ -7460,7 +7738,133 @@ function toggleComparacaoRanking(ipdId) {
                 container.appendChild(ipdSection);
                 montarPersonalizadorCores(ipdId, profiles);
                 inicializarStateIPD(ipdObj, ipdId);
+                setTimeout(() => aplicarMelhoriasUXModulo(ipdId), 0);
             });
+        }
+
+        // ============================================================
+        // MELHORIAS DE UX — SOMENTE FRONT-END
+        // ============================================================
+        function formatarNumeroUX(valor, casas = 2) {
+            const n = Number(valor);
+            return Number.isFinite(n) ? n.toLocaleString('pt-BR', { minimumFractionDigits: casas, maximumFractionDigits: casas }) : '—';
+        }
+
+        function montarResumoExecutivoUX(ipdId) {
+            const ref = stateIPDs[ipdId];
+            const alvo = document.getElementById(`ux-resumo-cards-${ipdId}`);
+            if (!ref || !alvo) return;
+            const estrutura = ref.profilesDataMes;
+            const datas = [...(estrutura?.datas || [])].sort();
+            if (!datas.length) {
+                alvo.innerHTML = `<div class="col-span-full rounded-xl border border-slate-200 bg-white p-4 text-xs text-slate-500">Ainda não há dados suficientes para montar a leitura rápida.</div>`;
+                return;
+            }
+            const atual = datas[datas.length - 1];
+            const anterior = datas.length > 1 ? datas[datas.length - 2] : null;
+            const linhas = Object.entries(estrutura.profiles || {}).map(([nome, info]) => {
+                const regAtual = info.registrosPorData?.[atual];
+                const regAnterior = anterior ? info.registrosPorData?.[anterior] : null;
+                return { nome, atual: Number(regAtual?.ipd), anterior: Number(regAnterior?.ipd) };
+            }).filter(x => Number.isFinite(x.atual)).sort((a,b) => b.atual - a.atual);
+            if (!linhas.length) return;
+            const lider = linhas[0];
+            const variacoes = linhas.filter(x => Number.isFinite(x.anterior)).map(x => ({...x, delta:x.atual-x.anterior})).sort((a,b)=>b.delta-a.delta);
+            const maiorAlta = variacoes[0];
+            const maiorQueda = [...variacoes].sort((a,b)=>a.delta-b.delta)[0];
+            const media = linhas.reduce((a,b)=>a+b.atual,0)/linhas.length;
+            const dataLabel = typeof formatarChaveHistorico === 'function' ? formatarChaveHistorico(atual, 'mes') : atual;
+            const card = (icone, rotulo, valor, detalhe, classe='text-slate-900') => `
+                <div class="rounded-xl bg-white border border-slate-200 p-3.5 shadow-sm min-w-0">
+                    <div class="flex items-center justify-between gap-2"><span class="text-[10px] font-black uppercase tracking-wider text-slate-400">${rotulo}</span><i class="${icone} text-quaest-teal text-xs"></i></div>
+                    <div class="mt-1 text-lg md:text-xl font-black ${classe} truncate" title="${valor}">${valor}</div>
+                    <div class="mt-0.5 text-[10px] font-semibold text-slate-500 truncate" title="${detalhe}">${detalhe}</div>
+                </div>`;
+            alvo.innerHTML = [
+                card('fa-solid fa-trophy','Liderança', lider.nome, `IPD ${formatarNumeroUX(lider.atual)} · ${dataLabel}`),
+                maiorAlta ? card('fa-solid fa-arrow-trend-up','Maior avanço', maiorAlta.nome, `${maiorAlta.delta >= 0 ? '+' : ''}${formatarNumeroUX(maiorAlta.delta)} ponto vs. período anterior`, 'text-emerald-700') : card('fa-solid fa-minus','Maior avanço','—','Sem período anterior'),
+                maiorQueda ? card('fa-solid fa-triangle-exclamation','Ponto de atenção', maiorQueda.nome, `${maiorQueda.delta >= 0 ? '+' : ''}${formatarNumeroUX(maiorQueda.delta)} ponto vs. período anterior`, maiorQueda.delta < 0 ? 'text-rose-700' : 'text-slate-900') : card('fa-solid fa-minus','Ponto de atenção','—','Sem período anterior')
+            ].join('');
+        }
+
+        function alternarControlesUX(botao, painel) {
+            const aberto = !painel.classList.contains('hidden');
+            painel.classList.toggle('hidden', aberto);
+            botao.innerHTML = '<i class="fa-solid fa-sliders mr-1"></i>Filtros deste gráfico';
+            botao.setAttribute('aria-expanded', String(!aberto));
+        }
+
+        function recolherControlesUX(ipdId) {
+            const boxes = document.querySelectorAll(`#modulo-article-ipd-${ipdId} [id^="box-"]`);
+            boxes.forEach(box => {
+                // Forecasting e Controle Sintético precisam abrir com período/inputs visíveis.
+                if (box.id === `box-previsao-${ipdId}` || box.id === `box-causal-${ipdId}`) return;
+                if (box.dataset.uxControles === '1') return;
+                const primeiro = box.firstElementChild;
+                if (!primeiro || !primeiro.querySelector('input, select, button')) return;
+                const painel = primeiro;
+                painel.classList.add('hidden');
+                const barra = document.createElement('div');
+                barra.className = 'flex flex-col sm:flex-row sm:items-center justify-between gap-2 rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-2';
+                barra.innerHTML = `<div class="ux-control-summary"></div>`;
+
+                // O resumo real do período precisa permanecer visível mesmo com os controles recolhidos.
+                // Movemos o próprio elemento (não uma cópia), então qualquer atualização posterior
+                // feita pelas funções dos gráficos aparece imediatamente nesta barra.
+                const resumoPeriodo = painel.querySelector('[id^="resumo-filtro-"]');
+                if (resumoPeriodo) {
+                    estilizarResumoPeriodoUX(resumoPeriodo);
+                    barra.querySelector('.ux-control-summary')?.prepend(resumoPeriodo);
+                }
+
+                // Na trajetória do Top 10, o resumo do período fica na mesma barra dos filtros.
+                if (box.id === `box-ranking-historico-${ipdId}`) {
+                    const resumoTrajetoria = document.getElementById(`resumo-ranking-historico-${ipdId}`);
+                    if (resumoTrajetoria) {
+                        resumoTrajetoria.className = 'ux-chip';
+                        barra.querySelector('.ux-control-summary')?.appendChild(resumoTrajetoria);
+                    }
+                }
+
+                const btn = document.createElement('button');
+                btn.type='button';
+                btn.className='rounded-lg bg-white border border-slate-200 px-3 py-1.5 text-[11px] font-black text-quaest-teal hover:bg-quaest-tealLight transition shrink-0';
+                btn.innerHTML='<i class="fa-solid fa-sliders mr-1"></i>Filtros deste gráfico';
+                btn.setAttribute('aria-expanded','false');
+                btn.onclick=()=>alternarControlesUX(btn,painel);
+                barra.appendChild(btn);
+                box.insertBefore(barra,painel);
+                box.dataset.uxControles='1';
+            });
+        }
+
+        function alternarTelaCheiaUX(host) {
+            if (!document.fullscreenElement) host.requestFullscreen?.();
+            else document.exitFullscreen?.();
+        }
+
+        function adicionarTelaCheiaGraficosUX(ipdId) {
+            document.querySelectorAll(`#modulo-article-ipd-${ipdId} canvas`).forEach(canvas => {
+                const host = canvas.parentElement;
+                if (!host || host.dataset.uxFullscreen === '1') return;
+                host.classList.add('ux-fullscreen-host','relative');
+                const btn=document.createElement('button');
+                btn.type='button'; btn.className='ux-fullscreen-btn'; btn.title='Ver gráfico em tela cheia';
+                btn.innerHTML='<i class="fa-solid fa-expand"></i>';
+                btn.onclick=(e)=>{e.preventDefault();e.stopPropagation();alternarTelaCheiaUX(host);};
+                host.appendChild(btn);
+
+                // Personalização de cores permanece centralizada no menu do módulo,
+                // evitando botões e overlays repetidos sobre cada gráfico.
+
+                host.dataset.uxFullscreen='1';
+            });
+        }
+
+        function aplicarMelhoriasUXModulo(ipdId) {
+            recolherControlesUX(ipdId);
+            adicionarTelaCheiaGraficosUX(ipdId);
+            montarResumoExecutivoUX(ipdId);
         }
 
         function inicializarStateIPD(ipdObj, ipdId) {
@@ -7533,6 +7937,7 @@ function toggleComparacaoRanking(ipdId) {
                 profilesDataSemana: processarMapeamentoPeriodo(rawSemanais, 'semana'),
                 profilesDataMes: profilesDataMesObj,
                 lineChart: null,
+                mostrarValoresHistorico: false,
                 radarChart: null
             };
 
@@ -7717,9 +8122,43 @@ function toggleComparacaoRanking(ipdId) {
             }
 
             const ctxLine = document.getElementById(`chart-line-${ipdId}`).getContext('2d');
+            const pluginValoresHistorico = {
+                id: `valoresHistorico-${ipdId}`,
+                afterDatasetsDraw(chart) {
+                    if (!stateIPDs[ipdId]?.mostrarValoresHistorico) return;
+                    const { ctx } = chart;
+                    ctx.save();
+                    ctx.font = '700 9px Inter, sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'bottom';
+                    chart.data.datasets.forEach((dataset, datasetIndex) => {
+                        const meta = chart.getDatasetMeta(datasetIndex);
+                        if (meta.hidden) return;
+                        meta.data.forEach((element, index) => {
+                            const valor = dataset.data[index];
+                            if (valor === null || valor === undefined || !Number.isFinite(Number(valor))) return;
+                            const texto = Number(valor).toFixed(2);
+                            const x = Number(element?.x);
+                            const yBase = Number(element?.y);
+                            if (!Number.isFinite(x) || !Number.isFinite(yBase)) return;
+
+                            const largura = ctx.measureText(texto).width + 8;
+                            // Alterna a altura entre as séries para reduzir colisões.
+                            const faixa = datasetIndex % 3;
+                            const y = Math.max(13, yBase - 8 - (faixa * 13));
+                            ctx.fillStyle = 'rgba(255,255,255,.94)';
+                            ctx.fillRect(x - largura / 2, y - 11, largura, 13);
+                            ctx.fillStyle = Array.isArray(dataset.borderColor) ? '#334155' : (dataset.borderColor || '#334155');
+                            ctx.fillText(texto, x, y);
+                        });
+                    });
+                    ctx.restore();
+                }
+            };
             ref.lineChart = new Chart(ctxLine, {
                 type: 'line',
                 data: { labels: [], datasets: [] },
+                plugins: [pluginValoresHistorico],
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
@@ -7856,6 +8295,7 @@ function toggleComparacaoRanking(ipdId) {
             const conjuntoDatas = new Set();
             let campoData = 'mes';
             if (tipoPeriodo === 'semana') campoData = 'semana';
+            else if (tipoPeriodo === 'quinzena') campoData = 'quinzena';
             else if (tipoPeriodo === 'diario') campoData = 'data' in (listaMedicoes[0] || {}) ? 'data' : 'dia';
 
             const obterChavePeriodo = medicao => {
@@ -7864,6 +8304,14 @@ function toggleComparacaoRanking(ipdId) {
                 // O mensal deve sempre compartilhar uma única chave YYYY-MM,
                 // mesmo se o backend enviar o primeiro dia do mês ou timestamp.
                 if (tipoPeriodo === 'mes') return formatarDataParaAnoMes(chaveOriginal);
+                if (tipoPeriodo === 'quinzena') {
+                    const iso = String(chaveOriginal).split('T')[0];
+                    const partes = iso.split('-');
+                    if (partes.length >= 3) {
+                        const dia = Number(partes[2]);
+                        return `${partes[0]}-${partes[1]}-${dia <= 15 ? '01' : '16'}`;
+                    }
+                }
                 return String(chaveOriginal).split('T')[0];
             };
 
@@ -7953,6 +8401,10 @@ function toggleComparacaoRanking(ipdId) {
                 const data = dataIsoMedicao(m);
                 const copia = { ...m, data, dia: data };
                 if (agrupamento === 'semana') copia.semana = inicioSemanaIso(data);
+                if (agrupamento === 'quinzena') {
+                    const [ano, mes, dia] = data.split('-');
+                    copia.quinzena = `${ano}-${mes}-${Number(dia) <= 15 ? '01' : '16'}`;
+                }
                 if (agrupamento === 'mes') copia.mes = data.slice(0, 7);
                 return copia;
             });
@@ -8617,18 +9069,19 @@ function toggleComparacaoRanking(ipdId) {
 
         function formatarChaveHistorico(chave, agrupamento) {
             if (agrupamento === 'mes') return formatarDataAnoCurto(chave, true);
+
             if (agrupamento === 'quinzena') {
+                const partes = String(chave).split('-');
+                const ano = partes[0];
+                const mes = partes[1];
+                const marcador = partes[2];
 
-        const [ano, mes, q] =
-            String(chave).split('-');
+                // Aceita os dois formatos usados pelos módulos:
+                // YYYY-MM-Q1 / YYYY-MM-Q2 e YYYY-MM-01 / YYYY-MM-16.
+                const dia = (marcador === 'Q1' || marcador === '01') ? '01' : '16';
+                return `${dia}/${mes}/${ano.slice(-2)}`;
+            }
 
-        const dia =
-            q === 'Q1'
-                ? '01'
-                : '16';
-
-        return `${dia}/${mes}/${ano.slice(-2)}`;
-    }
             return formatarDataAnoCurto(chave);
         }
 
@@ -8676,7 +9129,51 @@ function toggleComparacaoRanking(ipdId) {
             });
         }
 
+        function ajustarLarguraHistorico(ipdId) {
+            const ref = stateIPDs[ipdId];
+            const wrapper = document.getElementById(`historico-chart-wrapper-${ipdId}`);
+            if (!ref || !wrapper) return;
+
+            const qtdPontos = ref.lineChart?.data?.labels?.length || 0;
+            const mostrar = !!ref.mostrarValoresHistorico;
+
+            if (!mostrar) {
+                wrapper.style.width = '100%';
+                wrapper.style.minWidth = '100%';
+                wrapper.style.maxWidth = 'none';
+                return;
+            }
+
+            // Mantemos scroll horizontal, mas limitamos a largura física do canvas.
+            // Canvas muito largo pode ultrapassar o limite do navegador/GPU e ficar
+            // completamente em branco. 7.500 px mantém a leitura sem estourar o canvas.
+            const larguraDesejada = Math.max(960, qtdPontos * 46);
+            const larguraSegura = Math.min(7500, larguraDesejada);
+            wrapper.style.width = `${larguraSegura}px`;
+            wrapper.style.minWidth = `${larguraSegura}px`;
+            wrapper.style.maxWidth = `${larguraSegura}px`;
+        }
+
+        function alternarValoresHistorico(ipdId, ativo) {
+            const ref = stateIPDs[ipdId];
+            if (!ref) return;
+
+            ref.mostrarValoresHistorico = !!ativo;
+
+            // Reconstrói os datasets primeiro. A largura é calculada dentro de
+            // atualizarGraficoHistorico() quando labels/datasets já estão prontos.
+            // Não redimensionamos o canvas antes disso.
+            atualizarGraficoHistorico(ipdId);
+
+            // Ao habilitar, mantém o começo da série visível.
+            if (ativo) {
+                const scroll = document.getElementById(`historico-scroll-${ipdId}`);
+                if (scroll) scroll.scrollLeft = 0;
+            }
+        }
+
         function atualizarGraficoHistorico(ipdId) {
+            montarResumoExecutivoUX(ipdId);
             const ref = stateIPDs[ipdId];
             if (!ref?.lineChart) return;
             const filtro = ref.filtrosGraficos?.historico;
@@ -8688,10 +9185,14 @@ function toggleComparacaoRanking(ipdId) {
                 const pInfo = dataStruct.profiles?.[profileName];
                 if (!pInfo) return;
                 const color = obterCorPerfil(profileName);
-                ref.lineChart.data.datasets.push({ label: profileName, data: dataStruct.datas.map(d => pInfo.registrosPorData[d]?.ipd ?? null), borderColor: color, backgroundColor: color + '15', tension: 0.2, borderWidth: 2, pointRadius: agrupamento === 'diario' ? 0 : 2, pointHoverRadius: 7, pointHitRadius: 10, spanGaps: true });
+                ref.lineChart.data.datasets.push({ label: profileName, data: dataStruct.datas.map(d => pInfo.registrosPorData[d]?.ipd ?? null), borderColor: color, backgroundColor: color + '15', tension: 0.2, borderWidth: 2, pointRadius: ref.mostrarValoresHistorico ? 3 : (agrupamento === 'diario' ? 0 : 2), pointHoverRadius: ref.mostrarValoresHistorico ? 5 : 7, pointHitRadius: 10, spanGaps: true });
             });
-            if (ref.lineChart.options.scales?.x?.ticks) ref.lineChart.options.scales.x.ticks.maxTicksLimit = agrupamento === 'diario' ? 10 : 14;
-            ref.lineChart.update();
+            if (ref.lineChart.options.scales?.x?.ticks) ref.lineChart.options.scales.x.ticks.maxTicksLimit = ref.mostrarValoresHistorico ? Math.min(80, Math.max(14, dataStruct.datas.length)) : (agrupamento === 'diario' ? 10 : 14);
+            // Ajusta o espaço antes do update. O Chart.js detecta o novo
+            // tamanho do parent sem resize() manual, evitando o crash ao
+            // ativar/desativar os valores.
+            ajustarLarguraHistorico(ipdId);
+            ref.lineChart.update('none');
             montarBotoesHistorico(ipdId);
             fecharBoxDiagnostico(ipdId);
         }
@@ -10069,6 +10570,93 @@ function toggleComparacaoRanking(ipdId) {
             });
 
         }
+        function formatarExplicacaoIAParaHTML(textoRaw) {
+            if (!textoRaw) return '';
+
+            const linhas = String(textoRaw).trim().split('\n');
+            let html = '';
+            let emTabela = false;
+            let tabelaHtml = '';
+            let cabecalhoProcessado = false;
+
+            linhas.forEach((linha) => {
+                const l = linha.trim();
+
+                // 1. Processar Tabelas Markdown (| ... |)
+                if (l.startsWith('|') && l.endsWith('|')) {
+                    if (l.includes('---')) return; // Ignora separador Markdown
+                    const colunas = l.split('|').slice(1, -1).map(c => c.trim());
+
+                    if (!emTabela) {
+                        emTabela = true;
+                        cabecalhoProcessado = false;
+                        tabelaHtml = `
+                        <div class="my-3 overflow-x-auto rounded-2xl border border-purple-200/80 bg-white shadow-sm ranking-scroll">
+                            <table class="w-full text-left text-xs border-collapse">`;
+                    }
+
+                    if (!cabecalhoProcessado) {
+                        tabelaHtml += `<thead class="bg-purple-50/80 text-purple-900 font-black border-b border-purple-200 uppercase text-[10px]"><tr>`;
+                        colunas.forEach(col => { tabelaHtml += `<th class="px-3 py-2">${col}</th>`; });
+                        tabelaHtml += `</tr></thead><tbody class="divide-y divide-slate-100 text-slate-700 font-medium">`;
+                        cabecalhoProcessado = true;
+                    } else {
+                        tabelaHtml += `<tr class="hover:bg-purple-50/30 transition">`;
+                        colunas.forEach((col, idx) => {
+                            let conteudo = col;
+                            if (col.toLowerCase() === 'sim') {
+                                conteudo = `<span class="bg-amber-100 text-amber-800 text-[10px] font-black px-2 py-0.5 rounded-md border border-amber-200">Sim</span>`;
+                            } else if (idx === 0 && !isNaN(col)) {
+                                conteudo = `<span class="font-black text-purple-900">${col}º</span>`;
+                            }
+                            tabelaHtml += `<td class="px-3 py-1.5 whitespace-nowrap">${conteudo}</td>`;
+                        });
+                        tabelaHtml += `</tr>`;
+                    }
+                    return;
+                } else if (emTabela) {
+                    emTabela = false;
+                    tabelaHtml += `</tbody></table></div>`;
+                    html += tabelaHtml;
+                    tabelaHtml = '';
+                }
+
+                if (!l) return;
+
+                // 2. Processar Títulos (### Titulo)
+                if (l.startsWith('###')) {
+                    const titulo = l.replace(/^###\s*/, '');
+                    html += `
+                    <div class="flex items-center gap-2 pt-3 pb-1 border-b border-purple-200/60 mb-2">
+                        <i class="fa-solid fa-chart-line text-purple-600 text-xs"></i>
+                        <h4 class="text-xs font-black uppercase tracking-wider text-purple-900">${titulo}</h4>
+                    </div>`;
+                    return;
+                }
+
+                // 3. Processar Listas / Bullets (- **Item:**)
+                if (l.startsWith('-')) {
+                    let item = l.replace(/^-\s*/, '').replace(/\*\*(.*?)\*\*/g, '<strong class="font-extrabold text-slate-900">$1</strong>');
+                    html += `
+                    <div class="flex items-start gap-2 text-xs text-slate-700 leading-relaxed my-1 pl-1">
+                        <span class="w-1.5 h-1.5 rounded-full bg-purple-500 mt-1.5 shrink-0"></span>
+                        <p class="flex-1">${item}</p>
+                    </div>`;
+                    return;
+                }
+
+                // 4. Parágrafos comuns (substituindo negrito)
+                const textoFormatado = l.replace(/\*\*(.*?)\*\*/g, '<strong class="font-extrabold text-slate-900">$1</strong>');
+                html += `<p class="text-xs text-slate-700 leading-relaxed my-1">${textoFormatado}</p>`;
+            });
+
+            if (emTabela) {
+                tabelaHtml += `</tbody></table></div>`;
+                html += tabelaHtml;
+            }
+
+            return html;
+        }
 
         async function solicitarExplicacaoIARanking(ipdId) {
             const state = statePrevisaoPreditiva[ipdId];
@@ -10128,15 +10716,20 @@ function toggleComparacaoRanking(ipdId) {
                     return;
                 }
 
-                let htmlFinal = `<p class="font-extrabold text-slate-900 leading-relaxed">${data.resumo_executivo}</p>`;
+                // =========================================================
+                // FORMATAÇÃO DO TEXTO RETORNADO PELA IA
+                // =========================================================
+                const textoBruto = data.resposta_ia || data.explicacao || data.resumo_executivo || '';
+                let htmlFinal = formatarExplicacaoIAParaHTML(textoBruto);
 
-                if (data.pontos_chaves && data.pontos_chaves.length > 0) {
-                    htmlFinal += `<ul class="space-y-1.5 pt-1">`;
+                // Se houver pontos chaves complementares (array) e o texto bruto já não for em lista
+                if (data.pontos_chaves && data.pontos_chaves.length > 0 && !textoBruto.includes('- ')) {
+                    htmlFinal += `<ul class="space-y-1.5 pt-2">`;
                     data.pontos_chaves.forEach(ponto => {
                         htmlFinal += `
-                            <li class="flex items-start gap-2">
+                            <li class="flex items-start gap-2 text-xs text-slate-700">
                                 <span class="w-1.5 h-1.5 rounded-full bg-purple-600 mt-1.5 shrink-0"></span>
-                                <span>${ponto}</span>
+                                <span>${ponto.replace(/\*\*(.*?)\*\*/g, '<strong class="font-extrabold text-slate-900">$1</strong>')}</span>
                             </li>
                         `;
                     });
@@ -10224,6 +10817,103 @@ function toggleComparacaoRanking(ipdId) {
                 `;
             });
         }
+
+        function formatarExplicacaoIAParaHTML(textoRaw) {
+    if (!textoRaw) return '';
+
+    let linhas = textoRaw.trim().split('\n');
+    let html = '';
+    let emTabela = false;
+    let tabelaHtml = '';
+    let cabecalhoProcessado = false;
+
+    linhas.forEach((linha) => {
+        const l = linha.trim();
+
+        // 1. Processar Tabelas Markdown (| ... |)
+        if (l.startsWith('|') && l.endsWith('|')) {
+            // Ignora a linha separadora de markdown (|---|---|)
+            if (l.includes('---')) return;
+
+            const colunas = l.split('|').slice(1, -1).map(c => c.trim());
+
+            if (!emTabela) {
+                emTabela = true;
+                cabecalhoProcessado = false;
+                tabelaHtml = `
+                <div class="my-4 overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm ranking-scroll">
+                    <table class="w-full text-left text-xs border-collapse">
+                `;
+            }
+
+            if (!cabecalhoProcessado) {
+                tabelaHtml += `<thead class="bg-slate-100/80 text-slate-600 font-extrabold border-b border-slate-200 uppercase text-[10px]"><tr>`;
+                colunas.forEach(col => {
+                    tabelaHtml += `<th class="px-3.5 py-2.5">${col}</th>`;
+                });
+                tabelaHtml += `</tr></thead><tbody class="divide-y divide-slate-100 text-slate-700 font-medium">`;
+                cabecalhoProcessado = true;
+            } else {
+                tabelaHtml += `<tr class="hover:bg-purple-50/40 transition">`;
+                colunas.forEach((col, idx) => {
+                    let conteudo = col;
+                    // Estiliza Badges de Empate (Sim/Não) e destaque do 1º lugar
+                    if (col.toLowerCase() === 'sim') {
+                        conteudo = `<span class="bg-amber-100 text-amber-800 text-[10px] font-black px-2 py-0.5 rounded-md border border-amber-200">Sim</span>`;
+                    } else if (idx === 0) {
+                        conteudo = `<span class="font-black text-slate-900">${col}º</span>`;
+                    }
+                    tabelaHtml += `<td class="px-3.5 py-2 whitespace-nowrap">${conteudo}</td>`;
+                });
+                tabelaHtml += `</tr>`;
+            }
+            return;
+        } else if (emTabela) {
+            // Fecha a tabela quando saímos das linhas de barras
+            emTabela = false;
+            tabelaHtml += `</tbody></table></div>`;
+            html += tabelaHtml;
+            tabelaHtml = '';
+        }
+
+        if (!l) return;
+
+        // 2. Processar Títulos (### Titulo)
+        if (l.startsWith('###')) {
+            const titulo = l.replace(/^###\s*/, '');
+            html += `
+            <div class="flex items-center gap-2 pt-4 pb-1 border-b border-purple-200/60 mb-2">
+                <i class="fa-solid fa-chart-line text-purple-600 text-xs"></i>
+                <h4 class="text-xs font-black uppercase tracking-wider text-purple-900">${titulo}</h4>
+            </div>`;
+            return;
+        }
+
+        // 3. Processar Listas / Bullets (- **Item:**)
+        if (l.startsWith('-')) {
+            let item = l.replace(/^-\s*/, '');
+            // Converter negritos **texto**
+            item = item.replace(/\*\*(.*?)\*\*/g, '<strong class="font-extrabold text-slate-900">$1</strong>');
+            html += `
+            <div class="flex items-start gap-2 text-xs text-slate-700 leading-relaxed my-1.5 pl-1">
+                <span class="w-1.5 h-1.5 rounded-full bg-purple-500 mt-1.5 shrink-0"></span>
+                <p class="flex-1">${item}</p>
+            </div>`;
+            return;
+        }
+
+        // 4. Parágrafos comuns
+        let textoFormatado = l.replace(/\*\*(.*?)\*\*/g, '<strong class="font-extrabold text-slate-900">$1</strong>');
+        html += `<p class="text-xs text-slate-700 leading-relaxed my-1.5">${textoFormatado}</p>`;
+    });
+
+    if (emTabela) {
+        tabelaHtml += `</tbody></table></div>`;
+        html += tabelaHtml;
+    }
+
+    return html;
+}
 
         function explicarAntesDepoisPonto(ipdId, pontoIndex) {
             const ref = stateIPDs[ipdId];
@@ -10335,5 +11025,6 @@ function toggleComparacaoRanking(ipdId) {
             carregarRelatoriosAPI();
         });
     </script>
+
 </body>
 </html>

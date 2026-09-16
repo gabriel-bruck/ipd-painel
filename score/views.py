@@ -3360,7 +3360,6 @@ class TemasEngajamentoView(APIView):
 
             status=status.HTTP_200_OK,
         )
-    
 import traceback
 import numpy as np
 import pandas as pd
@@ -3373,18 +3372,12 @@ from rest_framework.permissions import IsAuthenticated
 from xgboost import XGBRegressor
 from sklearn.metrics import mean_absolute_error, root_mean_squared_error
 
-# from .models import IPD, ProjetoIPD
-# from .utils import usuario_tem_acesso_ao_projeto
-
+# Certifique-se de importar os seus models
+from .models import IPD
+from client.models import ProjetoIPD, ProjetoCliente, ProjetoClienteIPD
 
 
 class PrevisaoRankingMensalView(APIView):
-    """
-    API View para Previsão Mensal do IPD.
-    Treina com o contexto global do IPD, mas recorta e re-rankeia 
-    estritamente entre os perfis autorizados/vinculados ao ProjetoCliente.
-    """
-
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
@@ -3400,43 +3393,12 @@ class PrevisaoRankingMensalView(APIView):
                 )
 
             # ==============================================================================
-            # 1. VALIDAÇÃO DE PERMISSÃO E FILTRO DE PERFIS DO CLIENTE
+            # 1. VALIDAÇÃO DO PROJETO IPD
             # ==============================================================================
             projeto_ipd = get_object_or_404(ProjetoIPD, pk=projeto_id)
-            projetos_cliente = projeto_ipd.projetos_cliente.all()
-
-            tem_permissao = any(
-                usuario_tem_acesso_ao_projeto(request.user, proj)
-                for proj in projetos_cliente
-            )
-            if not tem_permissao:
-                return Response(
-                    {"error": "Você não tem permissão para acessar os dados deste projeto."},
-                    status=status.HTTP_403_FORBIDDEN,
-                )
-
-            profiles_vinculados = None
-            if projeto_cliente_id:
-                vinculo = ProjetoClienteIPD.objects.filter(
-                    projeto_ipd=projeto_ipd,
-                    projeto_cliente_id=projeto_cliente_id
-                ).first()
-                if vinculo and vinculo.profiles_usados:
-                    profiles_vinculados = set(vinculo.profiles_usados)
-            else:
-                vinculos = ProjetoClienteIPD.objects.filter(
-                    projeto_ipd=projeto_ipd,
-                    projeto_cliente__usuarios_autorizados__user=request.user
-                )
-                perfis_set = set()
-                for v in vinculos:
-                    if v.profiles_usados:
-                        perfis_set.update(v.profiles_usados)
-                if perfis_set:
-                    profiles_vinculados = perfis_set
 
             # ==============================================================================
-            # 2. CARREGAMENTO E PROCESSAMENTO HISTÓRICO
+            # 2. CARREGAMENTO DOS DADOS HISTÓRICOS
             # ==============================================================================
             queryset = (
                 IPD.objects.filter(projeto_ipd_id=projeto_id)
@@ -3455,6 +3417,26 @@ class PrevisaoRankingMensalView(APIView):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
+            # ==============================================================================
+            # 3. BUSCA DOS PERFIS NA TABELA INTERMEDIÁRIA (PROJETOCLIENTEIPD)
+            # ==============================================================================
+            profiles_vinculados = set()
+
+            vinculos = ProjetoClienteIPD.objects.filter(projeto_ipd=projeto_ipd)
+            if projeto_cliente_id:
+                vinculos = vinculos.filter(projeto_cliente_id=projeto_cliente_id)
+
+            for v in vinculos:
+                if v.profiles_usados and isinstance(v.profiles_usados, list):
+                    profiles_vinculados.update(v.profiles_usados)
+
+            # FALLBACK: Se a tabela intermediária não tiver perfis gravados, usa todos os do banco
+            if not profiles_vinculados:
+                profiles_vinculados = set(df_raw["profile"].unique())
+
+            # ==============================================================================
+            # 4. PROCESSAMENTO DAS SÉRIES TEMPORAIS
+            # ==============================================================================
             cols_numeric = ["ipd", "fama", "engaj", "valencia", "mob", "interesse"]
             for col in cols_numeric:
                 df_raw[col] = df_raw[col].astype(float)
@@ -3465,9 +3447,7 @@ class PrevisaoRankingMensalView(APIView):
             dfs_semanais = []
             for p, group in df_raw.groupby("profile"):
                 g = group.set_index("data")
-                resampled_sem = (
-                    g[cols_numeric].resample("W-MON", label="left", closed="left").mean().reset_index()
-                )
+                resampled_sem = g[cols_numeric].resample("W-MON", label="left", closed="left").mean().reset_index()
                 resampled_sem["profile"] = p
                 dfs_semanais.append(resampled_sem)
 
@@ -3478,26 +3458,19 @@ class PrevisaoRankingMensalView(APIView):
             dfs_mensais = []
             for p, group in df_raw.groupby("profile"):
                 g = group.set_index("data")
-                resampled_mes = (
-                    g[cols_numeric].resample("MS").mean().reset_index()
-                )
+                resampled_mes = g[cols_numeric].resample("MS").mean().reset_index()
                 resampled_mes["profile"] = p
                 dfs_mensais.append(resampled_mes)
 
             df_mensal_global = pd.concat(dfs_mensais, ignore_index=True)
             df_mensal_global = df_mensal_global.dropna(subset=['ipd']).sort_values(["data", "profile"]).reset_index(drop=True)
 
-            # Features Relacionais
+            # Feature Engineering e Treino
             df_feat_global = self._gerar_features_mensais_relacionais(df_mensal_global, df_semanal_global)
-
             df_feat_global["target_ipd"] = df_feat_global.groupby("profile")["ipd"].shift(-1)
-
             df_model_train = df_feat_global.dropna(subset=["target_ipd"]).fillna(0.0).reset_index(drop=True)
 
-            todas_features = [
-                col for col in df_model_train.columns
-                if col not in ["data", "target_ipd"] + cols_numeric
-            ]
+            todas_features = [c for c in df_model_train.columns if c not in ["data", "target_ipd"] + cols_numeric]
 
             if len(df_model_train) < 6:
                 return Response(
@@ -3507,9 +3480,7 @@ class PrevisaoRankingMensalView(APIView):
 
             df_model_train["profile"] = df_model_train["profile"].astype("category")
 
-            # ------------------------------------------------------------------
-            # CROSS-VALIDATION
-            # ------------------------------------------------------------------
+            # Cross-Validation
             datas_unicas = sorted(list(df_model_train["data"].unique()))
             qtd_meses_val = min(3, max(1, int(len(datas_unicas) * 0.2)))
             data_corte = datas_unicas[-qtd_meses_val]
@@ -3517,22 +3488,18 @@ class PrevisaoRankingMensalView(APIView):
             mask_val = df_model_train["data"] >= data_corte
             df_tr = df_model_train[~mask_val].copy()
             df_val = df_model_train[mask_val].copy()
-
-            if df_tr.empty:
-                df_tr = df_model_train.copy()
+            if df_tr.empty: df_tr = df_model_train.copy()
 
             selector_val = self._instanciar_xgboost()
             selector_val.fit(df_tr[todas_features], df_tr["target_ipd"])
-            importancias_val = pd.Series(selector_val.feature_importances_, index=todas_features)
-            features_top_val = importancias_val.nlargest(20).index.tolist()
+            features_top_val = pd.Series(selector_val.feature_importances_, index=todas_features).nlargest(20).index.tolist()
             if "profile" not in features_top_val and "profile" in todas_features:
                 features_top_val.append("profile")
 
             eval_model = self._instanciar_xgboost()
             eval_model.fit(df_tr[features_top_val], df_tr["target_ipd"])
 
-            df_val["y_pred"] = eval_model.predict(df_val[features_top_val])
-            df_val["y_pred"] = df_val["y_pred"].clip(0.0, 100.0)
+            df_val["y_pred"] = eval_model.predict(df_val[features_top_val]).clip(0.0, 100.0)
             df_val["erro_abs"] = (df_val["target_ipd"] - df_val["y_pred"]).abs()
 
             mae_por_perfil = df_val.groupby("profile")["erro_abs"].mean().to_dict()
@@ -3540,14 +3507,11 @@ class PrevisaoRankingMensalView(APIView):
             std_erro_por_perfil = df_val.groupby("profile")["erro_abs"].std().fillna(0.5).to_dict()
             rmse_val = round(float(root_mean_squared_error(df_val["target_ipd"], df_val["y_pred"])), 2) if not df_val.empty else 0.0
 
-            # ------------------------------------------------------------------
-            # TREINO FINAL
-            # ------------------------------------------------------------------
+            # Treino Final
             selector_model = self._instanciar_xgboost()
             selector_model.fit(df_model_train[todas_features], df_model_train["target_ipd"])
             
-            importancias = pd.Series(selector_model.feature_importances_, index=todas_features)
-            features_top = importancias.nlargest(20).index.tolist()
+            features_top = pd.Series(selector_model.feature_importances_, index=todas_features).nlargest(20).index.tolist()
             if "profile" not in features_top and "profile" in todas_features:
                 features_top.append("profile")
 
@@ -3555,28 +3519,23 @@ class PrevisaoRankingMensalView(APIView):
             model.fit(df_model_train[features_top], df_model_train["target_ipd"])
 
             # ==============================================================================
-            # RANKING RELATIVO DO ÚLTIMO MÊS REAL (FILTRADO PARA O CLIENTE)
+            # RANKING RESTRITO AOS PERFIS DO CLIENTE
             # ==============================================================================
             ultima_data_mes = df_mensal_global["data"].max()
             df_ultimo_mes_real = df_mensal_global[df_mensal_global["data"] == ultima_data_mes].copy()
 
-            if profiles_vinculados:
-                df_ultimo_mes_real = df_ultimo_mes_real[
-                    df_ultimo_mes_real["profile"].isin(profiles_vinculados)
-                ].copy()
-
+            df_ultimo_mes_real = df_ultimo_mes_real[df_ultimo_mes_real["profile"].isin(profiles_vinculados)].copy()
             df_ultimo_mes_real["posicao"] = df_ultimo_mes_real["ipd"].rank(ascending=False, method="min").astype(int)
             mapa_posicoes_rodada_anterior = dict(zip(df_ultimo_mes_real["profile"], df_ultimo_mes_real["posicao"]))
 
             historico_acumulado_mensal = df_mensal_global.copy()
             historico_acumulado_semanal = df_semanal_global.copy()
             
-            perfis_unicos = sorted(list(historico_acumulado_mensal["profile"].unique()))
+            perfis_unicos_base = set(historico_acumulado_mensal["profile"].unique())
+            perfis_para_prever = sorted(list(profiles_vinculados.intersection(perfis_unicos_base)))
+
             ranking_mensal_projetado = []
 
-            # ------------------------------------------------------------------
-            # LOOP AUTOREGRESSIVO COM RANKING E ESTATÍSTICAS RELATIVAS
-            # ------------------------------------------------------------------
             for i in range(1, meses_frente + 1):
                 proximo_mes_inicio = ultima_data_mes + relativedelta(months=i)
 
@@ -3588,7 +3547,7 @@ class PrevisaoRankingMensalView(APIView):
                 previsoes_perfis_mes = []
                 novas_linhas_hist_mensal = []
 
-                for p in perfis_unicos:
+                for p in perfis_para_prever:
                     ult_feat_perfil = df_feat_temp[df_feat_temp["profile"] == p].iloc[[-1]].copy()
                     ult_feat_perfil["data"] = proximo_mes_inicio
                     ult_feat_perfil["profile"] = ult_feat_perfil["profile"].astype("category")
@@ -3629,21 +3588,11 @@ class PrevisaoRankingMensalView(APIView):
                     })
 
                 df_mes_proj = pd.DataFrame(previsoes_perfis_mes)
-
-                # FILTRAGEM RELATIVA: recorta exclusivamente para os perfis autorizados
-                if profiles_vinculados:
-                    df_mes_proj = df_mes_proj[
-                        df_mes_proj["profile"].isin(profiles_vinculados)
-                    ].copy()
-
                 df_mes_proj = df_mes_proj.sort_values(by="ipd_previsto", ascending=False).reset_index(drop=True)
-                
-                # Posição relativa (1º, 2º, ...) dentro do grupo visível
                 df_mes_proj["posicao_oficial"] = df_mes_proj["ipd_previsto"].rank(ascending=False, method="min").astype(int)
 
                 lista_perfis_mes = df_mes_proj.to_dict(orient="records")
 
-                # Empate estatístico restrito aos perfis visíveis
                 for idx, item in enumerate(lista_perfis_mes):
                     item["empatados_com"] = []
                     p_min, p_max = item["ipd_minimo"], item["ipd_maximo"]
@@ -3651,7 +3600,6 @@ class PrevisaoRankingMensalView(APIView):
                     for outro_idx, outro_item in enumerate(lista_perfis_mes):
                         if idx == outro_idx: continue
                         o_min, o_max = outro_item["ipd_minimo"], outro_item["ipd_maximo"]
-
                         if (p_min <= o_max) and (p_max >= o_min):
                             item["empatados_com"].append(outro_item["profile"])
 
@@ -3690,13 +3638,11 @@ class PrevisaoRankingMensalView(APIView):
 
                 historico_acumulado_mensal = pd.concat([historico_acumulado_mensal, pd.DataFrame(novas_linhas_hist_mensal)], ignore_index=True)
 
-            total_visivel = len(df_mes_proj)
-
             return Response(
                 {
                     "meta": {
                         "projeto_id": projeto_id,
-                        "total_perfis_avaliados": total_visivel,
+                        "total_perfis_avaliados": len(perfis_para_prever),
                         "ultimo_mes_banco": ultima_data_mes.strftime("%Y-%m-%d"),
                         "total_meses_previstos": meses_frente,
                         "top_features_utilizadas": features_top
@@ -3719,20 +3665,13 @@ class PrevisaoRankingMensalView(APIView):
 
     def _instanciar_xgboost(self):
         return XGBRegressor(
-            n_estimators=150,
-            learning_rate=0.03,
-            max_depth=3,
-            subsample=0.80,
-            colsample_bytree=0.80,
-            enable_categorical=True,
-            reg_lambda=3.0,
-            reg_alpha=1.0,
-            random_state=42,
+            n_estimators=150, learning_rate=0.03, max_depth=3,
+            subsample=0.80, colsample_bytree=0.80, enable_categorical=True,
+            reg_lambda=3.0, reg_alpha=1.0, random_state=42,
         )
 
     def _gerar_features_mensais_relacionais(self, df_mensal_input, df_semanal_raw):
-        df = df_mensal_input.copy()
-        df = df.sort_values(["profile", "data"]).reset_index(drop=True)
+        df = df_mensal_input.copy().sort_values(["profile", "data"]).reset_index(drop=True)
 
         for lag in range(1, 5):
             df[f"ipd_lag_{lag}"] = df.groupby("profile")["ipd"].shift(lag)
@@ -3752,18 +3691,10 @@ class PrevisaoRankingMensalView(APIView):
             max_semanal_mes=("ipd", "max")
         ).reset_index()
 
-        vol_s = pd.Series(stats_semanais["volatilidade_semanal_mes"]).fillna(0.0)
-        stats_semanais["volatilidade_semanal_mes"] = vol_s
-        amp_s = pd.Series(stats_semanais["max_semanal_mes"] - stats_semanais["min_semanal_mes"]).fillna(0.0)
-        stats_semanais["amplitude_semanal_mes"] = amp_s
+        stats_semanais["volatilidade_semanal_mes"] = pd.Series(stats_semanais["volatilidade_semanal_mes"]).fillna(0.0)
+        stats_semanais["amplitude_semanal_mes"] = pd.Series(stats_semanais["max_semanal_mes"] - stats_semanais["min_semanal_mes"]).fillna(0.0)
 
-        df = pd.merge(
-            df, 
-            stats_semanais[["profile", "mes_ref", "volatilidade_semanal_mes", "delta_ultima_semana_mes", "amplitude_semanal_mes"]], 
-            left_on=["profile", "data"], 
-            right_on=["profile", "mes_ref"], 
-            how="left"
-        ).drop(columns=["mes_ref"])
+        df = pd.merge(df, stats_semanais[["profile", "mes_ref", "volatilidade_semanal_mes", "delta_ultima_semana_mes", "amplitude_semanal_mes"]], left_on=["profile", "data"], right_on=["profile", "mes_ref"], how="left").drop(columns=["mes_ref"])
 
         mes = df["data"].dt.month.astype(int)
         df["sin_mes"] = np.sin(2 * np.pi * mes / 12.0)
@@ -3811,7 +3742,31 @@ from langchain_core.messages import (
     SystemMessage,
     HumanMessage,
 )
+from typing import List
+from pydantic import BaseModel, Field
 
+
+class RespostaExplicacaoSchema(BaseModel):
+    """Schema para validação e estruturação da resposta de explicação de ranking por IA."""
+
+    resumo_executivo: str = Field(
+        ...,
+        description=(
+            "Análise detalhada e completa (com no mínimo 200 caracteres) contendo: "
+            "1. Tabela em Markdown do último mês com todos os perfis, posições, IPD, variações e empates. "
+            "2. Análise da liderança e disputa no Top 5 (liderança isolada x disputada). "
+            "3. Análise panorâmica do meio da tabela e lanterna/zona de risco. "
+            "4. Explicação das causas das variações de posição e volatilidade estatística."
+        ),
+    )
+
+    pontos_chaves: List[str] = Field(
+        ...,
+        description=(
+            "Lista de tópicos/bullet points sintetizando os insights mais acionáveis e importantes da análise "
+            "(ex: alertas de quedas, empates técnicos relevantes, destaques de crescimento)."
+        ),
+    )
 
 class ExplicacaoRankingIAView(APIView):
     """

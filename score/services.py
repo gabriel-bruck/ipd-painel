@@ -4,13 +4,13 @@ from django.db.models.functions import TruncMonth
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from dotenv import load_dotenv
-from .models import Conteudo, ProjetoCliente, ProjetoIPD, IPD
+from .models import Conteudo, IPD
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 import numpy as np
 import pandas as pd
-from .models import Conteudo
+from client.models import ProjetoClienteIPD, ProjetoIPD, ProjetoCliente
 # Carrega as variáveis do arquivo .env
 load_dotenv()
 
@@ -18,31 +18,54 @@ load_dotenv()
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
 
 
-
 def extrair_insumo_mes(projeto_id, mes_referencia=None):
-    """
-    Busca o mês filtrado (ou o último disponível) para cada IPD do Projeto,
-    filtra o Top 10 posts mais engajados POR IPD no mês e formata o insumo para a IA.
+    """Extrai os dados filtrando os perfis a partir de 'profiles_usados'
+
+    presente no model intermediário ProjetoClienteIPD.
     """
     projeto = get_object_or_404(ProjetoCliente, pk=projeto_id)
-    nome_cliente = getattr(projeto, 'cliente', 'Cliente')
-    projetos_ipd = ProjetoIPD.objects.filter(projetos_cliente=projeto)
+    nome_cliente = getattr(projeto, "cliente", "Cliente")
 
-    insumo_texto = f"PROJETO: {projeto.nome}\n"
+    # Mapeia as relações intermediárias do projeto cliente com cada IPD
+    relacoes_ipd = ProjetoClienteIPD.objects.filter(
+        projeto_cliente=projeto
+    ).select_related("projeto_ipd")
 
-    for ipd in projetos_ipd:
-        medicoes = IPD.objects.filter(projeto_ipd=ipd)
+    insumo_texto = (
+        f"PROJETO: {projeto.nome} | CLIENTE ANALISADO: {nome_cliente}\n\n"
+    )
+
+    for relacao in relacoes_ipd:
+        ipd = relacao.projeto_ipd
+        profiles_usados = relacao.profiles_usados or []
+
+        # Se não houver perfis cadastrados na lista do JSONField, pula o IPD
+        if not profiles_usados:
+            continue
+
+        # 1. FILTRA MEDIÇÕES DO IPD APENAS PARA OS PERFIS EM 'profiles_usados'
+        medicoes = IPD.objects.filter(
+            projeto_ipd=ipd, profile__in=profiles_usados
+        )
+
         qs_mensal = medicoes.annotate(mes_trunc=TruncMonth("data"))
 
-        # Determina o mês exato a ser analisado
         if mes_referencia:
-            mes_alvo_str = str(mes_referencia)[:7]  # Formato 'YYYY-MM'
+            mes_alvo_str = str(mes_referencia)[:7]
             qs_mensal = qs_mensal.filter(mes_trunc__startswith=mes_alvo_str)
         else:
-            ultimo_mes_dt = qs_mensal.order_by("-mes_trunc").values_list("mes_trunc", flat=True).first()
+            ultimo_mes_dt = (
+                qs_mensal.order_by("-mes_trunc")
+                .values_list("mes_trunc", flat=True)
+                .first()
+            )
             if ultimo_mes_dt:
                 qs_mensal = qs_mensal.filter(mes_trunc=ultimo_mes_dt)
-                mes_alvo_str = ultimo_mes_dt.strftime("%Y-%m") if hasattr(ultimo_mes_dt, 'strftime') else str(ultimo_mes_dt)[:7]
+                mes_alvo_str = (
+                    ultimo_mes_dt.strftime("%Y-%m")
+                    if hasattr(ultimo_mes_dt, "strftime")
+                    else str(ultimo_mes_dt)[:7]
+                )
             else:
                 mes_alvo_str = None
 
@@ -56,145 +79,93 @@ def extrair_insumo_mes(projeto_id, mes_referencia=None):
                 media_mob=Avg("mob"),
                 media_interesse=Avg("interesse"),
             )
-            .order_by("profile")
+            .order_by("-media_ipd")
         )
 
-        insumo_texto += f"\n=========================================\n"
-        insumo_texto += f"--- MÓDULO IPD: {ipd.nome} ---\n"
-        insumo_texto += f"=========================================\n"
-        
         if not mensais:
-            insumo_texto += "Sem dados de medição disponíveis para este IPD no período especificado.\n"
             continue
 
-        # 1. MÉTRICAS GERAIS DO MÊS DESTE IPD
-        insumo_texto += "\n[MÉTRICAS DO IPD NO MÊS]:\n"
-        for m in mensais:
-            mes_val = m.get('mes_trunc')
-            data_str = mes_val.strftime('%m/%Y') if hasattr(mes_val, 'strftime') else str(mes_val or 'N/A')
-            insumo_texto += (
-                f"Perfil: {m['profile']} | Mês: {data_str}\n"
-                f"  - IPD Geral: {round(m['media_ipd'] or 0, 2)}\n"
-                f"  - Fama: {round(m['media_fama'] or 0, 2)} | Engajamento: {round(m['media_engaj'] or 0, 2)}\n"
-                f"  - Mobilização: {round(m['media_mob'] or 0, 2)} | Valência: {round(m['media_valencia'] or 0, 2)}\n"
-                f"  - Interesse: {round(m['media_interesse'] or 0, 2)}\n"
-            )
+        insumo_texto += f"=== INÍCIO DO MÓDULO IPD: {ipd.nome} ===\n"
 
-        # 2. CONTEÚDOS: TOP 10 POSTS MAIS ENGAJADOS DO MÊS VINCULADOS A ESTE IPD
+        # Exibe apenas a classificação dos perfis que constam no JSONField
+        insumo_texto += "RANKING DOS PERFIS UTILIZADOS NO PROJETO:\n"
+        for idx, m in enumerate(mensais, 1):
+            insumo_texto += f"  {idx}º {m['profile']} - IPD: {round(m['media_ipd'] or 0, 2)} (Fama: {round(m['media_fama'] or 0, 2)}, Engaj: {round(m['media_engaj'] or 0, 2)})\n"
+
+        # 2. FILTRA CONTEÚDOS APENAS PARA OS PERFIS EM 'profiles_usados'
         if mes_alvo_str:
-            top_posts = (
-                Conteudo.objects.filter(
-                    projeto_ipd=ipd,             # Filtra posts associados a ESTE IPD (Relação M2M)
-                    data__startswith=mes_alvo_str # Filtra a data no mês alvo 'YYYY-MM'
-                )
-                .order_by('-curtidas', '-comentarios')[:10]  # Pega os 10 mais engajados
-            )
+            top_posts = Conteudo.objects.filter(
+                projeto_ipd=ipd,
+                profile__in=profiles_usados,
+                data__startswith=mes_alvo_str,
+            ).order_by("-curtidas", "-comentarios")[:2]
 
-            insumo_texto += f"\n[TOP 10 POSTS MAIS ENGAJADOS DO MÊS NO IPD '{ipd.nome}']:\n"
             if top_posts.exists():
-                for idx, post in enumerate(top_posts, 1):
-                    texto_limpo = (post.texto or "").replace("\n", " ").strip()
-                    texto_curto = texto_limpo[:220] + "..." if len(texto_limpo) > 220 else texto_limpo
-                    
-                    insumo_texto += (
-                        f"{idx}. [{post.profile}] ({post.data}) - Likes: {post.curtidas} | Comentários: {post.comentarios}\n"
-                        f"   Texto: \"{texto_curto}\"\n"
+                insumo_texto += "DESTAQUES DE CONTEÚDO (PERFIS UTILIZADOS):\n"
+                for post in top_posts:
+                    texto_limpo = (
+                        (post.texto or "").replace("\n", " ").strip()[:100]
                     )
-            else:
-                insumo_texto += f"Nenhuma publicação vinculada ao IPD '{ipd.nome}' no mês {mes_alvo_str}.\n"
+                    insumo_texto += f"  - [{post.profile}] Likes: {post.curtidas} | \"{texto_limpo}...\"\n"
+
+        insumo_texto += f"=== FIM DO MÓDULO IPD: {ipd.nome} ===\n\n"
 
     return insumo_texto, str(nome_cliente)
 
 
 def gerar_resumo_executivo_stream(insumo_texto, nome_cliente, mes_referencia):
-    # Alterado para um modelo válido do OpenRouter (ex: gpt-4o-mini ou llama-3.1-80b-instruct:free)
     llm = ChatOpenAI(
         model="openrouter/free",
         openai_api_key=OPENROUTER_API_KEY,
         openai_api_base="https://openrouter.ai/api/v1",
         streaming=True,
-        temperature=0.2,
+        temperature=0.1,
     )
 
-    prompt = ChatPromptTemplate.from_messages([
-    (
-        "system",
-        (
-            "Você é um analista sênior de dados da Quaest Pesquisa e Consultoria.\n"
-            "Produza uma síntese executiva objetiva sobre os IPDs do projeto de "
-            "**{nome_cliente}** no mês analisado.\n\n"
-
-            "METODOLOGIA:\n"
-            "- O IPD varia de 1,00 a 4,00: quanto mais próximo de 4,00, melhor.\n"
-            "- O índice utiliza 175 variáveis coletadas em 7 plataformas digitais.\n"
-            "- As dimensões podem incluir Fama, Engajamento, Mobilização, Valência e Interesse.\n"
-            "- O resultado deve ser interpretado de forma comparativa dentro do universo de cada IPD.\n"
-            "- Cada IPD possui seu próprio conjunto de participantes. Não misture dados de IPDs diferentes.\n\n"
-
-            "REGRA PRINCIPAL:\n"
-            "- Identifique e analise TODOS os IPDs presentes nos insumos.\n"
-            "- Um IPD deve aparecer na resposta mesmo que **{nome_cliente}** não participe dele.\n"
-            "- A ausência do cliente não é motivo para omitir, reduzir ou ignorar o IPD.\n"
-            "- Quando o cliente não estiver no IPD, declare isso claramente e analise os líderes, "
-            "as dimensões, os temas e as postagens disponíveis.\n"
-            "- Não invente posição ou nota para um cliente que não esteja naquele IPD.\n\n"
-
-            "FORMATO OBRIGATÓRIO:\n"
-            "- Para cada IPD, escreva um título no formato:\n"
-            "  ### IPD: **Nome do IPD**\n"
-            "- Abaixo de cada título, apresente EXATAMENTE 4 bullet points.\n"
-            "- Cada bullet deve começar com '- '.\n"
-            "- Cada bullet deve ter no máximo 2 ou 3 frases curtas e objetivas.\n"
-            "- Se houver N IPDs, produza N títulos e exatamente 4 × N bullets.\n"
-            "- Não crie subtópicos ou listas dentro dos bullets.\n\n"
-
-            "OS 4 TÓPICOS DE CADA IPD:\n"
-            "1. **Visão geral e ranking:** explique brevemente o que o IPD analisa e informe "
-            "explicitamente o Top 3 geral. Indique a posição do cliente ou informe claramente "
-            "que ele não participa daquele IPD.\n"
-            "2. **Dimensões:** apresente os principais líderes e destaques das dimensões disponíveis, "
-            "priorizando diferenças relevantes e evitando repetir todos os números sem análise.\n"
-            "3. **Engajamento, mobilização e percepção:** resuma como os perfis se destacaram nas "
-            "interações, repercussão e valência. Caso o cliente participe, compare-o com os líderes; "
-            "caso não participe, analise diretamente os principais perfis do IPD.\n"
-            "4. **Postagens, temas e oportunidade:** destaque os conteúdos e temas de maior "
-            "engajamento. Informe se o cliente aparece entre eles e apresente um aprendizado ou "
-            "oportunidade prática para sua estratégia.\n\n"
-
-            "REGRAS DE REDAÇÃO:\n"
-            "- Seja direto, executivo e fácil de ler.\n"
-            "- Use **negrito** em nomes de IPDs, perfis, posições, notas e conclusões importantes.\n"
-            "- Utilize apenas informações existentes nos insumos.\n"
-            "- Não invente rankings, notas, dimensões, postagens ou justificativas.\n"
-            "- Se um dado não estiver disponível, informe isso brevemente.\n"
-            "- Não misture rankings, perfis ou postagens de IPDs diferentes.\n"
-            "- Não inclua saudação, introdução geral ou conclusão.\n"
-            "- Comece diretamente pelo título do primeiro IPD.\n"
-        )
-    ),
-    (
-        "user",
-        (
-            "Cliente analisado: {nome_cliente}\n"
-            "Mês de análise: {mes}\n\n"
-            "Analise todos os IPDs encontrados nos insumos abaixo, incluindo aqueles "
-            "em que o cliente não participa:\n\n"
-            "{insumo}"
-        )
+    prompt = ChatPromptTemplate.from_messages(
+        [
+            (
+                "system",
+                (
+                    "Você é um analista sênior da Quaest Pesquisa e Consultoria.\n"
+                    "Gere uma análise dividida rigorosamente por módulo de IPD para o cliente **{nome_cliente}**.\n\n"
+                    "REGRA DE ISOLAMENTO DE DOMÍNIO E PERFIS:\n"
+                    "1. Os insumos contêm APENAS os perfis configurados no projeto do cliente (`profiles_usados`).\n"
+                    "2. Monte os rankings e análises exclusivamente com base nos perfis presentes dentro de cada bloco IPD.\n"
+                    "3. NUNCA cruze ou mencione dados de um IPD no bloco de outro IPD.\n\n"
+                    "FORMATO DE SAÍDA (Gere este bloco compacto para CADA IPD presente nos insumos):\n\n"
+                    "### IPD: **[Nome Exato do IPD]**\n"
+                    "- **Ranking Filtrado:** Apresente a posição dos perfis monitorados e destaque a colocação de **{nome_cliente}**.\n"
+                    "- **Desempenho e Métricas:** Compare as métricas (Fama/Engajamento) do líder do grupo com o cliente.\n"
+                    "- **Conteúdo e Oportunidade:** Destaque o post principal e traga uma recomendação estratégica acionável.\n\n"
+                    "REGRAS DE REDAÇÃO:\n"
+                    "- Mantenha exatamente 3 bullet points curtos por IPD.\n"
+                    "- Sem texto introdutório. Comece diretamente em `### IPD:`."
+                ),
+            ),
+            (
+                "user",
+                (
+                    "Cliente: {nome_cliente}\n"
+                    "Período: {mes}\n\n"
+                    "Analise os dados dos perfis monitorados em cada IPD abaixo:\n\n"
+                    "{insumo}"
+                ),
+            ),
+        ]
     )
-])
 
     chain = prompt | llm | StrOutputParser()
 
-    # Passa as 3 variáveis exigidas pelo prompt
     inputs = {
         "nome_cliente": nome_cliente or "Cliente",
         "mes": mes_referencia or "Último mês disponível",
-        "insumo": insumo_texto
+        "insumo": insumo_texto,
     }
 
     for chunk in chain.stream(inputs):
         yield chunk
+
 import numpy as np
 import pandas as pd
 
