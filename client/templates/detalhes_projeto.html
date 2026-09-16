@@ -6604,18 +6604,7 @@ function toggleComparacaoRanking(ipdId) {
 
                         <div id="personalizador-cores-${ipdId}" class="ux-color-panel-hidden"></div>
 
-                        <!-- LEITURA RÁPIDA DO IPD — 3 CARDS EXECUTIVOS -->
-                        <div class="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 md:p-5 space-y-3">
-                            <div class="flex items-center justify-between gap-3">
-                                <div>
-                                    <span class="text-[10px] font-black uppercase tracking-[0.18em] text-quaest-teal">Leitura rápida</span>
-                                    <h3 class="text-sm font-black text-slate-900 mt-0.5">Resumo do IPD</h3>
-                                </div>
-                                <span class="text-[10px] font-bold text-slate-400">Último período disponível</span>
-                            </div>
-                            <div id="ux-resumo-cards-${ipdId}" class="grid grid-cols-1 md:grid-cols-3 gap-3"></div>
-                        </div>
-
+                        
                         <!-- CONSTRUTOR LIVRE DE JANELAS (ex.: Pré-Copa, Copa e Pós-Copa) -->
                         <div class="hidden rounded-2xl border border-violet-200 bg-violet-50/50 p-4 space-y-4">
                             <div class="flex items-start gap-3">
@@ -7864,7 +7853,7 @@ function toggleComparacaoRanking(ipdId) {
         function aplicarMelhoriasUXModulo(ipdId) {
             recolherControlesUX(ipdId);
             adicionarTelaCheiaGraficosUX(ipdId);
-            montarResumoExecutivoUX(ipdId);
+            
         }
 
         function inicializarStateIPD(ipdObj, ipdId) {
@@ -9173,7 +9162,7 @@ function toggleComparacaoRanking(ipdId) {
         }
 
         function atualizarGraficoHistorico(ipdId) {
-            montarResumoExecutivoUX(ipdId);
+            
             const ref = stateIPDs[ipdId];
             if (!ref?.lineChart) return;
             const filtro = ref.filtrosGraficos?.historico;
