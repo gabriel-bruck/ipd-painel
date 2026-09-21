@@ -51,9 +51,22 @@ class IPD(models.Model):
 
     def __str__(self):
         return f"{self.profile} - {self.data} ({self.ipd})"
+
+
 class Conteudo(models.Model):
-    # ID customizado passado via post (API/script)
-    id_post = models.CharField(max_length=255, primary_key=True)
+    # Nova chave primária personalizada: {id_post}_{projeto_ipd_id}
+    id = models.CharField(max_length=500, primary_key=True, editable=False)
+
+    # ID original do post recebido via API/script
+    id_post = models.CharField(max_length=255, db_index=True)
+
+    # Relacionamento 1-para-Muitos (Cada registro pertence a um IPD específico)
+    projeto_ipd = models.ForeignKey(
+        'client.ProjetoIPD',
+        on_delete=models.CASCADE,
+        related_name='conteudos'
+    )
+
     profile = models.CharField(max_length=150, null=True, blank=True)
     texto = models.TextField()
     data_registro = models.DateTimeField(auto_now_add=True, db_index=True)
@@ -61,50 +74,66 @@ class Conteudo(models.Model):
     curtidas = models.IntegerField(default=0)
     comentarios = models.IntegerField(default=0)
     link_post = models.CharField(max_length=1000, blank=True, null=True, db_index=True)
+
+    # Categoria agora é individual para cada combinação de Post + IPD
     categoria_tema = models.CharField(max_length=255, default='Outros', db_index=True)
-    # Relacionamentos
-    projeto_ipd = models.ManyToManyField(ProjetoIPD, blank=True)
 
     class Meta:
         db_table = 'ipd_conteudos'
         verbose_name = 'Conteúdo'
         verbose_name_plural = 'Conteúdos'
-        ordering = ['-data', '-curtidas']  # Ordenação padrão no banco
+        ordering = ['-data', '-curtidas']
+
+        # Garante a integridade: não permite duplicar a combinação id_post + IPD
+        constraints = [
+            models.UniqueConstraint(
+                fields=['id_post', 'projeto_ipd'],
+                name='unique_post_per_ipd'
+            )
+        ]
 
         indexes = [
-            # 1. Busca por Perfil em um Período/Data ordenado pelas Curtidas (Mais populares do Perfil)
+            # Índices otimizados para consultas filtradas por IPD
+            models.Index(
+                fields=['projeto_ipd', 'profile', 'data'],
+                name='idx_cnt_ipd_prof_data'
+            ),
+            models.Index(
+                fields=['projeto_ipd', 'data', '-curtidas'],
+                name='idx_cnt_ipd_data_curt_desc'
+            ),
+
+            # Índices legados
             models.Index(
                 fields=['profile', 'data', '-curtidas'], 
                 name='idx_cnt_prof_data_curt_desc'
             ),
-            
-            # 2. Busca por Período/Data ordenado pelas Curtidas (Top Posts Gerais por Data)
             models.Index(
                 fields=['data', '-curtidas'], 
                 name='idx_cnt_data_curt_desc'
             ),
-
-            # 3. Busca por Perfil e Data (Filtros rápidos de Perfil no Tempo)
             models.Index(
                 fields=['profile', 'data'], 
                 name='idx_cnt_profile_data'
             ),
-
-            # 4. Análise de Engajamento/Repercussão (Busca rápida pelos posts mais comentados)
             models.Index(
                 fields=['data', '-comentarios'], 
                 name='idx_cnt_data_coment_desc'
             ),
-
-            # 5. Auditoria e Cronologia (Consulta rápida por data de inserção no sistema)
             models.Index(
                 fields=['-data_registro'], 
                 name='idx_cnt_data_registro_desc'
             ),
         ]
 
+    def save(self, *args, **kwargs):
+        # Sobrescreve o save para gerar a chave composta antes de persisitir
+        if not self.id and self.id_post and self.projeto_ipd_id:
+            self.id = f"{self.id_post}_{self.projeto_ipd_id}"
+        super().save(*args, **kwargs)
+
     def __str__(self):
-        return f"Post {self.id_post}: {self.texto[:30]})"
+        return f"Post {self.id_post} [IPD: {self.projeto_ipd_id}]: {self.texto[:30]}"
 
 import hashlib
 

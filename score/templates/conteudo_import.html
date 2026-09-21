@@ -1,25 +1,18 @@
 {% extends "admin/base_site.html" %}
 
 {% block content %}
-<!-- Carrega a biblioteca PapaParse (Super Rápida e Inteligente para CSV) -->
+<!-- Biblioteca PapaParse (para CSV) e SheetJS (para XLSX / XLS) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
 <h1>Importação Inteligente de Conteúdo em Lotes</h1>
-<p>O navegador dividirá seu arquivo em fatias respeitando textos com quebra de linha.</p>
+<p>Suporta arquivos <strong>.csv</strong>, <strong>.xlsx</strong> e <strong>.xls</strong>. O navegador dividirá o arquivo em fatias automaticamente.</p>
 <br>
 
 <div style="background: #fff; padding: 20px; border-radius: 5px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); max-width: 800px;">
     {% csrf_token %}
-    
-    <div style="margin-bottom: 20px; background: #f9f9f9; padding: 10px; border: 1px solid #eee;">
-        <label style="font-weight: bold;">Como salvar os projetos IPD?</label><br><br>
-        <input type="radio" id="modo_adicionar" name="modo_projetos" value="adicionar" checked>
-        <label for="modo_adicionar">Adicionar aos projetos atuais (Preserva vínculos antigos)</label><br><br>
-        <input type="radio" id="modo_substituir" name="modo_projetos" value="substituir">
-        <label for="modo_substituir">Substituir todos os projetos atuais (Limpa e salva só o do CSV)</label>
-    </div>
 
-    <input type="file" id="csv-file" accept=".csv" style="margin-bottom: 20px; font-size: 16px;"><br>
+    <input type="file" id="import-file" accept=".csv, .xlsx, .xls" style="margin-bottom: 20px; font-size: 16px;"><br>
     <button id="btn-iniciar" class="default" style="padding: 10px 20px; cursor: pointer; font-weight: bold;">
         Começar Importação
     </button>
@@ -34,99 +27,108 @@
 </div>
 
 <script>
-    document.getElementById('btn-iniciar').addEventListener('click', function() {
-        const fileInput = document.getElementById('csv-file');
+    // Função auxiliar para ler tanto CSV quanto Excel em matriz de dados [ [col1, col2], ... ]
+    async function lerArquivo(file) {
+        const name = file.name.toLowerCase();
+
+        if (name.endsWith('.csv')) {
+            return new Promise((resolve, reject) => {
+                Papa.parse(file, {
+                    header: false,
+                    skipEmptyLines: true,
+                    complete: res => resolve(res.data),
+                    error: err => reject(new Error("Erro ao ler CSV: " + err.message))
+                });
+            });
+        } else if (name.endsWith('.xlsx') || name.endsWith('.xls')) {
+            const buffer = await file.arrayBuffer();
+            const workbook = XLSX.read(buffer, { type: 'array', cellDates: true });
+            const sheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[sheetName];
+            
+            // Converte a aba para matriz de linhas preservando textos
+            const rawData = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: false, defval: '' });
+            
+            // Remove linhas totalmente vazias
+            return rawData.filter(row => row.some(cell => String(cell).trim() !== ''));
+        } else {
+            throw new Error("Formato não suportado. Escolha um arquivo .csv, .xlsx ou .xls.");
+        }
+    }
+
+    document.getElementById('btn-iniciar').addEventListener('click', async function() {
+        const fileInput = document.getElementById('import-file');
         if (fileInput.files.length === 0) {
-            alert('Selecione um arquivo CSV.');
+            alert('Selecione um arquivo CSV ou Excel.');
             return;
         }
 
         const btn = this;
         btn.disabled = true;
         btn.style.opacity = '0.5';
-        btn.innerText = 'Analisando CSV (Aguarde)...';
+        btn.innerText = 'Analisando arquivo...';
 
         const file = fileInput.files[0];
-
         document.getElementById('progress-area').style.display = 'block';
         const progressText = document.getElementById('progress-text');
         const progressBar = document.getElementById('progress-bar');
         const logMensagens = document.getElementById('log-mensagens');
         const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
 
-        // Usa o PapaParse para ler o CSV perfeitamente
-        Papa.parse(file, {
-            header: false,
-            skipEmptyLines: true,
-            complete: async function(results) {
-                try {
-                    const modoProjetos = document.querySelector('input[name="modo_projetos"]:checked').value;
-                    const linhas = results.data;
-                    
-                    if (linhas.length < 2) throw new Error("Arquivo vazio ou sem dados.");
-                    
-                    const header = Papa.unparse([linhas[0]]);
-                    const linhasDados = linhas.slice(1);
-                    const total = linhasDados.length;
-                    
-                    if (total === 0) throw new Error("Nenhuma linha de dados encontrada.");
+        try {
+            const linhas = await lerArquivo(file);
+            
+            if (linhas.length < 2) throw new Error("Arquivo vazio ou sem registros.");
 
-                    btn.innerText = 'Importando...';
-                    const TAMANHO_LOTE = 5000;
-                    let processadas = 0;
+            const header = Papa.unparse([linhas[0]]);
+            const linhasDados = linhas.slice(1);
+            const total = linhasDados.length;
 
-                    for (let i = 0; i < total; i += TAMANHO_LOTE) {
-                        const pedaco = linhasDados.slice(i, i + TAMANHO_LOTE);
-                        
-                        // Reconstrói o arquivo garantindo que quebras de linha no post fiquem intactas
-                        const csvPedaco = header + '\n' + Papa.unparse(pedaco);
+            btn.innerText = 'Importando...';
+            const TAMANHO_LOTE = 500;
+            let processadas = 0;
 
-                        const formData = new FormData();
-                        const blob = new Blob([csvPedaco], { type: 'text/csv' });
-                        formData.append('file', blob, 'lote.csv');
-                        formData.append('csrfmiddlewaretoken', csrfToken);
-                        formData.append('modo_projetos', modoProjetos); 
+            for (let i = 0; i < total; i += TAMANHO_LOTE) {
+                const pedaco = linhasDados.slice(i, i + TAMANHO_LOTE);
+                const csvPedaco = header + '\n' + Papa.unparse(pedaco);
 
-                        logMensagens.innerText = `Enviando lote ${Math.floor(i/TAMANHO_LOTE)+1}... (Linhas ${i+1} a ${i + pedaco.length})`;
+                const formData = new FormData();
+                const blob = new Blob([csvPedaco], { type: 'text/csv' });
+                formData.append('file', blob, 'lote.csv');
+                formData.append('csrfmiddlewaretoken', csrfToken);
 
-                        const response = await fetch('{% url "admin:score_conteudo_importar_fatiado" %}', {
-                            method: 'POST',
-                            headers: {
-                                'X-CSRFToken': csrfToken
-                            },
-                            body: formData
-                        });
+                logMensagens.innerText = `Enviando lote ${Math.floor(i/TAMANHO_LOTE)+1}... (Linhas ${i+1} a ${i + pedaco.length} de ${total})`;
 
-                        const data = await response.json().catch(() => null);
+                const response = await fetch('{% url "admin:score_conteudo_importar_fatiado" %}', {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': csrfToken },
+                    body: formData
+                });
 
-                        if (!response.ok) {
-                            throw new Error((data && data.erro) ? data.erro : `Erro no servidor (Status ${response.status})`);
-                        }
+                const data = await response.json().catch(() => null);
 
-                        processadas += pedaco.length;
-                        let porcentagem = Math.min(100, Math.round((processadas / total) * 100));
-                        progressBar.style.width = porcentagem + '%';
-                        progressText.innerText = porcentagem + '%';
-                    }
-
-                    progressBar.style.backgroundColor = '#28a745';
-                    progressText.innerText = '100% Concluído!';
-                    logMensagens.innerText = `Sucesso! ${total} linhas importadas.`;
-                    alert("Importação finalizada com sucesso!");
-                } catch (error) {
-                    console.error(error);
-                    alert("Erro: " + error.message);
-                    logMensagens.innerText = "Parado devido a um erro. Veja o console (F12) para detalhes.";
-                    btn.disabled = false;
-                    btn.innerText = 'Tentar Novamente';
+                if (!response.ok) {
+                    throw new Error((data && data.erro) ? data.erro : `Erro no servidor (Status ${response.status})`);
                 }
-            },
-            error: function(err) {
-                alert("Erro ao ler o arquivo CSV: " + err.message);
-                btn.disabled = false;
-                btn.innerText = 'Tentar Novamente';
+
+                processadas += pedaco.length;
+                let porcentagem = Math.min(100, Math.round((processadas / total) * 100));
+                progressBar.style.width = porcentagem + '%';
+                progressText.innerText = porcentagem + '%';
             }
-        });
+
+            progressBar.style.backgroundColor = '#28a745';
+            progressText.innerText = '100% Concluído!';
+            logMensagens.innerText = `Sucesso! ${total} linhas importadas.`;
+            alert("Importação finalizada com sucesso!");
+
+        } catch (error) {
+            console.error(error);
+            alert("Erro: " + error.message);
+            logMensagens.innerText = "Interrompido: " + error.message;
+            btn.disabled = false;
+            btn.innerText = 'Tentar Novamente';
+        }
     });
 </script>
 {% endblock %}

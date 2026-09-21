@@ -980,6 +980,8 @@ class IPDAdmin(GestaoAdminMixin, ImportExportModelAdmin):
 # =============================================================================
 # CONTEÚDO RESOURCE
 # =============================================================================
+# FUNÇÕES AUXILIARES DE CONTEÚDO
+# =============================================================================
 
 def normalizar_id_conteudo(valor):
     if valor is None or isinstance(valor, bool):
@@ -987,22 +989,15 @@ def normalizar_id_conteudo(valor):
     texto = str(valor).strip()
     if not texto:
         raise ValueError('id_post vazio.')
+
     if isinstance(valor, str) and re.fullmatch(r'[0-9]+', texto):
         normalizado = texto
-    elif isinstance(valor, (int, float, Decimal)) or re.fullmatch(
-        r'\+?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)?', texto
-    ):
+    elif isinstance(valor, (int, float, Decimal)) or re.fullmatch(r'\+?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)?', texto):
         try:
             numero = Decimal(texto)
         except InvalidOperation:
             raise ValueError('id_post numérico inválido.')
-        if not numero.is_finite() or numero < 0 or numero != numero.to_integral_value():
-            raise ValueError('id_post numérico deve ser inteiro e não negativo.')
-        if numero.adjusted() >= 255:
-            raise ValueError('id_post excede 255 caracteres.')
-        normalizado = format(
-            numero.quantize(Decimal(1)) if numero.adjusted() < 25 else numero, 'f'
-        ).split('.')[0]
+        normalizado = format(numero.quantize(Decimal(1)) if numero.adjusted() < 25 else numero, 'f').split('.')[0]
     else:
         normalizado = texto
 
@@ -1024,360 +1019,108 @@ def normalizar_projetos_conteudo(valor):
         try:
             numero = Decimal(str(item).strip())
         except InvalidOperation:
-            raise ValueError('projeto_ipd deve conter IDs numéricos separados por vírgula ou ponto e vírgula.')
-        if not numero.is_finite() or numero <= 0 or numero != numero.to_integral_value() or numero > 9223372036854775807:
+            raise ValueError('projeto_ipd deve conter IDs numéricos.')
+        if not numero.is_finite() or numero <= 0 or numero != numero.to_integral_value():
             raise ValueError('ID de projeto IPD inválido.')
         ids.add(int(numero))
     return tuple(sorted(ids))
 
 
-class ConteudoImportForm(ImportForm):
-    modo_projetos = forms.ChoiceField(
-        label='Projetos IPD dos conteúdos importados',
-        choices=MODOS_PROJETOS,
-        initial='adicionar',
-        widget=forms.RadioSelect,
-        help_text='Adicionar preserva os vínculos atuais. Substituir mantém somente os IDs da coluna projeto_ipd para cada post do arquivo. Coluna vazia preserva os vínculos nos dois modos.',
-    )
-
-
-class ConteudoConfirmImportForm(ConfirmImportForm):
-    modo_projetos = forms.ChoiceField(choices=MODOS_PROJETOS, widget=forms.HiddenInput)
-
-
+# =============================================================================
+# CONTEÚDO RESOURCE
+# =============================================================================
 class ConteudoResource(resources.ModelResource):
-    curtidas = fields.Field(
-        column_name='curtidas', attribute='curtidas', widget=IntegerWidget(), default=0,
-    )
-    comentarios = fields.Field(
-        column_name='comentarios', attribute='comentarios', widget=IntegerWidget(), default=0,
-    )
-    projeto_ipd = fields.Field(column_name='projeto_ipd', readonly=True)
+    id = fields.Field(column_name='id', attribute='id')
+    curtidas = fields.Field(column_name='curtidas', attribute='curtidas', widget=IntegerWidget(), default=0)
+    comentarios = fields.Field(column_name='comentarios', attribute='comentarios', widget=IntegerWidget(), default=0)
+    projeto_ipd = fields.Field(column_name='projeto_ipd', attribute='projeto_ipd_id', widget=IntegerWidget())
 
     class Meta:
         model = Conteudo
-        import_id_fields = ('id_post',)
+        import_id_fields = ('id',)
         fields = (
-            'id_post', 'projeto_ipd', 'profile', 'texto', 'link_post',
+            'id', 'id_post', 'projeto_ipd', 'profile', 'texto', 'link_post',
             'curtidas', 'comentarios', 'data', 'categoria_tema'
         )
         ignore_unknown_fields = True
-        use_bulk = True
-        batch_size = 1000
-        use_transactions = True
+        use_bulk = True        # Salva em lote instantaneamente (igual ao IPD)
+        batch_size = 1000      # Lotes de 1000 no banco
         skip_diff = True
         skip_unchanged = False
         report_skipped = False
         store_instance = False
 
-    def _progress_key(self):
-        request = getattr(self, '_progress_request', None)
-        job_id = getattr(self, '_progress_job_id', None)
-        if not request or not job_id: return None
-        if not getattr(request, 'user', None): return None
-        return f"conteudo_import_progress:{request.user.pk}:{job_id}"
-
-    def _salvar_progresso(self, status, processados=None, percentual=None, mensagem=None):
-        chave = self._progress_key()
-        if not chave: return
-        total = getattr(self, '_progress_total', 0)
-        if processados is None: processados = getattr(self, '_progress_processados', 0)
-        if percentual is None:
-            if total:
-                percentual = int((processados / total) * 100)
-                percentual = min(percentual, 99)
-            else:
-                percentual = 0
-        try:
-            cache.set(
-                chave,
-                {
-                    'status': status, 'total': total,
-                    'processados': processados, 'percentual': percentual,
-                    'mensagem': mensagem,
-                },
-                timeout=3600,
-            )
-        except Exception as exc:
-            print(f"Erro ao salvar progresso de Conteudo: {exc}")
-
     def get_bulk_update_fields(self):
         return [
-            'profile', 'texto', 'data', 'curtidas', 'comentarios',
-            'link_post', 'categoria_tema'
+            'id_post', 'projeto_ipd', 'profile', 'texto', 'data',
+            'curtidas', 'comentarios', 'link_post', 'categoria_tema'
         ]
-
-    def _preparar_arquivo(self, dataset, modo):
-        if modo not in {'adicionar', 'substituir'}:
-            raise ValueError('Escolha adicionar ou substituir projetos IPD.')
-        self.modo_projetos = modo
-        self.projetos_por_post = {}
-        self.relacoes_projetos = set()
-        self.conteudos_existentes = {}
-        self.linhas_ignoradas = []
-
-        headers_totais = [str(h).strip().lstrip('\ufeff') if h else '' for h in (dataset.headers or [])]
-        headers_validos = [h for h in headers_totais if h]
-
-        if len(headers_validos) != len(set(headers_validos)):
-            raise ValueError('Existem nomes de colunas repetidos no arquivo.')
-
-        obrigatorias = {'id_post', 'projeto_ipd', 'texto', 'data'}
-        faltantes = obrigatorias - set(headers_validos)
-        if faltantes:
-            raise ValueError('Colunas ausentes: ' + ', '.join(sorted(faltantes)))
-
-        candidatas, vistos, riscos, convertidos = [], {}, [], 0
-        for indice, valores in enumerate(dataset):
-            row = {}
-            for h, v in zip(headers_totais, valores):
-                if h:
-                    row[h] = v
-
-            linha = indice + 2
-
-            try:
-                original = row['id_post']
-                identificador, risco = normalizar_id_conteudo(original)
-                if identificador in vistos:
-                    raise ValueError(f'id_post repetido; primeira ocorrência na linha {vistos[identificador]}.')
-                vistos[identificador] = linha
-                if risco:
-                    riscos.append(linha)
-                if str(original).strip() != identificador:
-                    convertidos += 1
-                projetos = normalizar_projetos_conteudo(row['projeto_ipd'])
-                if not str(row.get('texto') or '').strip():
-                    raise ValueError('texto é obrigatório.')
-                if row.get('profile') is not None and len(str(row['profile']).strip()) > 150:
-                    raise ValueError('profile ultrapassa 150 caracteres.')
-                if len(str(row['texto'])) > 10000000:
-                    raise ValueError('texto ultrapassa o limite de segurança.')
-                if row.get('link_post') and len(str(row['link_post']).strip()) > 1000:
-                    raise ValueError('link_post ultrapassa 1000 caracteres.')
-                if row.get('categoria_tema') and len(str(row['categoria_tema']).strip()) > 255:
-                    raise ValueError('categoria_tema ultrapassa 255 caracteres.')
-                if not row.get('data'):
-                    raise ValueError('data é obrigatória.')
-                row['data'] = normalizar_data_importacao(row['data'])
-
-                for campo in ('curtidas', 'comentarios'):
-                    valor = row.get(campo)
-                    if valor is None or str(valor).strip() == '':
-                        row[campo] = 0
-                    else:
-                        try:
-                            numero = Decimal(str(valor).strip().replace(',', '.'))
-                        except InvalidOperation:
-                            raise ValueError(f'{campo}: número inválido.')
-                        if not numero.is_finite() or numero != numero.to_integral_value() or not 0 <= numero <= 2147483647:
-                            raise ValueError(f'{campo}: informe um inteiro entre 0 e 2147483647.')
-                        row[campo] = int(numero)
-
-                row['id_post'] = identificador
-                row['projeto_ipd'] = ','.join(map(str, projetos))
-                candidatas.append((linha, row, projetos))
-            except (ValueError, InvalidOperation) as exc:
-                self.linhas_ignoradas.append(f'Linha {linha}: {exc}')
-
-        projetos_arquivo = {pk for _, _, projetos in candidatas for pk in projetos}
-        projetos_validos = set(ProjetoIPD.objects.using(self.get_db_connection_name()).filter(
-            pk__in=projetos_arquivo
-        ).values_list('pk', flat=True))
-        validas = []
-
-        for linha, row, projetos in candidatas:
-            ausentes = set(projetos) - projetos_validos
-            if ausentes:
-                self.linhas_ignoradas.append(
-                    f'Linha {linha}: projeto(s) IPD inexistente(s): {", ".join(map(str, sorted(ausentes)))}.'
-                )
-                continue
-            validas.append((row, projetos))
-            self.projetos_por_post[row['id_post']] = projetos
-
-        dataset.wipe()
-        dataset.headers = headers_validos
-        for row, _ in validas:
-            dataset.append([row.get(h) for h in headers_validos])
-
-        if not validas:
-            raise ValueError('Nenhuma linha válida para importar. ' + ' | '.join(self.linhas_ignoradas[:10]))
-
-        self._avisos_ids = []
-        if convertidos:
-            self._avisos_ids.append(f'{convertidos} ID(s) convertidos para texto sem notação científica ou sufixo decimal.')
-        if riscos:
-            self._avisos_ids.append(
-                f'{len(riscos)} ID(s) com mais de 15 dígitos podem já ter sido arredondados pelo Excel. '
-                f'Linhas: {", ".join(map(str, riscos[:20]))}' + ('...' if len(riscos) > 20 else '.')
-            )
-        if self.linhas_ignoradas:
-            self._avisos_ids.append(
-                f'{len(self.linhas_ignoradas)} linha(s) ignorada(s): ' + ' | '.join(self.linhas_ignoradas[:5])
-                + ('...' if len(self.linhas_ignoradas) > 5 else '')
-            )
-
-    def _resumo_erros_importacao(self, result):
-        mensagens = []
-        for erro in getattr(result, 'base_errors', []):
-            mensagens.append(str(getattr(erro, 'error', erro)))
-        try:
-            for linha, erros in result.row_errors():
-                for erro in erros:
-                    mensagens.append(f'Linha {linha}: {getattr(erro, "error", erro)}')
-                    if len(mensagens) >= 3:
-                        break
-                if len(mensagens) >= 3:
-                    break
-        except Exception:
-            pass
-        if not mensagens:
-            for linha_invalida in getattr(result, 'invalid_rows', [])[:3]:
-                mensagens.append(f'Linha {linha_invalida.number}: {linha_invalida.error}')
-        return ' | '.join(mensagens)[:900] or 'Erro não detalhado pelo importador. Verifique os logs do servidor.'
-
-    def import_data(self, dataset, dry_run=False, raise_errors=False,
-                    use_transactions=None, collect_failed_rows=False,
-                    rollback_on_validation_errors=True, **kwargs):
-        request = kwargs.get('request')
-        self._progress_request = request
-        self._progress_job_id = request.POST.get('import_job_id') if request else None
-        self._progress_total = len(dataset)
-        self._progress_processados = 0
-
-        self._salvar_progresso(
-            'processando',
-            processados=0,
-            percentual=0,
-            mensagem='Normalizando IDs e validando projetos...',
-        )
-
-        try:
-            self._preparar_arquivo(dataset, kwargs.get('modo_projetos', 'adicionar'))
-        except ValueError as exc:
-            self._salvar_progresso('erro', mensagem=str(exc))
-            if raise_errors:
-                raise
-            result = self.get_result_class()()
-            result.total_rows = len(dataset)
-            result.diff_headers = self.get_diff_headers()
-            result.append_base_error(self.get_error_result_class()(exc))
-            return result
-
-        if request:
-            request._conteudo_import_avisos = self._avisos_ids
-
-        try:
-            result = super().import_data(
-                dataset, dry_run=dry_run, raise_errors=raise_errors,
-                use_transactions=False, collect_failed_rows=collect_failed_rows,
-                rollback_on_validation_errors=False, **kwargs,
-            )
-            erro = result.has_errors() or result.has_validation_errors()
-            self._salvar_progresso(
-                'concluido_com_erros' if erro else 'concluido',
-                processados=len(dataset),
-                percentual=100,
-                mensagem=(
-                    'Importação cancelada: ' + self._resumo_erros_importacao(result)
-                    if erro
-                    else 'Validação concluída; nenhuma alteração salva.'
-                    if dry_run
-                    else f'Importação concluída: {len(dataset)} registros importados; {len(self.linhas_ignoradas)} ignorados. Modo: {self.modo_projetos}.'
-                ),
-            )
-            return result
-        except Exception as exc:
-            self._salvar_progresso('erro', mensagem=str(exc)[:500])
-            raise
 
     def before_import(self, dataset, **kwargs):
         super().before_import(dataset, **kwargs)
-        self.conteudos_existentes = Conteudo.objects.using(
-            self.get_db_connection_name()
-        ).in_bulk(self.projetos_por_post)
+        
+        headers = [str(h).strip().lstrip('\ufeff') if h else '' for h in (dataset.headers or [])]
+        novos_dados = []
+        ids_para_buscar = set()
+
+        # Desmembra os registros e gera a chave id = id_post_projeto_ipd
+        for row in dataset.dict:
+            id_post_raw = row.get('id_post')
+            proj_raw = row.get('projeto_ipd')
+            data_raw = row.get('data')
+
+            if not (id_post_raw and proj_raw and data_raw):
+                continue
+
+            try:
+                id_post_norm, _ = normalizar_id_conteudo(id_post_raw)
+                projetos_ids = normalizar_projetos_conteudo(proj_raw)
+                data_norm = normalizar_data_importacao(data_raw)
+            except Exception:
+                continue
+
+            for proj_id in projetos_ids:
+                r = dict(row)
+                r['id_post'] = id_post_norm
+                r['projeto_ipd'] = proj_id
+                r['data'] = data_norm
+                pk_composta = f"{id_post_norm}_{proj_id}"
+                r['id'] = pk_composta
+                novos_dados.append(r)
+                ids_para_buscar.add(pk_composta)
+
+        # Atualiza a planilha de uma só vez na memória
+        dataset.wipe()
+        if novos_dados:
+            dataset.dict = novos_dados
+
+        # CORREÇÃO CRÍTICA: Busca instâncias completas no banco (IGUAL AO IPD), sem .only()
+        if ids_para_buscar:
+            self.conteudos_existentes = Conteudo.objects.in_bulk(ids_para_buscar)
+        else:
+            self.conteudos_existentes = {}
 
     def before_import_row(self, row, **kwargs):
-        row['id_post'] = normalizar_id_conteudo(row['id_post'])[0]
-        if row.get('profile') is not None:
-            row['profile'] = str(row['profile']).strip()
-
-        if not row.get('data'):
-            raise ValueError('data é obrigatória.')
-
-        row['data'] = normalizar_data_importacao(row['data'])
+        if not row.get('id') and row.get('id_post') and row.get('projeto_ipd'):
+            row['id'] = f"{row['id_post']}_{row['projeto_ipd']}"
 
         for campo in ('curtidas', 'comentarios'):
             valor = row.get(campo)
-            if valor is None or str(valor).strip() == '':
+            if valor in (None, ''):
                 row[campo] = 0
-            else:
-                try:
-                    numero = Decimal(str(valor).strip().replace(',', '.'))
-                except InvalidOperation:
-                    raise ValueError(f'{campo}: número inválido.')
-                if not numero.is_finite() or numero != numero.to_integral_value() or not 0 <= numero <= 2147483647:
-                    raise ValueError(f'{campo}: informe um inteiro entre 0 e 2147483647.')
-                row[campo] = int(numero)
 
         if not row.get('categoria_tema'):
             row['categoria_tema'] = 'Outros'
 
-        if row.get('link_post'):
-            link = str(row['link_post']).strip().replace('\n', '').replace('\r', '')
-            if link and not link.startswith(('http://', 'https://')):
-                link = 'https://' + link
-            row['link_post'] = link
-
     def get_instance(self, instance_loader, row):
-        return self.conteudos_existentes.get(row['id_post'])
+        return self.conteudos_existentes.get(row.get('id'))
 
-    def save_m2m(self, instance, row, *args, **kwargs):
-        pass
-
-    def after_import_row(self, row, row_result, **kwargs):
-        super().after_import_row(row, row_result, **kwargs)
-        if row_result.import_type in {'new', 'update'} and not row_result.errors and not row_result.validation_error:
-            identificador = row['id_post']
-            self.relacoes_projetos.update(
-                (identificador, pk) for pk in self.projetos_por_post[identificador]
-            )
-        self._progress_processados += 1
-        if self._progress_processados % 500 == 0 or self._progress_processados == self._progress_total:
-            self._salvar_progresso('processando', mensagem=f'Processando {self._progress_processados} de {self._progress_total}...')
-
-    def after_import(self, dataset, result, **kwargs):
-        super().after_import(dataset, result, **kwargs)
-        if not self.relacoes_projetos:
-            return
-
-        self._salvar_progresso('processando', percentual=99, mensagem='Salvando vínculos com projetos IPD...')
-        m2m = Conteudo._meta.get_field('projeto_ipd')
-        through = m2m.remote_field.through
-        campo_conteudo = through._meta.get_field(m2m.m2m_field_name()).attname
-        campo_projeto = through._meta.get_field(m2m.m2m_reverse_field_name()).attname
-        db = self.get_db_connection_name()
-        manager = through.objects.using(db)
-        posts = sorted({identificador for identificador, _ in self.relacoes_projetos})
-
-        with transaction.atomic(using=db):
-            for inicio in range(0, len(posts), 1000):
-                lote_ids = posts[inicio:inicio + 1000]
-                list(Conteudo.objects.using(db).select_for_update().filter(id_post__in=lote_ids).order_by('id_post').values_list('id_post', flat=True))
-                
-                if self.modo_projetos == 'substituir':
-                    manager.filter(**{campo_conteudo + '__in': lote_ids}).delete()
-
-            lote = []
-            for identificador, projeto_id in self.relacoes_projetos:
-                lote.append(through(**{campo_conteudo: identificador, campo_projeto: projeto_id}))
-                if len(lote) >= 1000:
-                    manager.bulk_create(lote, batch_size=1000, ignore_conflicts=True)
-                    lote = []
-
-            if lote:
-                manager.bulk_create(lote, batch_size=1000, ignore_conflicts=True)
+    def before_save_instance(self, instance, row, **kwargs):
+        if not instance.id and row.get('id'):
+            instance.id = row['id']
+        elif not instance.id and instance.id_post and instance.projeto_ipd_id:
+            instance.id = f"{instance.id_post}_{instance.projeto_ipd_id}"
+        super().before_save_instance(instance, row, **kwargs)
 
 
 # =============================================================================
@@ -1386,16 +1129,9 @@ class ConteudoResource(resources.ModelResource):
 
 @admin.register(Conteudo)
 class ConteudoAdmin(GestaoAdminMixin, ImportExportModelAdmin):
-    import_form_class = ConteudoImportForm
-    confirm_form_class = ConteudoConfirmImportForm
-
     resource_classes = [ConteudoResource]
     import_template_name = "conteudo_import.html"
     skip_import_confirm = True
-
-    # =========================================================================
-    # URL DO PROGRESSO E FATIAMENTO
-    # =========================================================================
 
     def get_urls(self):
         urls = super().get_urls()
@@ -1416,8 +1152,6 @@ class ConteudoAdmin(GestaoAdminMixin, ImportExportModelAdmin):
     def importar_fatiado_view(self, request):
         if request.method == 'POST':
             arquivo = request.FILES.get('file')
-            modo_projetos = request.POST.get('modo_projetos', 'adicionar')
-
             if not arquivo:
                 return JsonResponse({'erro': 'Nenhum arquivo enviado'}, status=400)
 
@@ -1427,12 +1161,7 @@ class ConteudoAdmin(GestaoAdminMixin, ImportExportModelAdmin):
                 dataset.load(conteudo, format='csv')
 
                 resource = ConteudoResource()
-                result = resource.import_data(
-                    dataset,
-                    request=request,
-                    modo_projetos=modo_projetos,
-                    raise_errors=False
-                )
+                result = resource.import_data(dataset, request=request, raise_errors=False)
 
                 if result.has_errors() or result.has_validation_errors():
                     mensagens = []
@@ -1446,10 +1175,6 @@ class ConteudoAdmin(GestaoAdminMixin, ImportExportModelAdmin):
                             if len(mensagens) >= 3: break
                     except Exception:
                         pass
-                    
-                    if not mensagens:
-                        for linha_invalida in getattr(result, 'invalid_rows', [])[:3]:
-                            mensagens.append(f'Linha {linha_invalida.number}: {linha_invalida.error}')
 
                     erro_msg = ' | '.join(mensagens) if mensagens else 'Erro de validação ao processar lote.'
                     return JsonResponse({'erro': erro_msg}, status=400)
@@ -1457,89 +1182,39 @@ class ConteudoAdmin(GestaoAdminMixin, ImportExportModelAdmin):
                 return JsonResponse({'status': 'ok'})
 
             except Exception as e:
-                erro_python = traceback.format_exc()
-                print("ERRO CRITICO EM CONTEUDO:", erro_python)
-                return JsonResponse({'erro': f'Erro Crítico no Servidor: {str(e)}'}, status=400)
+                return JsonResponse({'erro': f'Erro no Servidor: {str(e)}'}, status=400)
 
         return JsonResponse({'erro': 'Método não permitido'}, status=405)
 
     def import_progress(self, request):
         job_id = request.GET.get('job_id')
-
         if not job_id:
-            response = JsonResponse({
-                'status': 'aguardando',
-                'percentual': 0,
-                'processados': 0,
-                'total': 0,
-                'mensagem': 'Aguardando importação...',
-            })
-            response['Cache-Control'] = 'no-store'
-            return response
+            return JsonResponse({'status': 'aguardando', 'percentual': 0, 'processados': 0, 'total': 0, 'mensagem': 'Aguardando...'})
 
         chave = f"conteudo_import_progress:{request.user.pk}:{job_id}"
-
-        try:
-            progresso = cache.get(chave)
-        except Exception:
-            progresso = None
-
-        if progresso is None:
-            progresso = {
-                'status': 'aguardando',
-                'percentual': 0,
-                'processados': 0,
-                'total': 0,
-                'mensagem': 'Preparando arquivo...',
-            }
-
-        response = JsonResponse(progresso)
-        response['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
-        return response
-
-    def get_import_data_kwargs(self, request, *args, **kwargs):
-        form = kwargs.get('form')
-        data = super().get_import_data_kwargs(request=request, **kwargs)
-        data['request'] = request
-        data['modo_projetos'] = form.cleaned_data['modo_projetos'] if form and hasattr(form, 'cleaned_data') else 'adicionar'
-        return data
-
-    def get_confirm_form_initial(self, request, import_form):
-        initial = super().get_confirm_form_initial(request, import_form)
-        if import_form:
-            initial['modo_projetos'] = import_form.cleaned_data['modo_projetos']
-        return initial
-
-    def import_action(self, request, **kwargs):
-        response = super().import_action(request, **kwargs)
-        for aviso in getattr(request, '_conteudo_import_avisos', []):
-            self.message_user(request, aviso, messages.WARNING)
-        return response
-
-    form = ConteudoAdminForm
-    raw_id_fields = ("projeto_ipd",)
-
-    def save_related(self, request, form, formsets, change):
-        antigos = list(form.instance.projeto_ipd.values_list("pk", flat=True)) if change else []
-        super().save_related(request, form, formsets, change)
-        if form.cleaned_data.get("modo_projetos") == "adicionar" and antigos:
-            form.instance.projeto_ipd.add(*antigos)
+        progresso = cache.get(chave) or {'status': 'aguardando', 'percentual': 0, 'processados': 0, 'total': 0, 'mensagem': 'Preparando...'}
+        return JsonResponse(progresso)
 
     def get_changelist(self, request, **kwargs):
         return LimitedAdminChangeList
 
     list_display = (
+        'id',
         'id_post',
-        'data',
+        'projeto_ipd',
         'profile',
+        'categoria_tema',
+        'data',
     )
 
     list_filter = (
         'projeto_ipd',
+        'categoria_tema',
         'data',
     )
 
     search_fields = (
+        '=id',
         '=id_post',
         'profile',
     )
@@ -1548,15 +1223,10 @@ class ConteudoAdmin(GestaoAdminMixin, ImportExportModelAdmin):
         '-data',
     )
 
+    raw_id_fields = ("projeto_ipd",)
     list_per_page = 50
     list_max_show_all = 0
     show_full_result_count = False
-
-
-# =============================================================================
-# ADMIN RESUMO EXECUTIVO
-# =============================================================================
-
 @admin.register(ResumoExecutivo)
 class ResumoExecutivoAdmin(admin.ModelAdmin):
 
@@ -1625,3 +1295,4 @@ class ResumoExecutivoAdmin(admin.ModelAdmin):
             },
         ),
     )
+    

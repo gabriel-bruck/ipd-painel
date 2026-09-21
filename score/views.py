@@ -4575,3 +4575,344 @@ class ExplicacaoRankingIAView(APIView):
                 },
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+
+
+from datetime import datetime
+import pandas as pd
+import numpy as np
+from sklearn.linear_model import Ridge
+from sklearn.preprocessing import StandardScaler
+
+from django.shortcuts import get_object_or_404
+from django.db.models import Sum
+
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from rest_framework.permissions import IsAuthenticated
+
+from client.models import ProjetoCliente, ProjetoIPD
+from score.models import IPD, Conteudo
+
+
+
+from datetime import datetime
+import pandas as pd
+import numpy as np
+from sklearn.linear_model import Ridge
+from sklearn.preprocessing import StandardScaler
+
+from django.shortcuts import get_object_or_404
+from django.db.models import Sum, Count
+
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from rest_framework.permissions import IsAuthenticated
+
+from client.models import ProjetoCliente, ProjetoIPD
+from score.models import IPD, Conteudo
+
+from datetime import datetime
+import pandas as pd
+import numpy as np
+from sklearn.linear_model import Ridge
+from sklearn.preprocessing import StandardScaler
+
+from django.shortcuts import get_object_or_404
+from django.db.models import Sum
+
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from rest_framework.permissions import IsAuthenticated
+
+from client.models import ProjetoCliente, ProjetoIPD
+from score.models import IPD, Conteudo
+
+
+class ContribuicaoTemaIPDAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        # ============================================================
+        # 1. AUTENTICAÇÃO
+        # ============================================================
+        if not request.user.is_authenticated:
+            return Response(
+                {"error": "Não autenticado."},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
+        # ============================================================
+        # 2. PARÂMETROS
+        # ============================================================
+        projeto_id = request.query_params.get('projeto_id')
+        projeto_ipd_id = (
+            request.query_params.get('projeto_ipd_id')
+            or request.query_params.get('projeto_ipd')
+        )
+        data_inicio_str = request.query_params.get('data_inicio')
+        data_fim_str = request.query_params.get('data_fim')
+        profile_filtro = request.query_params.get('profile')
+
+        # ============================================================
+        # 3. VALIDAÇÃO DE PARÂMETROS E IDs
+        # ============================================================
+        if not all([projeto_id, projeto_ipd_id, data_inicio_str, data_fim_str]):
+            return Response(
+                {
+                    "error": (
+                        "Os parâmetros 'projeto_id', 'projeto_ipd', "
+                        "'data_inicio' e 'data_fim' são obrigatórios."
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            projeto_id = int(projeto_id)
+            projeto_ipd_id = int(projeto_ipd_id)
+        except (TypeError, ValueError):
+            return Response(
+                {"error": "'projeto_id' e 'projeto_ipd' devem ser numéricos."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # ============================================================
+        # 4. VALIDAÇÃO E TRAVA DE DATAS (MÍNIMO 7 DIAS)
+        # ============================================================
+        try:
+            data_inicio = datetime.strptime(data_inicio_str, '%Y-%m-%d').date()
+            data_fim = datetime.strptime(data_fim_str, '%Y-%m-%d').date()
+        except ValueError:
+            return Response(
+                {
+                    "error": (
+                        "Formato de data inválido. Use YYYY-MM-DD "
+                        "(ex: 2026-08-01)."
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if data_inicio > data_fim:
+            return Response(
+                {"error": "'data_inicio' não pode ser posterior a 'data_fim'."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        dias_periodo = (data_fim - data_inicio).days + 1
+
+        if dias_periodo < 7:
+            return Response(
+                {
+                    "error": (
+                        f"Não é possível calcular: O intervalo selecionado é de apenas {dias_periodo} dia(s). "
+                        "Para calcular a regressão e o impacto dos temas, o período deve ser de no mínimo 7 dias (1 semana)."
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # ============================================================
+        # 5. PROJETO CLIENTE + PERMISSÕES
+        # ============================================================
+        projeto = get_object_or_404(ProjetoCliente, pk=projeto_id)
+
+        if not usuario_tem_acesso_ao_projeto(request.user, projeto):
+            return Response(
+                {"error": "Você não tem permissão para acessar este projeto."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        projeto_ipd = get_object_or_404(
+            ProjetoIPD,
+            pk=projeto_ipd_id,
+            projetos_cliente=projeto
+        )
+
+        # ============================================================
+        # 6. CONSULTAS INICIAIS AO BANCO
+        # ============================================================
+        ipd_qs = IPD.objects.filter(
+            projeto_ipd=projeto_ipd,
+            data__range=[data_inicio, data_fim]
+        ).values('profile', 'data', 'ipd')
+
+        # Removido Count('id_post'), pois a métrica 'posts' não é mais necessária
+        conteudo_qs = Conteudo.objects.filter(
+            projeto_ipd=projeto_ipd,
+            data__range=[data_inicio, data_fim]
+        ).values('profile', 'data', 'categoria_tema').annotate(
+            tot_curtidas=Sum('curtidas'),
+            tot_comentarios=Sum('comentarios')
+        )
+
+        if not ipd_qs.exists():
+            return Response(
+                {"error": "Não é possível calcular: Nenhuma medição de IPD foi encontrada para o período selecionado."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if not conteudo_qs.exists():
+            return Response(
+                {"error": "Não é possível calcular: Nenhuma publicação foi encontrada para o período selecionado."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        df_ipd = pd.DataFrame(list(ipd_qs))
+        df_conteudo = pd.DataFrame(list(conteudo_qs))
+
+        # ============================================================
+        # 7. TRATAMENTO INTELIGENTE DE NAs E VALORES EM BRANCO
+        # ============================================================
+        df_ipd['ipd'] = pd.to_numeric(df_ipd['ipd'], errors='coerce')
+        df_ipd = df_ipd.dropna(subset=['ipd'])
+
+        if df_ipd.empty:
+            return Response(
+                {"error": "Não é possível calcular: Todos os registros de IPD do período estão em branco ou possuem valores inválidos (NA)."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        df_conteudo['tot_curtidas'] = pd.to_numeric(df_conteudo['tot_curtidas'], errors='coerce').fillna(0)
+        df_conteudo['tot_comentarios'] = pd.to_numeric(df_conteudo['tot_comentarios'], errors='coerce').fillna(0)
+
+        if 'categoria_tema' in df_conteudo.columns:
+            df_conteudo['categoria_tema'] = df_conteudo['categoria_tema'].astype(str).str.strip()
+            df_conteudo['categoria_tema'] = df_conteudo['categoria_tema'].replace(
+                ['', 'nan', 'NaN', 'NA', 'N/A', 'null', 'None', 'undefined', 'NoneType'], np.nan
+            )
+            df_conteudo = df_conteudo.dropna(subset=['categoria_tema'])
+
+        if df_conteudo.empty:
+            return Response(
+                {"error": "Não é possível calcular: Todas as publicações do período estão sem tema definido ou possuem valores inválidos (NA)."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # ============================================================
+        # 8. MONTAGEM DA MATRIZ DIÁRIA EM PAINEL
+        # ============================================================
+        df_pivot = df_conteudo.pivot(
+            index=['profile', 'data'],
+            columns='categoria_tema',
+            values=['tot_curtidas', 'tot_comentarios']
+        ).fillna(0)
+
+        df_pivot.columns = [f"{col[0]}_{col[1]}" for col in df_pivot.columns]
+        df_pivot.reset_index(inplace=True)
+
+        df_global = pd.merge(df_ipd, df_pivot, on=['profile', 'data'], how='inner')
+
+        if df_global.empty or len(df_global) < 5:
+            return Response(
+                {"error": "Não é possível calcular: Não há dias com cruzamento simultâneo entre IPD e publicações válidas no período."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # ============================================================
+        # 9. REGRESSÃO RIDGE E PADRONIZAÇÃO
+        # ============================================================
+        X_global = df_global.drop(columns=['profile', 'data', 'ipd'], errors='ignore')
+        y_global = df_global['ipd']
+
+        X_global = X_global.replace([np.inf, -np.inf], np.nan).fillna(0)
+
+        if X_global.shape[1] == 0 or X_global.sum().sum() == 0:
+            return Response(
+                {"error": "Não é possível calcular: Sem engajamento válido registrado nos temas durante o período."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        scaler = StandardScaler()
+        X_scaled = scaler.fit_transform(X_global)
+
+        modelo_global = Ridge(alpha=1.0)
+        modelo_global.fit(X_scaled, y_global)
+
+        desvios = scaler.scale_
+        desvios[desvios == 0] = 1.0  # Previne divisão por zero se a coluna for constante
+        
+        coefs_raw = modelo_global.coef_ / desvios
+        coefs_map = dict(zip(X_global.columns, coefs_raw))
+
+        # ============================================================
+        # 10. FILTRAGEM POR PROFILE (SE ENVIADO)
+        # ============================================================
+        if profile_filtro:
+            df_conteudo = df_conteudo[
+                df_conteudo['profile'].astype(str).str.strip().str.lower() == profile_filtro.strip().lower()
+            ]
+            if df_conteudo.empty:
+                return Response(
+                    {"error": f"Não é possível calcular: O perfil '{profile_filtro}' não possui temas válidos ou publicações no período."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        # ============================================================
+        # 11. CÁLCULO DE CONTRIBUIÇÃO MÉDIA E PESO RELATIVO (%)
+        # ============================================================
+        df_agrupado = df_conteudo.groupby(['profile', 'categoria_tema']).agg(
+            curtidas=('tot_curtidas', 'sum'),
+            comentarios=('tot_comentarios', 'sum')
+        ).reset_index()
+
+        resultados = []
+
+        for profile_name, df_prof in df_agrupado.groupby('profile'):
+            impacto_total_prof = 0
+            itens_perfil = []
+
+            for _, row in df_prof.iterrows():
+                tema = row['categoria_tema']
+                curtidas = row['curtidas']
+                comentarios = row['comentarios']
+
+                beta_like = coefs_map.get(f'tot_curtidas_{tema}', 0)
+                beta_coment = coefs_map.get(f'tot_comentarios_{tema}', 0)
+
+                impacto_acumulado = (curtidas * beta_like) + (comentarios * beta_coment)
+                impacto_medio_diario = (impacto_acumulado / dias_periodo) if dias_periodo > 0 else 0.0
+
+                # Usa o absoluto da média diária para construir a base do peso percentual
+                impacto_total_prof += abs(impacto_medio_diario)
+
+                # Mantém apenas as chaves solicitadas no dicionário
+                itens_perfil.append({
+                    'profile': profile_name,
+                    'categoria_tema': tema,
+                    'impacto_medio_diario': round(float(impacto_medio_diario), 4),
+                    'impacto_estimado_ipd': round(float(impacto_acumulado), 4),
+                })
+
+            for item in itens_perfil:
+                if impacto_total_prof > 0:
+                    peso = (abs(item['impacto_medio_diario']) / impacto_total_prof) * 100
+                else:
+                    peso = 0
+                item['peso_relativo_pct'] = round(float(peso), 2)
+                resultados.append(item)
+
+        resultados = sorted(resultados, key=lambda x: (x['profile'], -x['peso_relativo_pct']))
+
+        # ============================================================
+        # 12. RETORNO DA API
+        # ============================================================
+        return Response(
+            {
+                "filtros": {
+                    "projeto_id": projeto.id,
+                    "projeto_ipd_id": projeto_ipd.id,
+                    "profile_filtrado": profile_filtro,
+                    "data_inicio": data_inicio.isoformat(),
+                    "data_fim": data_fim.isoformat(),
+                    "dias_periodo": dias_periodo,
+                },
+                "r2_modelo_global": round(float(modelo_global.score(X_scaled, y_global)), 4),
+                "total_registros": len(resultados),
+                "resultados": resultados,
+            },
+            status=status.HTTP_200_OK,
+        )

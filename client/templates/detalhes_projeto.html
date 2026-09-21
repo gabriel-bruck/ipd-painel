@@ -484,6 +484,112 @@
     <!-- LÓGICA JAVASCRIPT INTEGRADA -->
     <script>
 
+async function carregarContribuicaoTemas(ipdId) {
+    const inputInicio = document.getElementById(`contribuicao-inicio-${ipdId}`);
+    const inputFim = document.getElementById(`contribuicao-fim-${ipdId}`);
+    const selectPerfil = document.getElementById(`select-perfil-contribuicao-${ipdId}`);
+
+    const boxLoading = document.getElementById(`contribuicao-loading-${ipdId}`);
+    const boxErro = document.getElementById(`contribuicao-erro-${ipdId}`);
+    const boxResultados = document.getElementById(`contribuicao-resultados-${ipdId}`);
+
+    if (!inputInicio || !inputFim || !selectPerfil) return;
+
+    const dataInicio = inputInicio.value;
+    const dataFim = inputFim.value;
+    const profile = selectPerfil.value;
+
+    if (!dataInicio || !dataFim || !profile) {
+        boxLoading.classList.add('hidden');
+        boxResultados.classList.add('hidden');
+        document.getElementById(`contribuicao-erro-msg-${ipdId}`).innerText = "Preencha a Data Início, Data Fim e escolha um Perfil antes de clicar em calcular.";
+        boxErro.classList.remove('hidden');
+        return;
+    }
+
+    boxLoading.classList.remove('hidden');
+    boxErro.classList.add('hidden');
+    boxResultados.classList.add('hidden');
+
+    const params = new URLSearchParams({
+        projeto_id: String(PROJETO_ID),
+        projeto_ipd: String(ipdId),
+        data_inicio: dataInicio,
+        data_fim: dataFim,
+        profile: profile
+    });
+
+    const url = `/api/contribuicao-temas/?${params.toString()}`;
+
+    try {
+        const response = await fetch(url);
+        const data = await response.json();
+
+        boxLoading.classList.add('hidden');
+
+        if (!response.ok || data.error) {
+            document.getElementById(`contribuicao-erro-msg-${ipdId}`).innerText = data.error || 'Erro ao calcular a contribuição dos temas.';
+            boxErro.classList.remove('hidden');
+            return;
+        }
+
+        // R² Global
+        const elR2 = document.getElementById(`contribuicao-r2-${ipdId}`);
+        if (elR2) {
+            elR2.innerText = `R² = ${(data.r2_modelo_global * 100).toFixed(1)}%`;
+        }
+
+        // Renderização da Tabela
+        const tbody = document.getElementById(`tbl-contribuicao-body-${ipdId}`);
+        if (tbody) {
+            if (!data.resultados || data.resultados.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-400 italic">Nenhum resultado de contribuição encontrado para o perfil selecionado no período.</td></tr>`;
+            } else {
+                tbody.innerHTML = data.resultados.map(r => {
+                    const corTema = obterCorDoTema(r.categoria_tema);
+                    
+                    // Formatação do Impacto Médio Diário
+                    const impDiario = Number(r.impacto_medio_ipd || r.impacto_medio_diario);
+                    const impDiarioFmt = impDiario > 0 ? `+${impDiario.toFixed(2)}` : impDiario.toFixed(2);
+                    const classeImpDiario = impDiario >= 0 ? 'text-emerald-600 font-bold' : 'text-rose-600 font-bold';
+
+                    // Formatação do Impacto do Período (Acumulado)
+                    const impPeriodo = Number(r.impacto_estimado_ipd);
+                    const impPeriodoFmt = impPeriodo > 0 ? `+${impPeriodo.toFixed(2)}` : impPeriodo.toFixed(2);
+                    const classeImpPeriodo = impPeriodo >= 0 ? 'text-emerald-600 font-bold' : 'text-rose-600 font-bold';
+                    
+                    return `
+                        <tr class="hover:bg-slate-50 transition">
+                            <td class="p-3.5 font-bold text-slate-900">${r.profile}</td>
+                            <td class="p-3.5 font-bold text-slate-800 flex items-center gap-2">
+                                <span class="w-2.5 h-2.5 rounded-full shrink-0" style="background-color: ${corTema}"></span>
+                                ${r.categoria_tema}
+                            </td>
+                            <td class="p-3.5 text-right ${classeImpDiario}">${impDiarioFmt} pts</td>
+                            <td class="p-3.5 text-right ${classeImpPeriodo}">${impPeriodoFmt} pts</td>
+                            <td class="p-3.5 text-right">
+                                <div class="flex items-center justify-end gap-2">
+                                    <div class="w-16 bg-slate-100 rounded-full h-2 overflow-hidden hidden sm:block">
+                                        <div class="bg-quaest-teal h-2 rounded-full" style="width: ${Math.min(100, r.peso_relativo_pct)}%"></div>
+                                    </div>
+                                    <span class="font-black text-slate-900">${Number(r.peso_relativo_pct).toFixed(1)}%</span>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+            }
+        }
+
+        boxResultados.classList.remove('hidden');
+
+    } catch (err) {
+        boxLoading.classList.add('hidden');
+        document.getElementById(`contribuicao-erro-msg-${ipdId}`).innerText = "Erro na comunicação com o servidor: " + err.message;
+        boxErro.classList.remove('hidden');
+    }
+}
+
         /*
          * =====================================================================
          * MAPA DE DEPENDÊNCIAS VISUAIS DO MÓDULO IPD
@@ -7221,6 +7327,102 @@ function toggleComparacaoRanking(ipdId) {
 
                     <hr class="border-slate-100" />
 
+
+
+                    <!-- SEÇÃO: CONTRIBUIÇÃO E PESOS DOS TEMAS NO IPD (REGRESSÃO RIDGE) -->
+                    <div class="space-y-6">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-9 h-9 rounded-xl bg-quaest-tealLight border border-quaest-tealBorder flex items-center justify-center text-quaest-teal text-base font-black shrink-0">
+                                    <i class="fa-solid fa-scale-balanced"></i>
+                                </div>
+                                <div>
+                                    <span class="text-[10px] font-black text-quaest-teal uppercase tracking-widest block">Modelo Preditivo de Impacto</span>
+                                    <h3 class="text-xl font-black text-slate-900">Contribuição e Pesos dos Temas no IPD</h3>
+                                </div>
+                            </div>
+                            
+                            <div class="flex flex-wrap items-end gap-2">
+                                <label class="text-[10px] font-black uppercase tracking-wider text-slate-500">
+                                    Início
+                                    <input id="contribuicao-inicio-${ipdId}"
+                                           type="date"
+                                           class="block mt-1 bg-white text-slate-800 text-xs font-bold px-3 py-2 rounded-xl border border-slate-200 outline-none focus:border-quaest-teal">
+                                </label>
+
+                                <label class="text-[10px] font-black uppercase tracking-wider text-slate-500">
+                                    Fim
+                                    <input id="contribuicao-fim-${ipdId}"
+                                           type="date"
+                                           class="block mt-1 bg-white text-slate-800 text-xs font-bold px-3 py-2 rounded-xl border border-slate-200 outline-none focus:border-quaest-teal">
+                                </label>
+
+                                <label class="text-[10px] font-black uppercase tracking-wider text-slate-500">
+                                    Perfil
+                                    <select id="select-perfil-contribuicao-${ipdId}"
+                                            class="block mt-1 bg-white text-slate-800 text-xs font-bold px-3 py-2 rounded-xl border border-slate-200 outline-none focus:border-quaest-teal cursor-pointer">
+                                        ${optionsPerfilHtml}
+                                    </select>
+                                </label>
+
+                                <button type="button"
+                                        onclick="carregarContribuicaoTemas(${ipdId})"
+                                        class="bg-quaest-teal hover:bg-quaest-tealDark text-white text-xs font-black px-4 py-2 rounded-xl shadow-sm transition flex items-center gap-1 cursor-pointer">
+                                    <i class="fa-solid fa-calculator mr-1"></i>
+                                    Calcular Pesos
+                                </button>
+
+                                <button onclick="toggleMinimizarCard('box-contribuicao-${ipdId}', this)"
+                                        title="Minimizar Seção"
+                                        class="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 transition">
+                                    <i class="fa-solid fa-chevron-up text-xs"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div id="box-contribuicao-${ipdId}" class="space-y-6 transition-all">
+                            <div class="p-3.5 rounded-xl bg-teal-50/80 border border-quaest-tealBorder flex items-start gap-2.5 text-xs text-slate-700">
+                                <i class="fa-solid fa-circle-info text-quaest-teal mt-0.5"></i>
+                                <p><strong>Metodologia:</strong> Mede o impacto isolado de cada tema no IPD a partir da Regressão Ridge. Requer intervalo mínimo de 7 dias com publicações e medições ativas no período.</p>
+                            </div>
+
+                            <div id="contribuicao-loading-${ipdId}" class="hidden p-6 text-center text-slate-500 text-xs italic space-y-2">
+                                <i class="fa-solid fa-spinner animate-spin text-quaest-teal text-xl"></i>
+                                <p>Ajustando modelo estatístico e calculando a contribuição dos temas...</p>
+                            </div>
+
+                            <div id="contribuicao-erro-${ipdId}" class="hidden p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-800 text-xs space-y-1">
+                                <div class="flex items-center gap-2 font-black text-amber-900">
+                                    <i class="fa-solid fa-triangle-exclamation text-amber-600"></i> Não foi possível calcular
+                                </div>
+                                <p id="contribuicao-erro-msg-${ipdId}" class="text-amber-700">Aviso do sistema.</p>
+                            </div>
+
+                            <div id="contribuicao-resultados-${ipdId}" class="hidden space-y-4">
+                                <div class="flex items-center justify-between bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                                    <span class="text-xs font-bold text-slate-600">Qualidade de Ajuste do Modelo (R² Global):</span>
+                                    <span id="contribuicao-r2-${ipdId}" class="text-xs font-black text-quaest-teal bg-white px-3 py-1 rounded-lg border border-slate-200">--</span>
+                                </div>
+
+                              <div class="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm">
+    <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs border-collapse">
+            <thead class="bg-slate-50 border-b border-slate-200 text-slate-500 font-extrabold uppercase text-[10px]">
+                <tr>
+                    <th class="p-3.5">Perfil</th>
+                    <th class="p-3.5">Tema / Categoria</th>
+                    <th class="p-3.5 text-right">Impacto Médio Diário</th>
+                    <th class="p-3.5 text-right">Impacto no Período</th>
+                    <th class="p-3.5 text-right">Peso Relativo (%)</th>
+                </tr>
+            </thead>
+            <tbody id="tbl-contribuicao-body-${ipdId}" class="divide-y divide-slate-100 font-medium text-slate-700">
+            </tbody>
+        </table>
+    </div>
+</div>
+                    <hr class="border-slate-100" />
+
                     <!-- 5º SEÇÃO: MÓDULO DE POSTAGENS: TOP 3 POSTS (EXPANDIDO) -->
                     <div class="space-y-6">
                         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
@@ -7856,418 +8058,238 @@ function toggleComparacaoRanking(ipdId) {
             
         }
 
-        function inicializarStateIPD(ipdObj, ipdId) {
-            const rawDiarias = ipdObj.medias_diarias || ipdObj.diario || [];
-            const rawSemanais = ipdObj.medias_semanais || [];
-            const rawMensais = ipdObj.medias_mensais || [];
+      function inicializarStateIPD(ipdObj, ipdId) {
+    const rawDiarias = ipdObj.medias_diarias || ipdObj.diario || [];
+    const rawSemanais = ipdObj.medias_semanais || [];
+    const rawMensais = ipdObj.medias_mensais || [];
 
-            const profilesDataMesObj = processarMapeamentoPeriodo(rawMensais, 'mes');
-            const perfisDetectados = Array.from(new Set(rawDiarias.map(item => item.profile).filter(Boolean)));
-            const perfisDeclarados = ipdObj.profiles_usados || [];
-            const perfisMensais = Object.keys(profilesDataMesObj.profiles);
-            const todosPerfisIpd = (perfisDeclarados.length ? perfisDeclarados : (perfisMensais.length ? perfisMensais : perfisDetectados))
-                .sort((a, b) => a.localeCompare(b, 'pt-BR'));
+    const profilesDataMesObj = processarMapeamentoPeriodo(rawMensais, 'mes');
+    const perfisDetectados = Array.from(new Set(rawDiarias.map(item => item.profile).filter(Boolean)));
+    const perfisDeclarados = ipdObj.profiles_usados || [];
+    const perfisMensais = Object.keys(profilesDataMesObj.profiles);
+    const todosPerfisIpd = (perfisDeclarados.length ? perfisDeclarados : (perfisMensais.length ? perfisMensais : perfisDetectados))
+        .sort((a, b) => a.localeCompare(b, 'pt-BR'));
 
-            stateIPDs[ipdId] = {
-                ipdObj: ipdObj,
-                dimensoesAtivas:
-    resolverDimensoesProjetoIPD(
-        ipdObj
-    ),
-                rawDiarias: rawDiarias,
-                modoTemporal: 'mes',
-                periodoPersonalizado: null,
-                janelasComparacao: [],
-                graficoJanelas: null,
-                filtrosGraficos: {
+    stateIPDs[ipdId] = {
+        ipdObj: ipdObj,
+        dimensoesAtivas: resolverDimensoesProjetoIPD(ipdObj),
+        rawDiarias: rawDiarias,
+        modoTemporal: 'mes',
+        periodoPersonalizado: null,
+        janelasComparacao: [],
+        graficoJanelas: null,
+        filtrosGraficos: {
+            ranking: { inicio: null, fim: null, comparar: true, comparacaoInicio: null, comparacaoFim: null },
+            historico: { inicio: null, fim: null, agrupamento: 'mes', inicioSemana: 1, estrutura: null },
+            radar: { inicio: null, fim: null, comparar: true, comparacaoInicio: null, comparacaoFim: null },
+            variacao: { inicio: null, fim: null, comparacaoInicio: null, comparacaoFim: null }
+        },
+        periodoHistorico: 'mes',
+        mesSelecionadoRadar: null,
+        profilesSelecionadosRanking: new Set(todosPerfisIpd),
+        profilesSelecionadosVariacao: new Set(todosPerfisIpd),
+        profilesSelecionadosHistorico: new Set(todosPerfisIpd.slice(0, 2)),
+        profilesSelecionadosRadar: new Set(todosPerfisIpd.slice(0, 2)),
+        perfilDestacadoRanking: null,
+        slidesCarrosselData: [],
+        slideIndexAtual: 0,
+        profilesDataDiario: processarMapeamentoPeriodo(rawDiarias, 'diario'),
+        profilesDataSemana: processarMapeamentoPeriodo(rawSemanais, 'semana'),
+        profilesDataMes: profilesDataMesObj,
+        lineChart: null,
+        mostrarValoresHistorico: false,
+        radarChart: null
+    };
 
-    ranking: {
-        inicio: null,
-        fim: null,
-        comparar: true,
-        comparacaoInicio: null,
-        comparacaoFim: null
-    },
+    const ref = stateIPDs[ipdId];
 
-    historico: {
-        inicio: null,
-        fim: null,
-        agrupamento: 'mes',
-        inicioSemana: 1,
-        estrutura: null
-    },
-
-    radar: {
-        inicio: null,
-        fim: null,
-        comparar: true,
-        comparacaoInicio: null,
-        comparacaoFim: null
-    },
-
-    variacao: {
-        inicio: null,
-        fim: null,
-        comparacaoInicio: null,
-        comparacaoFim: null
+    if (rawDiarias.length > 0) {
+        ref.profilesDataDiario = agregarSerieDiaria(rawDiarias, 'diario');
+        ref.profilesDataSemana = agregarSerieDiaria(rawDiarias, 'semana');
+        ref.profilesDataMes = agregarSerieDiaria(rawDiarias, 'mes');
     }
 
-},
-                periodoHistorico: 'mes',
-                mesSelecionadoRadar: null,
-                profilesSelecionadosRanking: new Set(todosPerfisIpd),
-                profilesSelecionadosVariacao: new Set(todosPerfisIpd),
-                profilesSelecionadosHistorico: new Set(todosPerfisIpd.slice(0, 2)),
-                profilesSelecionadosRadar: new Set(todosPerfisIpd.slice(0, 2)),
-                perfilDestacadoRanking: null,
-                slidesCarrosselData: [],
-                slideIndexAtual: 0,
-                profilesDataDiario: processarMapeamentoPeriodo(rawDiarias, 'diario'),
-                profilesDataSemana: processarMapeamentoPeriodo(rawSemanais, 'semana'),
-                profilesDataMes: profilesDataMesObj,
-                lineChart: null,
-                mostrarValoresHistorico: false,
-                radarChart: null
-            };
+    const selectMesRadar = document.getElementById(`select-mes-radar-${ipdId}`);
+    const inputConteudoInicio = document.getElementById(`conteudo-inicio-${ipdId}`);
+    const inputConteudoFim = document.getElementById(`conteudo-fim-${ipdId}`);
+    const inputTemasInicio = document.getElementById(`temas-inicio-${ipdId}`);
+    const inputTemasFim = document.getElementById(`temas-fim-${ipdId}`);
+    const inputContribuicaoInicio = document.getElementById(`contribuicao-inicio-${ipdId}`);
+    const inputContribuicaoFim = document.getElementById(`contribuicao-fim-${ipdId}`);
+    
+    if (selectMesRadar) selectMesRadar.innerHTML = '';
+    
+    const mesesDisponiveis = ref.profilesDataMes.datas;
+    if (mesesDisponiveis.length > 0) {
+        const mesesOrdenados = [...mesesDisponiveis].sort();
 
-            const ref = stateIPDs[ipdId];
+        mesesOrdenados.forEach(m => {
+            const textoData = formatarDataAnoCurto(m, true);
 
-            // A série diária é a fonte canônica no front-end. Quando disponível,
-            // semanal e mensal são recalculados aqui para que filtros personalizados
-            // não dependam de novos endpoints da API.
-            if (rawDiarias.length > 0) {
-                ref.profilesDataDiario = agregarSerieDiaria(rawDiarias, 'diario');
-                ref.profilesDataSemana = agregarSerieDiaria(rawDiarias, 'semana');
-                ref.profilesDataMes = agregarSerieDiaria(rawDiarias, 'mes');
+            if (selectMesRadar) {
+                const opt = document.createElement('option');
+                opt.value = m; 
+                opt.innerText = textoData;
+                selectMesRadar.appendChild(opt);
             }
-            const selectMesRadar = document.getElementById(`select-mes-radar-${ipdId}`);
-            const inputConteudoInicio = document.getElementById(`conteudo-inicio-${ipdId}`);
-            const inputConteudoFim = document.getElementById(`conteudo-fim-${ipdId}`);
-            const inputTemasInicio =
-                document.getElementById(`temas-inicio-${ipdId}`);
+        });
 
-            const inputTemasFim =
-                document.getElementById(`temas-fim-${ipdId}`);
-            
-            if (selectMesRadar) selectMesRadar.innerHTML = '';
-            
-            const mesesDisponiveis = ref.profilesDataMes.datas;
-            if (mesesDisponiveis.length > 0) {
-                const mesesOrdenados = [...mesesDisponiveis].sort();
+        const ultimoMesComDados = mesesOrdenados[mesesOrdenados.length - 1];
+        if (selectMesRadar) selectMesRadar.value = ultimoMesComDados;
 
-                mesesOrdenados.forEach(m => {
-                    const textoData = formatarDataAnoCurto(m, true);
+        const datasDiarias = (ref.profilesDataDiario?.datas || [])
+            .filter(data => typeof data === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(data))
+            .sort();
 
-                    if (selectMesRadar) {
-                        const opt = document.createElement('option');
-                        opt.value = m; 
-                        opt.innerText = textoData;
-                        selectMesRadar.appendChild(opt);
-                    }
+        if (datasDiarias.length) {
+            const ultimaData = datasDiarias[datasDiarias.length - 1];
+            const [ano, mes] = ultimaData.split('-');
+            const primeiroDiaMes = `${ano}-${mes}-01`;
 
-                });
-
-                const ultimoMesComDados = mesesOrdenados[mesesOrdenados.length - 1];
-                if (selectMesRadar) selectMesRadar.value = ultimoMesComDados;
-                // =====================================================
-                // CONTEÚDO — PERÍODO PADRÃO
-                // =====================================================
-                //
-                // Regra de UX usada em TODO o painel:
-                //
-                //   1. Descobre a última data diária realmente disponível.
-                //   2. Pré-seleciona o mês dessa última data.
-                //   3. O início é o primeiro dia daquele mês.
-                //   4. O fim é a última data que efetivamente possui dado,
-                //      evitando selecionar dias futuros/sem informação.
-                //
-                // Exemplo:
-                //
-                // última data disponível = 18/08/2026
-                //
-                // período inicial:
-                // 01/08/2026 até 18/08/2026
-                //
-                // Depois disso o usuário continua livre para alterar
-                // data_inicio e data_fim.
-                if (inputConteudoInicio && inputConteudoFim) {
-
-                    const datasDiariasConteudo =
-                        (
-                            ref.profilesDataDiario?.datas ||
-                            []
-                        )
-                        .filter(data =>
-                            typeof data === 'string' &&
-                            /^\d{4}-\d{2}-\d{2}$/.test(data)
-                        )
-                        .sort();
-
-                    if (datasDiariasConteudo.length) {
-
-                        const ultimaDataConteudo =
-                            datasDiariasConteudo[
-                                datasDiariasConteudo.length - 1
-                            ];
-
-                        const [
-                            anoConteudo,
-                            mesConteudo
-                        ] =
-                            ultimaDataConteudo.split('-');
-
-                        const primeiroDiaMesConteudo =
-                            `${anoConteudo}-${mesConteudo}-01`;
-
-                        inputConteudoInicio.value =
-                            primeiroDiaMesConteudo;
-
-                        inputConteudoFim.value =
-                            ultimaDataConteudo;
-
-                        inputConteudoInicio.min =
-                            datasDiariasConteudo[0];
-
-                        inputConteudoInicio.max =
-                            ultimaDataConteudo;
-
-                        inputConteudoFim.min =
-                            datasDiariasConteudo[0];
-
-                        inputConteudoFim.max =
-                            ultimaDataConteudo;
-                    }
-                }
-                // =====================================================
-                // TEMAS — PERÍODO PADRÃO
-                // =====================================================
-                //
-                // Assim como os demais filtros do painel, Temas abre
-                // automaticamente no último mês que possui dados diários.
-                //
-                // Se o último dado disponível for 18/08/2026:
-                //
-                //   início = 01/08/2026
-                //   fim    = 18/08/2026
-                //
-                // Depois o usuário pode escolher qualquer intervalo.
-                if (inputTemasInicio && inputTemasFim) {
-
-                    const datasDiariasTemas =
-                        (
-                            ref.profilesDataDiario?.datas ||
-                            []
-                        )
-                        .filter(data =>
-                            typeof data === 'string' &&
-                            /^\d{4}-\d{2}-\d{2}$/.test(data)
-                        )
-                        .sort();
-
-
-                    if (datasDiariasTemas.length) {
-
-                        const ultimaDataTemas =
-                            datasDiariasTemas[
-                                datasDiariasTemas.length - 1
-                            ];
-
-
-                        const [
-                            anoTemas,
-                            mesTemas
-                        ] =
-                            ultimaDataTemas.split(
-                                '-'
-                            );
-
-
-                        const primeiroDiaMesTemas =
-                            `${anoTemas}-${mesTemas}-01`;
-
-
-                        inputTemasInicio.value =
-                            primeiroDiaMesTemas;
-
-                        inputTemasFim.value =
-                            ultimaDataTemas;
-
-
-                        inputTemasInicio.min =
-                            datasDiariasTemas[0];
-
-                        inputTemasInicio.max =
-                            ultimaDataTemas;
-
-                        inputTemasFim.min =
-                            datasDiariasTemas[0];
-
-                        inputTemasFim.max =
-                            ultimaDataTemas;
-                    }
-                }
-
-                ref.mesSelecionadoRadar = ultimoMesComDados;
+            if (inputConteudoInicio && inputConteudoFim) {
+                inputConteudoInicio.value = primeiroDiaMes;
+                inputConteudoFim.value = ultimaData;
             }
 
-            const ctxLine = document.getElementById(`chart-line-${ipdId}`).getContext('2d');
-            const pluginValoresHistorico = {
-                id: `valoresHistorico-${ipdId}`,
-                afterDatasetsDraw(chart) {
-                    if (!stateIPDs[ipdId]?.mostrarValoresHistorico) return;
-                    const { ctx } = chart;
-                    ctx.save();
-                    ctx.font = '700 9px Inter, sans-serif';
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'bottom';
-                    chart.data.datasets.forEach((dataset, datasetIndex) => {
-                        const meta = chart.getDatasetMeta(datasetIndex);
-                        if (meta.hidden) return;
-                        meta.data.forEach((element, index) => {
-                            const valor = dataset.data[index];
-                            if (valor === null || valor === undefined || !Number.isFinite(Number(valor))) return;
-                            const texto = Number(valor).toFixed(2);
-                            const x = Number(element?.x);
-                            const yBase = Number(element?.y);
-                            if (!Number.isFinite(x) || !Number.isFinite(yBase)) return;
+            if (inputTemasInicio && inputTemasFim) {
+                inputTemasInicio.value = primeiroDiaMes;
+                inputTemasFim.value = ultimaData;
+            }
 
-                            const largura = ctx.measureText(texto).width + 8;
-                            // Alterna a altura entre as séries para reduzir colisões.
-                            const faixa = datasetIndex % 3;
-                            const y = Math.max(13, yBase - 8 - (faixa * 13));
-                            ctx.fillStyle = 'rgba(255,255,255,.94)';
-                            ctx.fillRect(x - largura / 2, y - 11, largura, 13);
-                            ctx.fillStyle = Array.isArray(dataset.borderColor) ? '#334155' : (dataset.borderColor || '#334155');
-                            ctx.fillText(texto, x, y);
-                        });
-                    });
-                    ctx.restore();
-                }
-            };
-            ref.lineChart = new Chart(ctxLine, {
-                type: 'line',
-                data: { labels: [], datasets: [] },
-                plugins: [pluginValoresHistorico],
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    interaction: { mode: 'index', intersect: false },
-                    layout: { padding: { top: 18, bottom: 12, left: 6, right: 8 } },
-                    plugins: {
-                        tooltip: {
-                            callbacks: {
-                                label: (context) => `${context.dataset.label}: ${Number(context.raw).toFixed(2)} pts`
-                            }
-                        }
-                    },
-                    onClick: (e, elements, chart) => {
-                        let dataIndex = null;
-                        if (elements && elements.length > 0) {
-                            dataIndex = elements[0].index;
-                        } else {
-                            const points = chart.getElementsAtEventForMode(e, 'index', { intersect: false }, true);
-                            if (points && points.length > 0) {
-                                dataIndex = points[0].index;
-                            }
-                        }
-                        if (dataIndex !== null && dataIndex !== undefined) {
-                            pontoSelecionadoGlobal[ipdId] = dataIndex;
-                            explicarAntesDepoisPonto(ipdId, dataIndex);
-                        }
-                    },
-                    scales: {
-                        y: { min: 0.0, max: 100.0, grid: { color: '#E2E8F0' }, ticks: { color: '#64748B', font: { weight: 'bold', family: 'Inter' } } },
-                        x: { 
-                            grid: { color: '#E2E8F0' }, 
-                            ticks: { 
-                                color: '#64748B', 
-                                font: { weight: 'bold', family: 'Inter' },
-                                autoSkip: true,
-                                maxTicksLimit: 14,
-                                maxRotation: 0
-                            } 
-                        }
-                    }
-                }
-            });
-
-            const ctxRadar = document.getElementById(`chart-radar-${ipdId}`).getContext('2d');
-            ref.radarChart = new Chart(ctxRadar, {
-                type: 'radar',
-                data: { labels: ref.dimensoesAtivas.map(dim => dim.label), datasets: [] },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-    r: {
-        // Escala real do IPD
-        min: 1,
-        max: 4,
-        beginAtZero: false,
-
-        // Linhas radiais, como na imagem de referência
-        angleLines: {
-            display: true,
-            color: '#CBD5E1',
-            lineWidth: 1
-        },
-
-        // Pentágonos internos
-        grid: {
-            display: true,
-            color: '#CBD5E1',
-            lineWidth: 1
-        },
-
-        // Fama, Interesse, Mobilização etc.
-        pointLabels: {
-            color: '#0F172A',
-            font: {
-                weight: 'bold',
-                size: 11,
-                family: 'Inter'
-            },
-            padding: 8
-        },
-
-        // Não precisa mostrar os números 1, 1.75 etc.
-        // A referência também fica mais limpa assim.
-        ticks: {
-            display: false
-        },
-
-        // Exatamente 5 pentágonos
-        afterBuildTicks: function(scale) {
-    scale.ticks = [
-        { value: 1.0 },
-        { value: 1.6 },
-        { value: 2.2 },
-        { value: 2.8 },
-        { value: 3.4 },
-        { value: 4.0 }
-    ];
-}
-    }
-}
-                }
-            });
-
-            inicializarRankingIpdModulo(ipdObj, ipdId);
-
-            montarBotoesRadar(ipdId);
-            inicializarControlesTemporais(ipdId);
-
-            // O state já contém rawDiarias normalizado neste ponto.
-            atualizarCardUltimaDataIpd(ipdId);
-
-            carregarTemasEngajamento(ipdId);
-
-            const selectProfile = document.getElementById(`select-profile-postages-${ipdId}`);
-            if (selectProfile && selectProfile.options.length > 1) {
-                selectProfile.selectedIndex = 1;
-                carregarMetricasConteudo(ipdId);
+            // Apenas define as datas default nos campos de texto. NÃO faz chamada de API.
+            if (inputContribuicaoInicio && inputContribuicaoFim) {
+                inputContribuicaoInicio.value = primeiroDiaMes;
+                inputContribuicaoFim.value = ultimaData;
             }
         }
+
+        ref.mesSelecionadoRadar = ultimoMesComDados;
+    }
+
+    const ctxLine = document.getElementById(`chart-line-${ipdId}`).getContext('2d');
+    const pluginValoresHistorico = {
+        id: `valoresHistorico-${ipdId}`,
+        afterDatasetsDraw(chart) {
+            if (!stateIPDs[ipdId]?.mostrarValoresHistorico) return;
+            const { ctx } = chart;
+            ctx.save();
+            ctx.font = '700 9px Inter, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'bottom';
+            chart.data.datasets.forEach((dataset, datasetIndex) => {
+                const meta = chart.getDatasetMeta(datasetIndex);
+                if (meta.hidden) return;
+                meta.data.forEach((element, index) => {
+                    const valor = dataset.data[index];
+                    if (valor === null || valor === undefined || !Number.isFinite(Number(valor))) return;
+                    const texto = Number(valor).toFixed(2);
+                    const x = Number(element?.x);
+                    const yBase = Number(element?.y);
+                    if (!Number.isFinite(x) || !Number.isFinite(yBase)) return;
+
+                    const largura = ctx.measureText(texto).width + 8;
+                    const faixa = datasetIndex % 3;
+                    const y = Math.max(13, yBase - 8 - (faixa * 13));
+                    ctx.fillStyle = 'rgba(255,255,255,.94)';
+                    ctx.fillRect(x - largura / 2, y - 11, largura, 13);
+                    ctx.fillStyle = Array.isArray(dataset.borderColor) ? '#334155' : (dataset.borderColor || '#334155');
+                    ctx.fillText(texto, x, y);
+                });
+            });
+            ctx.restore();
+        }
+    };
+    ref.lineChart = new Chart(ctxLine, {
+        type: 'line',
+        data: { labels: [], datasets: [] },
+        plugins: [pluginValoresHistorico],
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            layout: { padding: { top: 18, bottom: 12, left: 6, right: 8 } },
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: (context) => `${context.dataset.label}: ${Number(context.raw).toFixed(2)} pts`
+                    }
+                }
+            },
+            onClick: (e, elements, chart) => {
+                let dataIndex = null;
+                if (elements && elements.length > 0) {
+                    dataIndex = elements[0].index;
+                } else {
+                    const points = chart.getElementsAtEventForMode(e, 'index', { intersect: false }, true);
+                    if (points && points.length > 0) {
+                        dataIndex = points[0].index;
+                    }
+                }
+                if (dataIndex !== null && dataIndex !== undefined) {
+                    pontoSelecionadoGlobal[ipdId] = dataIndex;
+                    explicarAntesDepoisPonto(ipdId, dataIndex);
+                }
+            },
+            scales: {
+                y: { min: 0.0, max: 100.0, grid: { color: '#E2E8F0' }, ticks: { color: '#64748B', font: { weight: 'bold', family: 'Inter' } } },
+                x: { 
+                    grid: { color: '#E2E8F0' }, 
+                    ticks: { 
+                        color: '#64748B', 
+                        font: { weight: 'bold', family: 'Inter' },
+                        autoSkip: true,
+                        maxTicksLimit: 14,
+                        maxRotation: 0
+                    } 
+                }
+            }
+        }
+    });
+
+    const ctxRadar = document.getElementById(`chart-radar-${ipdId}`).getContext('2d');
+    ref.radarChart = new Chart(ctxRadar, {
+        type: 'radar',
+        data: { labels: ref.dimensoesAtivas.map(dim => dim.label), datasets: [] },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                r: {
+                    min: 1,
+                    max: 4,
+                    beginAtZero: false,
+                    angleLines: { display: true, color: '#CBD5E1', lineWidth: 1 },
+                    grid: { display: true, color: '#CBD5E1', lineWidth: 1 },
+                    pointLabels: { color: '#0F172A', font: { weight: 'bold', size: 11, family: 'Inter' }, padding: 8 },
+                    ticks: { display: false },
+                    afterBuildTicks: function(scale) {
+                        scale.ticks = [
+                            { value: 1.0 },
+                            { value: 1.6 },
+                            { value: 2.2 },
+                            { value: 2.8 },
+                            { value: 3.4 },
+                            { value: 4.0 }
+                        ];
+                    }
+                }
+            }
+        }
+    });
+
+    inicializarRankingIpdModulo(ipdObj, ipdId);
+    montarBotoesRadar(ipdId);
+    inicializarControlesTemporais(ipdId);
+
+    atualizarCardUltimaDataIpd(ipdId);
+    carregarTemasEngajamento(ipdId);
+
+    const selectProfile = document.getElementById(`select-profile-postages-${ipdId}`);
+    if (selectProfile && selectProfile.options.length > 1) {
+        selectProfile.selectedIndex = 1;
+        carregarMetricasConteudo(ipdId);
+    }
+}
 
         function obterNumeroMedicao(medicao, campos, padrao = 0) {
             for (const campo of campos) {

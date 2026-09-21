@@ -42,5 +42,6 @@ urlpatterns = [
     path('api/temas/', score_views.TemasEngajamentoView.as_view(), name='temas'),
     path('api/ipd/previsao-mensal/', score_views.PrevisaoRankingMensalView.as_view(), name='ipd-previsao'),
     path("api/explicacao-ranking/", score_views.ExplicacaoRankingIAView.as_view(), name="explicacao-ranking"),
+    path('api/contribuicao-temas/', score_views.ContribuicaoTemaIPDAPIView.as_view(), name='contribuicao_temas'),
 
 ]
