@@ -364,3 +364,4 @@ if __name__ == "__main__":
     caminho_saida_csv = "planilha_categorizada.csv"
     df_resultado.to_csv(caminho_saida_csv, index=False, encoding='utf-8-sig', sep=',')
     print(f"📁 Arquivo salvo em: {caminho_saida_csv}")
+    

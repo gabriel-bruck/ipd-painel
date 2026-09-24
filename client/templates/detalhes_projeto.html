@@ -483,6 +483,32 @@
 
     <!-- LÓGICA JAVASCRIPT INTEGRADA -->
     <script>
+     const CORES_BANCO = {
+    {% if cores_lista %}
+        {% for cor in cores_lista %}
+            "{{ cor.chave }}": "{{ cor.codigo_hex }}",
+            "{{ cor.nome|slugify }}": "{{ cor.codigo_hex }}",
+            "{{ cor.nome|lower|escapejs }}": "{{ cor.codigo_hex }}",
+        {% endfor %}
+    {% elif cores %}
+        {% for chave, cor_obj in cores.items %}
+            "{{ chave }}": "{{ cor_obj.codigo_hex }}",
+            "{{ cor_obj.nome|slugify }}": "{{ cor_obj.codigo_hex }}",
+            "{{ cor_obj.nome|lower|escapejs }}": "{{ cor_obj.codigo_hex }}",
+        {% endfor %}
+    {% endif %}
+};
+
+// Função para converter nomes com acento/espaço no mesmo padrão slug do Django
+function slugificar(texto) {
+    return String(texto || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+}
 
 async function carregarContribuicaoTemas(ipdId) {
     const inputInicio = document.getElementById(`contribuicao-inicio-${ipdId}`);
@@ -978,7 +1004,7 @@ async function carregarContribuicaoTemas(ipdId) {
         }
 
         function normalizarNomePerfil(nomePerfil) {
-            return String(nomePerfil || '').trim().toLocaleLowerCase('pt-BR');
+            return slugificar(nomePerfil);
         }
 
         function registrarCoresPerfis(nomesPerfis = []) {
@@ -1002,18 +1028,27 @@ async function carregarContribuicaoTemas(ipdId) {
             });
         }
 
-        function obterCorPerfil(nomePerfil) {
-            const nomeNormalizado = normalizarNomePerfil(nomePerfil);
-            if (!nomeNormalizado) return paletaCores[0];
+       function obterCorPerfil(nomePerfil) {
+    const chave = normalizarNomePerfil(nomePerfil);
+    if (!chave) return paletaCores[0];
 
-            if (!mapaCoresPerfis.has(nomeNormalizado)) {
-                registrarCoresPerfis([nomePerfil]);
-            }
+    // 1. Prioridade: Cor personalizada salva no localStorage do usuário
+    if (mapaCoresPerfisPersonalizadas.has(chave)) {
+        return mapaCoresPerfisPersonalizadas.get(chave);
+    }
 
-            return mapaCoresPerfisPersonalizadas.get(nomeNormalizado)
-                || mapaCoresPerfis.get(nomeNormalizado)
-                || paletaCores[0];
-        }
+    // 2. Prioridade: Cor padrão cadastrada no Admin/Banco de Dados
+    if (CORES_BANCO[chave]) {
+        return CORES_BANCO[chave];
+    }
+
+    // 3. Prioridade: Paleta padrão do sistema
+    if (!mapaCoresPerfis.has(chave)) {
+        registrarCoresPerfis([nomePerfil]);
+    }
+
+    return mapaCoresPerfis.get(chave) || paletaCores[0];
+}
 
         function salvarCoresPerfisPersonalizadas() {
             try {
@@ -2583,7 +2618,7 @@ function desmarcarTodosRanking(ipdId) {
         }
 
         function normalizarNomeTema(nomeTema) {
-            return String(nomeTema || '').trim().toLocaleLowerCase('pt-BR');
+            return slugificar(nomeTema);
         }
 
         function obterCorPadraoTema(nomeTema) {
@@ -2596,12 +2631,23 @@ function desmarcarTodosRanking(ipdId) {
             return paletaCores[Math.abs(hash) % paletaCores.length];
         }
 
-        function obterCorDoTema(nomeTema) {
-            const chave = normalizarNomeTema(nomeTema);
-            if (!chave) return paletaCores[0];
-            return mapaCoresTemasPersonalizadas.get(chave) || obterCorPadraoTema(nomeTema);
-        }
+    function obterCorDoTema(nomeTema) {
+    const chave = normalizarNomeTema(nomeTema);
+    if (!chave) return paletaCores[0];
 
+    // 1. Prioridade: Cor personalizada salva no localStorage do usuário
+    if (mapaCoresTemasPersonalizadas.has(chave)) {
+        return mapaCoresTemasPersonalizadas.get(chave);
+    }
+
+    // 2. Prioridade: Cor padrão cadastrada no Admin/Banco de Dados
+    if (CORES_BANCO[chave]) {
+        return CORES_BANCO[chave];
+    }
+
+    // 3. Prioridade: Cor gerada por Hash padrão
+    return obterCorPadraoTema(nomeTema);
+}
         function salvarCoresTemasPersonalizadas() {
             try {
                 localStorage.setItem(CHAVE_CORES_TEMAS, JSON.stringify(Object.fromEntries(mapaCoresTemasPersonalizadas)));

@@ -8,7 +8,32 @@ from django.core.exceptions import PermissionDenied
 from django.core.cache import cache
 from django.utils.safestring import mark_safe
 
-from .models import ProjetoIPD, ProjetoCliente, ProjetoClienteIPD
+# IMPORTANTE: Adicione o CorPadrao aqui nos imports dos models
+from .models import ProjetoIPD, ProjetoCliente, ProjetoClienteIPD, CorPadrao
+
+
+# =============================================================================
+# CORES PADRÃO (NOVO)
+# =============================================================================
+
+@admin.register(CorPadrao)
+class CorPadraoAdmin(admin.ModelAdmin):
+    # Exibe as colunas no admin, incluindo o preview visual da cor
+    list_display = ('id', 'nome', 'chave', 'codigo_hex', 'preview_cor')
+    search_fields = ('nome', 'chave', 'codigo_hex')
+    
+    # Preenche a chave automaticamente com base no nome (ex: "Cor Primária" -> "cor-primaria")
+    prepopulated_fields = {'chave': ('nome',)}
+
+    @admin.display(description='Preview da Cor')
+    def preview_cor(self, obj):
+        """Gera um pequeno quadrado com a cor real para facilitar a visualização no Admin"""
+        if obj.codigo_hex:
+            return mark_safe(
+                f'<div style="width: 25px; height: 25px; background-color: {obj.codigo_hex}; '
+                f'border: 1px solid #ccc; border-radius: 4px;" title="{obj.nome}"></div>'
+            )
+        return "-"
 
 
 # =============================================================================

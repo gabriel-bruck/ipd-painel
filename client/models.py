@@ -58,3 +58,17 @@ class ProjetoClienteIPD(models.Model):
 
     def __str__(self):
         return f"{self.projeto_cliente.nome} -> {self.projeto_ipd.nome}"
+
+
+
+class CorPadrao(models.Model):
+    nome = models.CharField(max_length=50, help_text="Nome de exibição (ex: Cor Primária)")
+    chave = models.SlugField(max_length=50, unique=True, help_text="Identificador no código (ex: primary, success, warning)")
+    codigo_hex = models.CharField(max_length=7, help_text="Código HEX (ex: #007bff ou #fff)")
+
+    class Meta:
+        verbose_name = "Cor Padrão"
+        verbose_name_plural = "Cores Padrão"
+
+    def __str__(self):
+        return f"{self.nome} ({self.codigo_hex})"
