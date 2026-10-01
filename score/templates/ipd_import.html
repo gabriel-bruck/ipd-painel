@@ -1,137 +1,467 @@
 {% extends "admin/base_site.html" %}
+{% load i18n static %}
+
+{% block extrahead %}
+{{ block.super }}
+
+<style>
+    :root {
+        --qa-card-bg: #ffffff;
+        --qa-card-text: #111827;
+        --qa-muted-text: #374151;
+        --qa-border: #cfd7e3;
+        --qa-soft-bg: #f8fafc;
+        --qa-bar-bg: #e5e7eb;
+        --qa-primary: #2563eb;
+        --qa-warning-bg: #fff7d6;
+        --qa-warning-text: #3f2f00;
+        --qa-warning-border: #c79a19;
+        --qa-error-bg: #fff1f2;
+        --qa-error-text: #7f1d1d;
+        --qa-error-border: #b91c1c;
+        --qa-success-bg: #ecfdf3;
+        --qa-success-text: #14532d;
+        --qa-success-border: #15803d;
+    }
+
+    .import-box {
+        max-width: 960px;
+        background: var(--qa-card-bg) !important;
+        color: var(--qa-card-text) !important;
+        border: 1px solid var(--qa-border);
+        border-radius: 8px;
+        padding: 24px;
+        margin-top: 16px;
+        box-shadow: 0 8px 28px rgba(15, 23, 42, 0.12);
+    }
+
+    .import-box, .import-box p, .import-box li, .import-box label,
+    .import-box h1, .import-box h2, .import-box strong, .import-box span,
+    .import-box div {
+        color: var(--qa-card-text) !important;
+    }
+
+    .import-box h1, .import-box h2 {
+        margin-top: 0;
+    }
+
+    .import-box a {
+        color: #1d4ed8 !important;
+    }
+
+    .import-box code {
+        color: #111827 !important;
+        background: #eef2ff !important;
+        border: 1px solid #c7d2fe;
+        border-radius: 4px;
+        padding: 1px 4px;
+    }
+
+    .help-list {
+        margin: 12px 0 18px 18px;
+    }
+
+    .file-row {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        flex-wrap: wrap;
+        margin: 18px 0;
+    }
+
+    .file-row input[type="file"] {
+        min-width: 320px;
+        background: #ffffff !important;
+        color: #111827 !important;
+        border: 1px solid var(--qa-border) !important;
+        border-radius: 6px;
+        padding: 8px;
+    }
+
+    .file-row input[type="file"]::file-selector-button {
+        background: #e5e7eb;
+        color: #111827;
+        border: 1px solid #9ca3af;
+        border-radius: 5px;
+        padding: 6px 10px;
+        margin-right: 10px;
+        cursor: pointer;
+    }
+
+    .button-row {
+        margin-top: 18px;
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    #submit-btn {
+        color: #ffffff !important;
+        background: #2563eb !important;
+        border: 1px solid #1d4ed8 !important;
+        border-radius: 6px;
+        padding: 8px 14px;
+        font-weight: 700;
+        cursor: pointer;
+    }
+
+    #submit-btn[disabled] {
+        opacity: 0.65;
+        pointer-events: none;
+    }
+
+    #selected-file-name {
+        color: var(--qa-muted-text) !important;
+        font-weight: 600;
+    }
+
+    .progress-wrap {
+        display: none;
+        margin-top: 22px;
+        border: 1px solid var(--qa-border);
+        border-radius: 8px;
+        padding: 18px;
+        background: var(--qa-soft-bg) !important;
+        color: var(--qa-card-text) !important;
+    }
+
+    .progress-bar-bg {
+        width: 100%;
+        height: 22px;
+        background: var(--qa-bar-bg) !important;
+        border-radius: 999px;
+        overflow: hidden;
+        border: 1px solid #cbd5e1;
+    }
+
+    .progress-bar-fill {
+        width: 0%;
+        height: 100%;
+        background: var(--qa-primary) !important;
+        transition: width 0.25s ease;
+    }
+
+    .progress-meta {
+        margin-top: 10px;
+        font-weight: 700;
+        color: var(--qa-card-text) !important;
+    }
+
+    .progress-message {
+        margin-top: 8px;
+        color: var(--qa-muted-text) !important;
+    }
+
+    .alert-box, .error-box, .success-box {
+        display: none;
+        margin-top: 18px;
+        padding: 14px 16px;
+        border-radius: 6px;
+        white-space: pre-wrap;
+        font-weight: 600;
+    }
+
+    .alert-box {
+        border: 1px solid var(--qa-warning-border);
+        background: var(--qa-warning-bg) !important;
+        color: var(--qa-warning-text) !important;
+    }
+
+    .error-box {
+        border: 1px solid var(--qa-error-border);
+        background: var(--qa-error-bg) !important;
+        color: var(--qa-error-text) !important;
+    }
+
+    .success-box {
+        border: 1px solid var(--qa-success-border);
+        background: var(--qa-success-bg) !important;
+        color: var(--qa-success-text) !important;
+    }
+</style>
+
+{% endblock %}
 
 {% block content %}
-<!-- Biblioteca PapaParse (para CSV) e SheetJS (para XLSX / XLS) -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<p>
+    <a href="../">&lsaquo; Voltar para IPD</a>
+</p>
 
-<h1>Importação Inteligente de IPD em Lotes</h1>
-<p>Suporta arquivos <strong>.csv</strong>, <strong>.xlsx</strong> e <strong>.xls</strong>. O navegador dividirá o arquivo em fatias automaticamente.</p>
-<br>
+<div class="import-box">
+    <h1>Importar IPD</h1>
 
-<div style="background: #fff; padding: 20px; border-radius: 5px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); max-width: 800px;">
-    {% csrf_token %}
+    <p>Selecione o CSV ou XLSX de IPD. Antes de gravar, o sistema vai verificar se existem buracos entre a menor e a maior data de cada combinação de <strong>projeto_ipd + profile</strong>.</p>
 
-    <input type="file" id="import-file" accept=".csv, .xlsx, .xls" style="margin-bottom: 20px; font-size: 16px;"><br>
-    <button id="btn-iniciar" class="default" style="padding: 10px 20px; cursor: pointer; font-weight: bold;">
-        Começar Importação
-    </button>
+    <ul class="help-list">
+        <li>Exemplo: se houver 24/02, 26/02, 27/02 e 28/02, o sistema avisa que falta 25/02.</li>
+        <li>Se houver buracos, você poderá cancelar ou continuar a importação mesmo assim.</li>
+        <li>Colunas esperadas incluem: <code>projeto_ipd</code>, <code>profile</code>, <code>data</code>, <code>ipd</code> e dimensões.</li>
+        <li>Datas com hora serão normalizadas automaticamente; arquivos <code>.xlsx</code> e <code>.csv</code> são aceitos.</li>
+    </ul>
 
-    <div id="progress-area" style="display: none; margin-top: 30px;">
-        <h3>Progresso: <span id="progress-text">0%</span></h3>
-        <div style="width: 100%; height: 25px; background-color: #e0e0e0; border-radius: 4px; overflow: hidden; margin-bottom: 10px;">
-            <div id="progress-bar" style="width: 0%; height: 100%; background-color: #417690; transition: width 0.4s ease-in-out;"></div>
+    <form id="import-form" method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <input type="hidden" name="import_job_id" id="import-job-id" value="">
+
+        <div class="file-row">
+            <label for="csv-file"><strong>Arquivo CSV/XLSX:</strong></label>
+            <input type="file" id="csv-file" name="file" accept=".csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required>
         </div>
-        <p id="log-mensagens" style="color: #666; font-size: 14px; margin-top: 5px; font-family: monospace;"></p>
+
+        <div class="button-row">
+            <button type="submit" class="default" id="submit-btn">Importar CSV/XLSX</button>
+            <span id="selected-file-name"></span>
+        </div>
+    </form>
+
+    <div class="alert-box" id="alert-box"></div>
+    <div class="error-box" id="error-box"></div>
+    <div class="success-box" id="success-box"></div>
+
+    <div class="progress-wrap" id="progress-wrap">
+        <h2>Importando IPD</h2>
+        <div class="progress-bar-bg">
+            <div class="progress-bar-fill" id="progress-bar-fill"></div>
+        </div>
+        <div class="progress-meta" id="progress-meta">0%</div>
+        <div class="progress-message" id="progress-message">Aguardando início da importação...</div>
     </div>
 </div>
 
-<script>
-    // Função auxiliar para ler tanto CSV quanto Excel em matriz de dados [ [col1, col2], ... ]
-    async function lerArquivo(file) {
-        const name = file.name.toLowerCase();
 
-        if (name.endsWith('.csv')) {
-            return new Promise((resolve, reject) => {
-                Papa.parse(file, {
-                    header: false,
-                    skipEmptyLines: true,
-                    complete: res => resolve(res.data),
-                    error: err => reject(new Error("Erro ao ler CSV: " + err.message))
-                });
-            });
-        } else if (name.endsWith('.xlsx') || name.endsWith('.xls')) {
-            const buffer = await file.arrayBuffer();
-            const workbook = XLSX.read(buffer, { type: 'array', cellDates: true });
-            const sheetName = workbook.SheetNames[0];
-            const worksheet = workbook.Sheets[sheetName];
-            
-            // Converte a primeira aba em matriz de linhas preservando valores
-            const rawData = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: false, defval: '' });
-            
-            // Remove linhas totalmente vazias
-            return rawData.filter(row => row.some(cell => String(cell).trim() !== ''));
-        } else {
-            throw new Error("Formato não suportado. Escolha um arquivo .csv, .xlsx ou .xls.");
+<script>
+(function () {
+    const form = document.getElementById("import-form");
+    const fileInput = document.getElementById("csv-file");
+    const submitBtn = document.getElementById("submit-btn");
+    const selectedFileName = document.getElementById("selected-file-name");
+    const jobInput = document.getElementById("import-job-id");
+
+    const alertBox = document.getElementById("alert-box");
+    const errorBox = document.getElementById("error-box");
+    const successBox = document.getElementById("success-box");
+
+    const progressWrap = document.getElementById("progress-wrap");
+    const progressBarFill = document.getElementById("progress-bar-fill");
+    const progressMeta = document.getElementById("progress-meta");
+    const progressMessage = document.getElementById("progress-message");
+
+    let progressTimer = null;
+
+    function gerarJobId() {
+        if (window.crypto && window.crypto.randomUUID) {
+            return window.crypto.randomUUID();
         }
+        return "job_" + Date.now() + "_" + Math.random().toString(16).slice(2);
     }
 
-    document.getElementById('btn-iniciar').addEventListener('click', async function() {
-        const fileInput = document.getElementById('import-file');
-        if (fileInput.files.length === 0) {
-            alert('Selecione um arquivo CSV ou Excel.');
-            return;
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== "") {
+            const cookies = document.cookie.split(";");
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + "=")) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    function getCsrfToken() {
+        const input = document.querySelector("input[name='csrfmiddlewaretoken']");
+        if (input && input.value) {
+            return input.value;
+        }
+        return getCookie("csrftoken");
+    }
+
+    function esconderMensagens() {
+        alertBox.style.display = "none";
+        errorBox.style.display = "none";
+        successBox.style.display = "none";
+        alertBox.textContent = "";
+        errorBox.textContent = "";
+        successBox.textContent = "";
+    }
+
+    function mostrarErro(msg) {
+        errorBox.textContent = msg || "Erro ao importar arquivo.";
+        errorBox.style.display = "block";
+    }
+
+    function mostrarSucesso(msg) {
+        successBox.textContent = msg || "Importação concluída.";
+        successBox.style.display = "block";
+    }
+
+    function setLoading(ativo) {
+        submitBtn.disabled = ativo;
+        submitBtn.textContent = ativo ? "Importando..." : "Importar CSV/XLSX";
+    }
+
+    function atualizarBarra(percentual, mensagem, processados, total) {
+        percentual = Number(percentual || 0);
+        if (percentual < 0) percentual = 0;
+        if (percentual > 100) percentual = 100;
+
+        progressWrap.style.display = "block";
+        progressBarFill.style.width = percentual + "%";
+        progressMeta.textContent = percentual + "%";
+
+        let texto = mensagem || "Processando arquivo...";
+        if (total) {
+            texto += ` (${processados || 0} de ${total})`;
+        }
+        progressMessage.textContent = texto;
+    }
+
+    function iniciarPolling(jobId) {
+        if (progressTimer) {
+            clearInterval(progressTimer);
         }
 
-        const btn = this;
-        btn.disabled = true;
-        btn.style.opacity = '0.5';
-        btn.innerText = 'Analisando arquivo...';
-
-        const file = fileInput.files[0];
-        document.getElementById('progress-area').style.display = 'block';
-        const progressText = document.getElementById('progress-text');
-        const progressBar = document.getElementById('progress-bar');
-        const logMensagens = document.getElementById('log-mensagens');
-        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
-
-        try {
-            const linhas = await lerArquivo(file);
-            
-            if (linhas.length < 2) throw new Error("Arquivo vazio ou sem dados.");
-
-            const header = Papa.unparse([linhas[0]]);
-            const linhasDados = linhas.slice(1);
-            const total = linhasDados.length;
-
-            if (total === 0) throw new Error("Nenhuma linha de dados encontrada.");
-
-            btn.innerText = 'Importando...';
-            // Como IPD é mais leve, mantemos 1.000 linhas por lote
-            const TAMANHO_LOTE = 1000;
-            let processadas = 0;
-
-            for (let i = 0; i < total; i += TAMANHO_LOTE) {
-                const pedaco = linhasDados.slice(i, i + TAMANHO_LOTE);
-                const csvPedaco = header + '\n' + Papa.unparse(pedaco);
-
-                const formData = new FormData();
-                const blob = new Blob([csvPedaco], { type: 'text/csv' });
-                formData.append('file', blob, 'lote.csv');
-                formData.append('csrfmiddlewaretoken', csrfToken);
-
-                logMensagens.innerText = `Enviando lote ${Math.floor(i/TAMANHO_LOTE)+1}... (Linhas ${i+1} a ${i + pedaco.length} de ${total})`;
-
-                const response = await fetch('{% url "admin:score_ipd_importar_fatiado" %}', {
-                    method: 'POST',
-                    headers: { 'X-CSRFToken': csrfToken },
-                    body: formData
+        progressTimer = setInterval(async function () {
+            try {
+                const response = await fetch(`../import-progress/?job_id=${encodeURIComponent(jobId)}`, {
+                    method: "GET",
+                    headers: {
+                        "X-Requested-With": "XMLHttpRequest"
+                    }
                 });
 
-                const data = await response.json().catch(() => null);
-
                 if (!response.ok) {
-                    throw new Error((data && data.erro) ? data.erro : `Erro no servidor (Status ${response.status})`);
+                    return;
                 }
 
-                processadas += pedaco.length;
-                let porcentagem = Math.min(100, Math.round((processadas / total) * 100));
-                progressBar.style.width = porcentagem + '%';
-                progressText.innerText = porcentagem + '%';
+                const data = await response.json();
+                atualizarBarra(
+                    data.percentual,
+                    data.mensagem,
+                    data.processados,
+                    data.total
+                );
+
+                if (["concluido", "concluido_com_erros", "erro"].includes(data.status)) {
+                    clearInterval(progressTimer);
+                    progressTimer = null;
+                }
+            } catch (e) {
+                // Não derruba a importação se o polling falhar uma vez.
+            }
+        }, 800);
+    }
+
+    function montarMensagemBuracos(data) {
+        let mensagem = (data.mensagem || "Foram encontradas datas faltantes no arquivo.") + "\n\n";
+        mensagem += `Total de datas faltantes: ${data.total_datas_faltantes || 0}\n`;
+        mensagem += `Grupos com buraco: ${data.total_grupos_com_buraco || 0}\n\n`;
+
+        const grupos = data.grupos_com_buraco || [];
+
+        grupos.slice(0, 10).forEach(function (grupo) {
+            mensagem += `Projeto IPD: ${grupo.projeto_ipd}\n`;
+            mensagem += `Profile: ${grupo.profile}\n`;
+            mensagem += `Período: ${grupo.data_inicio} até ${grupo.data_fim}\n`;
+            mensagem += `Faltando: ${(grupo.datas_faltantes || []).join(", ")}\n\n`;
+        });
+
+        if (grupos.length > 10) {
+            mensagem += `... e mais ${grupos.length - 10} grupos exibidos no retorno.\n\n`;
+        }
+
+        mensagem += "Deseja continuar a importação mesmo assim?";
+        return mensagem;
+    }
+
+    async function enviarArquivo(confirmarBuracosDatas) {
+        const file = fileInput.files[0];
+        if (!file) {
+            throw new Error("Selecione um arquivo CSV ou XLSX.");
+        }
+
+        const jobId = jobInput.value || gerarJobId();
+        jobInput.value = jobId;
+
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("import_job_id", jobId);
+
+        if (confirmarBuracosDatas) {
+            formData.append("confirmar_buracos_datas", "1");
+        }
+
+        iniciarPolling(jobId);
+        atualizarBarra(0, "Enviando e preparando arquivo...", 0, 0);
+
+        const response = await fetch("../importar-fatiado/", {
+            method: "POST",
+            body: formData,
+            headers: {
+                "X-CSRFToken": getCsrfToken(),
+                "X-Requested-With": "XMLHttpRequest"
+            }
+        });
+
+        let data = {};
+        try {
+            data = await response.json();
+        } catch (e) {
+            data = {};
+        }
+
+        if (response.status === 409 && data.precisa_confirmar_buracos_datas) {
+            if (progressTimer) {
+                clearInterval(progressTimer);
+                progressTimer = null;
             }
 
-            progressBar.style.backgroundColor = '#28a745';
-            progressText.innerText = '100% Concluído!';
-            logMensagens.innerText = `Sucesso! ${total} linhas importadas.`;
-            alert("Importação finalizada com sucesso!");
+            atualizarBarra(0, "Importação pausada: buracos de data encontrados.", 0, 0);
 
-        } catch (error) {
-            console.error(error);
-            alert("Erro: " + error.message);
-            logMensagens.innerText = "Interrompido: " + error.message;
-            btn.disabled = false;
-            btn.innerText = 'Tentar Novamente';
+            const mensagem = montarMensagemBuracos(data);
+            alertBox.textContent = mensagem;
+            alertBox.style.display = "block";
+
+            const continuar = confirm(mensagem);
+
+            if (continuar) {
+                esconderMensagens();
+                return enviarArquivo(true);
+            }
+
+            throw new Error("Importação cancelada pelo usuário por buracos nas datas.");
+        }
+
+        if (!response.ok) {
+            throw new Error(data.erro || "Erro ao importar arquivo.");
+        }
+
+        atualizarBarra(100, "Importação concluída.", data.processados, data.total);
+        return data;
+    }
+
+    fileInput.addEventListener("change", function () {
+        selectedFileName.textContent = fileInput.files[0] ? fileInput.files[0].name : "";
+    });
+
+    form.addEventListener("submit", async function (event) {
+        event.preventDefault();
+        esconderMensagens();
+        setLoading(true);
+
+        try {
+            await enviarArquivo(false);
+            mostrarSucesso("Importação de IPD concluída com sucesso.");
+        } catch (e) {
+            mostrarErro(e.message || String(e));
+        } finally {
+            setLoading(false);
         }
     });
+})();
 </script>
+
 {% endblock %}
