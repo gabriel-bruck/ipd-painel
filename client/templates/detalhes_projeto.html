@@ -483,6 +483,138 @@
 
     <!-- LÓGICA JAVASCRIPT INTEGRADA -->
     <script>
+     const CORES_BANCO = {
+    {% if cores_lista %}
+        {% for cor in cores_lista %}
+            "{{ cor.chave }}": "{{ cor.codigo_hex }}",
+            "{{ cor.nome|slugify }}": "{{ cor.codigo_hex }}",
+            "{{ cor.nome|lower|escapejs }}": "{{ cor.codigo_hex }}",
+        {% endfor %}
+    {% elif cores %}
+        {% for chave, cor_obj in cores.items %}
+            "{{ chave }}": "{{ cor_obj.codigo_hex }}",
+            "{{ cor_obj.nome|slugify }}": "{{ cor_obj.codigo_hex }}",
+            "{{ cor_obj.nome|lower|escapejs }}": "{{ cor_obj.codigo_hex }}",
+        {% endfor %}
+    {% endif %}
+};
+
+// Função para converter nomes com acento/espaço no mesmo padrão slug do Django
+function slugificar(texto) {
+    return String(texto || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+}
+
+async function carregarContribuicaoTemas(ipdId) {
+    const inputInicio = document.getElementById(`contribuicao-inicio-${ipdId}`);
+    const inputFim = document.getElementById(`contribuicao-fim-${ipdId}`);
+    const selectPerfil = document.getElementById(`select-perfil-contribuicao-${ipdId}`);
+
+    const boxLoading = document.getElementById(`contribuicao-loading-${ipdId}`);
+    const boxErro = document.getElementById(`contribuicao-erro-${ipdId}`);
+    const boxResultados = document.getElementById(`contribuicao-resultados-${ipdId}`);
+
+    if (!inputInicio || !inputFim || !selectPerfil) return;
+
+    const dataInicio = inputInicio.value;
+    const dataFim = inputFim.value;
+    const profile = selectPerfil.value;
+
+    if (!dataInicio || !dataFim || !profile) {
+        boxLoading.classList.add('hidden');
+        boxResultados.classList.add('hidden');
+        document.getElementById(`contribuicao-erro-msg-${ipdId}`).innerText = "Preencha a Data Início, Data Fim e escolha um Perfil antes de clicar em calcular.";
+        boxErro.classList.remove('hidden');
+        return;
+    }
+
+    boxLoading.classList.remove('hidden');
+    boxErro.classList.add('hidden');
+    boxResultados.classList.add('hidden');
+
+    const params = new URLSearchParams({
+        projeto_id: String(PROJETO_ID),
+        projeto_ipd: String(ipdId),
+        data_inicio: dataInicio,
+        data_fim: dataFim,
+        profile: profile
+    });
+
+    const url = `/api/contribuicao-temas/?${params.toString()}`;
+
+    try {
+        const response = await fetch(url);
+        const data = await response.json();
+
+        boxLoading.classList.add('hidden');
+
+        if (!response.ok || data.error) {
+            document.getElementById(`contribuicao-erro-msg-${ipdId}`).innerText = data.error || 'Erro ao calcular a contribuição dos temas.';
+            boxErro.classList.remove('hidden');
+            return;
+        }
+
+        // R² Global
+        const elR2 = document.getElementById(`contribuicao-r2-${ipdId}`);
+        if (elR2) {
+            elR2.innerText = `R² = ${(data.r2_modelo_global * 100).toFixed(1)}%`;
+        }
+
+        // Renderização da Tabela
+        const tbody = document.getElementById(`tbl-contribuicao-body-${ipdId}`);
+        if (tbody) {
+            if (!data.resultados || data.resultados.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-400 italic">Nenhum resultado de contribuição encontrado para o perfil selecionado no período.</td></tr>`;
+            } else {
+                tbody.innerHTML = data.resultados.map(r => {
+                    const corTema = obterCorDoTema(r.categoria_tema);
+                    
+                    // Formatação do Impacto Médio Diário
+                    const impDiario = Number(r.impacto_medio_ipd || r.impacto_medio_diario);
+                    const impDiarioFmt = impDiario > 0 ? `+${impDiario.toFixed(2)}` : impDiario.toFixed(2);
+                    const classeImpDiario = impDiario >= 0 ? 'text-emerald-600 font-bold' : 'text-rose-600 font-bold';
+
+                    // Formatação do Impacto do Período (Acumulado)
+                    const impPeriodo = Number(r.impacto_estimado_ipd);
+                    const impPeriodoFmt = impPeriodo > 0 ? `+${impPeriodo.toFixed(2)}` : impPeriodo.toFixed(2);
+                    const classeImpPeriodo = impPeriodo >= 0 ? 'text-emerald-600 font-bold' : 'text-rose-600 font-bold';
+                    
+                    return `
+                        <tr class="hover:bg-slate-50 transition">
+                            <td class="p-3.5 font-bold text-slate-900">${r.profile}</td>
+                            <td class="p-3.5 font-bold text-slate-800 flex items-center gap-2">
+                                <span class="w-2.5 h-2.5 rounded-full shrink-0" style="background-color: ${corTema}"></span>
+                                ${r.categoria_tema}
+                            </td>
+                            <td class="p-3.5 text-right ${classeImpDiario}">${impDiarioFmt} pts</td>
+                            <td class="p-3.5 text-right ${classeImpPeriodo}">${impPeriodoFmt} pts</td>
+                            <td class="p-3.5 text-right">
+                                <div class="flex items-center justify-end gap-2">
+                                    <div class="w-16 bg-slate-100 rounded-full h-2 overflow-hidden hidden sm:block">
+                                        <div class="bg-quaest-teal h-2 rounded-full" style="width: ${Math.min(100, r.peso_relativo_pct)}%"></div>
+                                    </div>
+                                    <span class="font-black text-slate-900">${Number(r.peso_relativo_pct).toFixed(1)}%</span>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+            }
+        }
+
+        boxResultados.classList.remove('hidden');
+
+    } catch (err) {
+        boxLoading.classList.add('hidden');
+        document.getElementById(`contribuicao-erro-msg-${ipdId}`).innerText = "Erro na comunicação com o servidor: " + err.message;
+        boxErro.classList.remove('hidden');
+    }
+}
 
         /*
          * =====================================================================
@@ -872,7 +1004,7 @@
         }
 
         function normalizarNomePerfil(nomePerfil) {
-            return String(nomePerfil || '').trim().toLocaleLowerCase('pt-BR');
+            return slugificar(nomePerfil);
         }
 
         function registrarCoresPerfis(nomesPerfis = []) {
@@ -896,18 +1028,27 @@
             });
         }
 
-        function obterCorPerfil(nomePerfil) {
-            const nomeNormalizado = normalizarNomePerfil(nomePerfil);
-            if (!nomeNormalizado) return paletaCores[0];
+       function obterCorPerfil(nomePerfil) {
+    const chave = normalizarNomePerfil(nomePerfil);
+    if (!chave) return paletaCores[0];
 
-            if (!mapaCoresPerfis.has(nomeNormalizado)) {
-                registrarCoresPerfis([nomePerfil]);
-            }
+    // 1. Prioridade: Cor personalizada salva no localStorage do usuário
+    if (mapaCoresPerfisPersonalizadas.has(chave)) {
+        return mapaCoresPerfisPersonalizadas.get(chave);
+    }
 
-            return mapaCoresPerfisPersonalizadas.get(nomeNormalizado)
-                || mapaCoresPerfis.get(nomeNormalizado)
-                || paletaCores[0];
-        }
+    // 2. Prioridade: Cor padrão cadastrada no Admin/Banco de Dados
+    if (CORES_BANCO[chave]) {
+        return CORES_BANCO[chave];
+    }
+
+    // 3. Prioridade: Paleta padrão do sistema
+    if (!mapaCoresPerfis.has(chave)) {
+        registrarCoresPerfis([nomePerfil]);
+    }
+
+    return mapaCoresPerfis.get(chave) || paletaCores[0];
+}
 
         function salvarCoresPerfisPersonalizadas() {
             try {
@@ -1420,117 +1561,120 @@
             });
         }
 
-        function montarPersonalizadorCores(ipdId, nomesPerfis = []) {
-            const container = document.getElementById(`personalizador-cores-${ipdId}`);
-            if (!container) return;
-
-            registrarCoresPerfis(nomesPerfis);
-            container.innerHTML = '';
-
-            const detalhes = document.createElement('details');
-            detalhes.className = 'group rounded-2xl border border-slate-200 bg-slate-50/80 overflow-hidden';
-
-            const resumo = document.createElement('summary');
-            resumo.className = 'flex items-center justify-between gap-3 px-4 py-3 cursor-pointer select-none list-none';
-            resumo.innerHTML = `
-                <span class="flex items-center gap-2 text-xs font-black text-slate-700 uppercase tracking-wider">
-                    <i class="fa-solid fa-palette text-quaest-teal"></i>
-                    Personalizar cores
-                </span>
-                <span class="text-[11px] font-bold text-slate-400 group-open:hidden">Abrir</span>
-                <span class="text-[11px] font-bold text-slate-400 hidden group-open:inline">Fechar</span>
-            `;
-
-            const conteudo = document.createElement('div');
-            conteudo.className = 'border-t border-slate-200 bg-white px-4 py-4 space-y-3';
-
-            const topo = document.createElement('div');
-            topo.className = 'flex flex-col sm:flex-row sm:items-center justify-between gap-2';
-            topo.innerHTML = '<p class="text-xs text-slate-500">As escolhas são aplicadas aos gráficos com linhas ou barras diferenciadas e ficam salvas neste navegador.</p>';
-
-            const btnRestaurar = document.createElement('button');
-            btnRestaurar.type = 'button';
-            btnRestaurar.className = 'text-[11px] font-black text-quaest-teal hover:underline shrink-0';
-            btnRestaurar.innerHTML = '<i class="fa-solid fa-rotate-left mr-1"></i> Restaurar padrão';
-            btnRestaurar.onclick = restaurarCoresPerfis;
-            topo.appendChild(btnRestaurar);
-
-            const grade = document.createElement('div');
-            grade.className = 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2';
-
-            [...new Set(nomesPerfis)].sort((a, b) => a.localeCompare(b, 'pt-BR')).forEach(nomePerfil => {
-                const item = document.createElement('label');
-                item.className = 'flex items-center gap-2.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 cursor-pointer hover:border-slate-300 transition';
-
-                const input = document.createElement('input');
-                input.type = 'color';
-                input.value = obterCorPerfil(nomePerfil);
-                input.dataset.corPerfil = normalizarNomePerfil(nomePerfil);
-                input.dataset.nomePerfil = nomePerfil;
-                input.title = `Alterar cor de ${nomePerfil}`;
-                input.className = 'w-8 h-8 rounded-lg border-0 bg-transparent cursor-pointer shrink-0';
-                input.addEventListener('input', event => alterarCorPerfil(nomePerfil, event.target.value));
-
-                const texto = document.createElement('span');
-                texto.className = 'text-xs font-extrabold text-slate-700 truncate';
-                texto.textContent = nomePerfil;
-
-                item.append(input, texto);
-                grade.appendChild(item);
-            });
-
-            conteudo.append(topo, grade);
-
-            const separadorTemas = document.createElement('div');
-            separadorTemas.className = 'border-t border-slate-200 pt-4 mt-4';
-            separadorTemas.innerHTML = `
-                <div class="flex items-center gap-2 mb-3">
-                    <div class="w-8 h-8 rounded-lg bg-indigo-50 border border-indigo-200 flex items-center justify-center text-indigo-600">
-                        <i class="fa-solid fa-hashtag"></i>
-                    </div>
-                    <div>
-                        <span class="block text-xs font-black text-slate-800 uppercase tracking-wider">Cores dos temas</span>
-                        <span class="text-[10px] text-slate-400">Aplicadas as matrizes e legendas tematicas</span>
-                    </div>
-                </div>
-                <div id="personalizador-cores-temas-${ipdId}">
-                    <p class="text-xs text-slate-400 italic">Carregando temas...</p>
-                </div>
-            `;
-            conteudo.appendChild(separadorTemas);
-
-            detalhes.append(resumo, conteudo);
-            container.appendChild(detalhes);
-        }
-
         function fecharPersonalizadorCoresOverlay() {
-            document.querySelectorAll('[id^="personalizador-cores-"]').forEach(painel => {
-                painel.classList.remove('ux-color-overlay');
-                painel.querySelector('.ux-color-close')?.remove();
-            });
-            document.body.classList.remove('overflow-hidden');
-        }
+    document.querySelectorAll('[id^="personalizador-cores-"]').forEach(painel => {
+        painel.classList.remove('ux-color-overlay');
+    });
+    // Remove TODOS os botões flutuantes de fechar duplicados
+    document.querySelectorAll('.ux-color-close').forEach(btn => btn.remove());
+    document.body.classList.remove('overflow-hidden');
+}
 
-        function abrirPersonalizadorCoresDoGrafico(ipdId) {
-            fecharPersonalizadorCoresOverlay();
+function abrirPersonalizadorCoresDoGrafico(ipdId) {
+    fecharPersonalizadorCoresOverlay();
 
-            const painel = document.getElementById(`personalizador-cores-${ipdId}`);
-            const detalhes = painel?.querySelector('details');
-            if (!painel || !detalhes) return;
+    const painel = document.getElementById(`personalizador-cores-${ipdId}`);
+    const detalhes = painel?.querySelector('details');
+    if (!painel || !detalhes) return;
 
-            detalhes.open = true;
-            painel.classList.add('ux-color-overlay');
-            document.body.classList.add('overflow-hidden');
+    detalhes.open = true;
+    painel.classList.add('ux-color-overlay');
+    document.body.classList.add('overflow-hidden');
 
-            if (!painel.querySelector('.ux-color-close')) {
-                const fechar = document.createElement('button');
-                fechar.type = 'button';
-                fechar.className = 'ux-color-close';
-                fechar.innerHTML = '<i class="fa-solid fa-xmark"></i><span>Fechar</span>';
-                fechar.onclick = fecharPersonalizadorCoresOverlay;
-                painel.appendChild(fechar);
-            }
-        }
+    // Sincroniza a lista de temas sempre que o modal for aberto
+    montarPersonalizadorCoresTemas(ipdId);
+
+    // Cria apenas um botão flutuante de fechar no canto do modal
+    const fechar = document.createElement('button');
+    fechar.type = 'button';
+    fechar.className = 'ux-color-close';
+    fechar.innerHTML = '<i class="fa-solid fa-xmark"></i><span>Fechar</span>';
+    fechar.onclick = fecharPersonalizadorCoresOverlay;
+    painel.appendChild(fechar);
+}
+
+function montarPersonalizadorCores(ipdId, nomesPerfis = []) {
+    const container = document.getElementById(`personalizador-cores-${ipdId}`);
+    if (!container) return;
+
+    registrarCoresPerfis(nomesPerfis);
+    container.innerHTML = '';
+
+    const detalhes = document.createElement('details');
+    detalhes.className = 'group rounded-2xl border border-slate-200 bg-slate-50/80 overflow-hidden';
+
+    const resumo = document.createElement('summary');
+    resumo.className = 'flex items-center justify-between gap-3 px-4 py-3 cursor-pointer select-none list-none';
+    // REMOVIDO o "Fechar" duplicado da tag summary
+    resumo.innerHTML = `
+        <span class="flex items-center gap-2 text-xs font-black text-slate-700 uppercase tracking-wider">
+            <i class="fa-solid fa-palette text-quaest-teal"></i>
+            Personalizar cores
+        </span>
+        <span class="text-[11px] font-bold text-slate-400 group-open:hidden"><i class="fa-solid fa-chevron-down mr-1"></i>Opções</span>
+    `;
+
+    const conteudo = document.createElement('div');
+    conteudo.className = 'border-t border-slate-200 bg-white px-4 py-4 space-y-3';
+
+    const topo = document.createElement('div');
+    topo.className = 'flex flex-col sm:flex-row sm:items-center justify-between gap-2';
+    topo.innerHTML = '<p class="text-xs text-slate-500">As escolhas são aplicadas aos gráficos e ficam salvas neste navegador.</p>';
+
+    const btnRestaurar = document.createElement('button');
+    btnRestaurar.type = 'button';
+    btnRestaurar.className = 'text-[11px] font-black text-quaest-teal hover:underline shrink-0';
+    btnRestaurar.innerHTML = '<i class="fa-solid fa-rotate-left mr-1"></i> Restaurar padrão';
+    btnRestaurar.onclick = restaurarCoresPerfis;
+    topo.appendChild(btnRestaurar);
+
+    const grade = document.createElement('div');
+    grade.className = 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2';
+
+    [...new Set(nomesPerfis)].sort((a, b) => a.localeCompare(b, 'pt-BR')).forEach(nomePerfil => {
+        const item = document.createElement('label');
+        item.className = 'flex items-center gap-2.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 cursor-pointer hover:border-slate-300 transition';
+
+        const input = document.createElement('input');
+        input.type = 'color';
+        input.value = obterCorPerfil(nomePerfil);
+        input.dataset.corPerfil = normalizarNomePerfil(nomePerfil);
+        input.dataset.nomePerfil = nomePerfil;
+        input.title = `Alterar cor de ${nomePerfil}`;
+        input.className = 'w-8 h-8 rounded-lg border-0 bg-transparent cursor-pointer shrink-0';
+        input.addEventListener('input', event => alterarCorPerfil(nomePerfil, event.target.value));
+
+        const texto = document.createElement('span');
+        texto.className = 'text-xs font-extrabold text-slate-700 truncate';
+        texto.textContent = nomePerfil;
+
+        item.append(input, texto);
+        grade.appendChild(item);
+    });
+
+    conteudo.append(topo, grade);
+
+    const separadorTemas = document.createElement('div');
+    separadorTemas.className = 'border-t border-slate-200 pt-4 mt-4';
+    separadorTemas.innerHTML = `
+        <div class="flex items-center gap-2 mb-3">
+            <div class="w-8 h-8 rounded-lg bg-indigo-50 border border-indigo-200 flex items-center justify-center text-indigo-600">
+                <i class="fa-solid fa-hashtag"></i>
+            </div>
+            <div>
+                <span class="block text-xs font-black text-slate-800 uppercase tracking-wider">Cores dos temas</span>
+                <span class="text-[10px] text-slate-400">Aplicadas às matrizes e legendas temáticas</span>
+            </div>
+        </div>
+        <div id="personalizador-cores-temas-${ipdId}">
+            <p class="text-xs text-slate-400 italic">Carregando temas...</p>
+        </div>
+    `;
+    conteudo.appendChild(separadorTemas);
+
+    detalhes.append(resumo, conteudo);
+    container.appendChild(detalhes);
+}
 
         function abrirPersonalizadorCoresAtivo() {
             const moduloAtivo = [...document.querySelectorAll('article[id^="modulo-article-ipd-"]')]
@@ -2474,7 +2618,7 @@ function desmarcarTodosRanking(ipdId) {
         }
 
         function normalizarNomeTema(nomeTema) {
-            return String(nomeTema || '').trim().toLocaleLowerCase('pt-BR');
+            return slugificar(nomeTema);
         }
 
         function obterCorPadraoTema(nomeTema) {
@@ -2487,12 +2631,23 @@ function desmarcarTodosRanking(ipdId) {
             return paletaCores[Math.abs(hash) % paletaCores.length];
         }
 
-        function obterCorDoTema(nomeTema) {
-            const chave = normalizarNomeTema(nomeTema);
-            if (!chave) return paletaCores[0];
-            return mapaCoresTemasPersonalizadas.get(chave) || obterCorPadraoTema(nomeTema);
-        }
+    function obterCorDoTema(nomeTema) {
+    const chave = normalizarNomeTema(nomeTema);
+    if (!chave) return paletaCores[0];
 
+    // 1. Prioridade: Cor personalizada salva no localStorage do usuário
+    if (mapaCoresTemasPersonalizadas.has(chave)) {
+        return mapaCoresTemasPersonalizadas.get(chave);
+    }
+
+    // 2. Prioridade: Cor padrão cadastrada no Admin/Banco de Dados
+    if (CORES_BANCO[chave]) {
+        return CORES_BANCO[chave];
+    }
+
+    // 3. Prioridade: Cor gerada por Hash padrão
+    return obterCorPadraoTema(nomeTema);
+}
         function salvarCoresTemasPersonalizadas() {
             try {
                 localStorage.setItem(CHAVE_CORES_TEMAS, JSON.stringify(Object.fromEntries(mapaCoresTemasPersonalizadas)));
@@ -2534,79 +2689,77 @@ function desmarcarTodosRanking(ipdId) {
             redesenharGraficosTematicos();
         }
 
-        function obterTodosTemasDisponiveis(ipdId) {
-            const dados = stateIPDs[ipdId]?.dadosTemas;
-            if (!dados) return [];
+       function obterTodosTemasDisponiveis(ipdId) {
+    const dados = stateIPDs[ipdId]?.dadosTemas;
+    if (!dados) return [];
 
-            const temas = new Set();
-            const adicionar = item => {
-                const tema = String(item?.categoria_tema || '').trim();
-                if (tema) temas.add(tema);
-            };
+    const temas = new Set();
+    const adicionar = item => {
+        const tema = String(item?.categoria_tema || item?.tema || item?.nome || '').trim();
+        if (tema && tema.toLowerCase() !== 'sem categoria') temas.add(tema);
+    };
 
-            (dados.temas_geral || []).forEach(adicionar);
-            (dados.temas_por_perfil || []).forEach(adicionar);
+    if (Array.isArray(dados.temas_geral)) dados.temas_geral.forEach(adicionar);
+    if (Array.isArray(dados.temas_por_perfil)) dados.temas_por_perfil.forEach(adicionar);
+    if (Array.isArray(dados.temas)) dados.temas.forEach(adicionar);
 
-            return [...temas].sort((a, b) => a.localeCompare(b, 'pt-BR'));
-        }
+    return [...temas].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+}
 
-        function montarPersonalizadorCoresTemas(ipdId) {
-            const container = document.getElementById(`personalizador-cores-temas-${ipdId}`);
-            if (!container) return;
+function montarPersonalizadorCoresTemas(ipdId) {
+    const container = document.getElementById(`personalizador-cores-temas-${ipdId}`);
+    if (!container) return;
 
-            const temas = obterTodosTemasDisponiveis(ipdId);
-            if (!temas.length) {
-                container.innerHTML = '<p class="text-xs text-slate-400 italic">Os temas aparecerao aqui apos o carregamento dos dados tematicos.</p>';
-                return;
-            }
+    const temas = obterTodosTemasDisponiveis(ipdId);
 
-            container.innerHTML = '';
+    if (!temas.length) {
+        const carregouDados = !!stateIPDs[ipdId]?.dadosTemas;
+        container.innerHTML = carregouDados
+            ? '<p class="text-xs text-slate-400 italic">Nenhum tema encontrado para o período selecionado.</p>'
+            : '<p class="text-xs text-slate-400 italic"><i class="fa-solid fa-spinner animate-spin mr-1 text-indigo-500"></i>Aguardando carregamento dos temas...</p>';
+        return;
+    }
 
-            const topo = document.createElement('div');
-            topo.className = 'flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3';
-            topo.innerHTML = '<p class="text-xs text-slate-500">Escolha uma cor fixa para cada tema. As cores ficam salvas neste navegador.</p>';
+    container.innerHTML = '';
 
-            const btnRestaurar = document.createElement('button');
-            btnRestaurar.type = 'button';
-            btnRestaurar.className = 'text-[11px] font-black text-quaest-teal hover:underline shrink-0';
-            btnRestaurar.innerHTML = '<i class="fa-solid fa-rotate-left mr-1"></i>Restaurar temas';
-            btnRestaurar.onclick = restaurarCoresTemas;
-            topo.appendChild(btnRestaurar);
+    const topo = document.createElement('div');
+    topo.className = 'flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3';
+    topo.innerHTML = '<p class="text-xs text-slate-500">Escolha uma cor fixa para cada tema. As cores ficam salvas neste navegador.</p>';
 
-            const grade = document.createElement('div');
-            grade.className = 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2';
+    const btnRestaurar = document.createElement('button');
+    btnRestaurar.type = 'button';
+    btnRestaurar.className = 'text-[11px] font-black text-indigo-600 hover:underline shrink-0 cursor-pointer';
+    btnRestaurar.innerHTML = '<i class="fa-solid fa-rotate-left mr-1"></i>Restaurar temas';
+    btnRestaurar.onclick = restaurarCoresTemas;
+    topo.appendChild(btnRestaurar);
 
-            temas.forEach(nomeTema => {
-                const item = document.createElement('label');
-                item.className = 'flex items-center gap-2.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 cursor-pointer hover:border-slate-300 transition';
+    const grade = document.createElement('div');
+    grade.className = 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2';
 
-                const input = document.createElement('input');
-                input.type = 'color';
-                input.value = obterCorDoTema(nomeTema);
-                input.dataset.corTema = normalizarNomeTema(nomeTema);
-                input.dataset.nomeTema = nomeTema;
-                input.title = `Alterar cor do tema ${nomeTema}`;
-                input.className = 'w-8 h-8 rounded-lg border-0 bg-transparent cursor-pointer shrink-0';
-                input.addEventListener('input', event => alterarCorTema(nomeTema, event.target.value));
+    temas.forEach(nomeTema => {
+        const item = document.createElement('label');
+        item.className = 'flex items-center gap-2.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 cursor-pointer hover:border-slate-300 transition';
 
-                const texto = document.createElement('span');
-                texto.className = 'text-xs font-extrabold text-slate-700 truncate';
-                texto.textContent = nomeTema;
+        const input = document.createElement('input');
+        input.type = 'color';
+        input.value = obterCorDoTema(nomeTema);
+        input.dataset.corTema = normalizarNomeTema(nomeTema);
+        input.dataset.nomeTema = nomeTema;
+        input.title = `Alterar cor do tema ${nomeTema}`;
+        input.className = 'w-8 h-8 rounded-lg border-0 bg-transparent cursor-pointer shrink-0';
+        input.addEventListener('input', event => alterarCorTema(nomeTema, event.target.value));
 
-                item.append(input, texto);
-                grade.appendChild(item);
-            });
+        const texto = document.createElement('span');
+        texto.className = 'text-xs font-extrabold text-slate-700 truncate';
+        texto.textContent = nomeTema;
 
-            container.append(topo, grade);
-        }
+        item.append(input, texto);
+        grade.appendChild(item);
+    });
 
-        /*
-         * normalizarUrlEmbedInstagram(postUrl)
-         * -------------------------------------------------------------
-         * Converte links públicos do Instagram para a URL /embed/.
-         * Isso evita depender de blockquote + embed.js em conteúdo
-         * carregado dinamicamente no Top Posts.
-         */
+    container.append(topo, grade);
+}
+         
         function normalizarUrlEmbedInstagram(postUrl) {
             try {
                 const url = new URL(String(postUrl || '').trim());
@@ -6603,18 +6756,7 @@ function toggleComparacaoRanking(ipdId) {
 
                         <div id="personalizador-cores-${ipdId}" class="ux-color-panel-hidden"></div>
 
-                        <!-- LEITURA RÁPIDA DO IPD — 3 CARDS EXECUTIVOS -->
-                        <div class="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 md:p-5 space-y-3">
-                            <div class="flex items-center justify-between gap-3">
-                                <div>
-                                    <span class="text-[10px] font-black uppercase tracking-[0.18em] text-quaest-teal">Leitura rápida</span>
-                                    <h3 class="text-sm font-black text-slate-900 mt-0.5">Resumo do IPD</h3>
-                                </div>
-                                <span class="text-[10px] font-bold text-slate-400">Último período disponível</span>
-                            </div>
-                            <div id="ux-resumo-cards-${ipdId}" class="grid grid-cols-1 md:grid-cols-3 gap-3"></div>
-                        </div>
-
+                        
                         <!-- CONSTRUTOR LIVRE DE JANELAS (ex.: Pré-Copa, Copa e Pós-Copa) -->
                         <div class="hidden rounded-2xl border border-violet-200 bg-violet-50/50 p-4 space-y-4">
                             <div class="flex items-start gap-3">
@@ -6820,11 +6962,7 @@ function toggleComparacaoRanking(ipdId) {
                                         <i class="fa-solid fa-file-csv text-emerald-600"></i> CSV
                                     </button>
                                 </div>
-                                <div class="hidden p-1 bg-slate-100 rounded-xl border border-slate-200 text-xs font-bold shrink-0">
-                                    <button id="btn-periodo-diario-${ipdId}" onclick="alterarPeriodoHistorico(${ipdId}, 'diario')" class="px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition">Diário</button>
-                                    <button id="btn-periodo-semana-${ipdId}" onclick="alterarPeriodoHistorico(${ipdId}, 'semana')" class="px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition">Semanal</button>
-                                    <button id="btn-periodo-mes-${ipdId}" onclick="alterarPeriodoHistorico(${ipdId}, 'mes')" class="px-3 py-1.5 rounded-lg bg-white text-quaest-teal shadow-sm transition">Mensal</button>
-                                </div>
+                                
                                 <button onclick="toggleMinimizarCard('box-historico-${ipdId}', this)" title="Minimizar Seção" class="p-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 transition">
                                     <i class="fa-solid fa-chevron-up text-xs"></i>
                                 </button>
@@ -7235,6 +7373,106 @@ function toggleComparacaoRanking(ipdId) {
 
                     <hr class="border-slate-100" />
 
+
+
+                    <!-- SEÇÃO: CONTRIBUIÇÃO E PESOS DOS TEMAS NO IPD (REGRESSÃO RIDGE) -->
+                    <div class="space-y-6">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-9 h-9 rounded-xl bg-quaest-tealLight border border-quaest-tealBorder flex items-center justify-center text-quaest-teal text-base font-black shrink-0">
+                                    <i class="fa-solid fa-scale-balanced"></i>
+                                </div>
+                                <div>
+                                    <span class="text-[10px] font-black text-quaest-teal uppercase tracking-widest block">Modelo Preditivo de Impacto</span>
+                                    <h3 class="text-xl font-black text-slate-900">Contribuição e Pesos dos Temas no IPD</h3>
+                                </div>
+                            </div>
+                            
+                            <div class="flex flex-wrap items-end gap-2">
+                                <label class="text-[10px] font-black uppercase tracking-wider text-slate-500">
+                                    Início
+                                    <input id="contribuicao-inicio-${ipdId}"
+                                           type="date"
+                                           class="block mt-1 bg-white text-slate-800 text-xs font-bold px-3 py-2 rounded-xl border border-slate-200 outline-none focus:border-quaest-teal">
+                                </label>
+
+                                <label class="text-[10px] font-black uppercase tracking-wider text-slate-500">
+                                    Fim
+                                    <input id="contribuicao-fim-${ipdId}"
+                                           type="date"
+                                           class="block mt-1 bg-white text-slate-800 text-xs font-bold px-3 py-2 rounded-xl border border-slate-200 outline-none focus:border-quaest-teal">
+                                </label>
+
+                                <label class="text-[10px] font-black uppercase tracking-wider text-slate-500">
+                                    Perfil
+                                    <select id="select-perfil-contribuicao-${ipdId}"
+                                            class="block mt-1 bg-white text-slate-800 text-xs font-bold px-3 py-2 rounded-xl border border-slate-200 outline-none focus:border-quaest-teal cursor-pointer">
+                                        ${optionsPerfilHtml}
+                                    </select>
+                                </label>
+
+                                <button type="button"
+                                        onclick="carregarContribuicaoTemas(${ipdId})"
+                                        class="bg-quaest-teal hover:bg-quaest-tealDark text-white text-xs font-black px-4 py-2 rounded-xl shadow-sm transition flex items-center gap-1 cursor-pointer">
+                                    <i class="fa-solid fa-calculator mr-1"></i>
+                                    Calcular Pesos
+                                </button>
+
+                                <button onclick="toggleMinimizarCard('box-contribuicao-${ipdId}', this)"
+                                        title="Minimizar Seção"
+                                        class="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 transition">
+                                    <i class="fa-solid fa-chevron-up text-xs"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div id="box-contribuicao-${ipdId}" class="space-y-6 transition-all">
+                            <div class="p-3.5 rounded-xl bg-teal-50/80 border border-quaest-tealBorder flex items-start gap-2.5 text-xs text-slate-700">
+                                <i class="fa-solid fa-circle-info text-quaest-teal mt-0.5"></i>
+                                <p><strong>Metodologia:</strong> Mede o impacto isolado de cada tema no IPD a partir da Regressão Ridge. Requer intervalo mínimo de 7 dias com publicações e medições ativas no período.</p>
+                            </div>
+
+                            <div id="contribuicao-loading-${ipdId}" class="hidden p-6 text-center text-slate-500 text-xs italic space-y-2">
+                                <i class="fa-solid fa-spinner animate-spin text-quaest-teal text-xl"></i>
+                                <p>Ajustando modelo estatístico e calculando a contribuição dos temas...</p>
+                            </div>
+
+                            <div id="contribuicao-erro-${ipdId}" class="hidden p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-800 text-xs space-y-1">
+                                <div class="flex items-center gap-2 font-black text-amber-900">
+                                    <i class="fa-solid fa-triangle-exclamation text-amber-600"></i> Não foi possível calcular
+                                </div>
+                                <p id="contribuicao-erro-msg-${ipdId}" class="text-amber-700">Aviso do sistema.</p>
+                            </div>
+
+                            <div id="contribuicao-resultados-${ipdId}" class="hidden space-y-4">
+                                <div class="flex items-center justify-between bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                                    <span class="text-xs font-bold text-slate-600">Qualidade de Ajuste do Modelo (R² Global):</span>
+                                    <span id="contribuicao-r2-${ipdId}" class="text-xs font-black text-quaest-teal bg-white px-3 py-1 rounded-lg border border-slate-200">--</span>
+                                </div>
+
+                              <div class="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm">
+    <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs border-collapse">
+            <thead class="bg-slate-50 border-b border-slate-200 text-slate-500 font-extrabold uppercase text-[10px]">
+                <tr>
+                    <th class="p-3.5">Perfil</th>
+                    <th class="p-3.5">Tema / Categoria</th>
+                    <th class="p-3.5 text-right">Impacto Médio Diário</th>
+                    <th class="p-3.5 text-right">Impacto no Período</th>
+                    <th class="p-3.5 text-right">Peso Relativo (%)</th>
+                </tr>
+            </thead>
+            <tbody id="tbl-contribuicao-body-${ipdId}" class="divide-y divide-slate-100 font-medium text-slate-700">
+            </tbody>
+        </table>
+    </div>
+</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr class="border-slate-100" />
+
                     <!-- 5º SEÇÃO: MÓDULO DE POSTAGENS: TOP 3 POSTS (EXPANDIDO) -->
                     <div class="space-y-6">
                         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
@@ -7483,7 +7721,7 @@ function toggleComparacaoRanking(ipdId) {
                                 </div>
                                 <div>
                                     <span class="text-[10px] font-black text-purple-600 uppercase tracking-widest block">Inteligência Preditiva</span>
-                                    <h3 class="text-xl font-black text-slate-900">Projeção do IPD (${nomeIpd})</h3>
+                                    <h3 class="text-xl font-black text-slate-900">Forecasting (${nomeIpd})</h3>
                                 </div>
                             </div>
                             <div class="flex items-center gap-3">
@@ -7867,421 +8105,241 @@ function toggleComparacaoRanking(ipdId) {
         function aplicarMelhoriasUXModulo(ipdId) {
             recolherControlesUX(ipdId);
             adicionarTelaCheiaGraficosUX(ipdId);
-            montarResumoExecutivoUX(ipdId);
+            
         }
 
-        function inicializarStateIPD(ipdObj, ipdId) {
-            const rawDiarias = ipdObj.medias_diarias || ipdObj.diario || [];
-            const rawSemanais = ipdObj.medias_semanais || [];
-            const rawMensais = ipdObj.medias_mensais || [];
+      function inicializarStateIPD(ipdObj, ipdId) {
+    const rawDiarias = ipdObj.medias_diarias || ipdObj.diario || [];
+    const rawSemanais = ipdObj.medias_semanais || [];
+    const rawMensais = ipdObj.medias_mensais || [];
 
-            const profilesDataMesObj = processarMapeamentoPeriodo(rawMensais, 'mes');
-            const perfisDetectados = Array.from(new Set(rawDiarias.map(item => item.profile).filter(Boolean)));
-            const perfisDeclarados = ipdObj.profiles_usados || [];
-            const perfisMensais = Object.keys(profilesDataMesObj.profiles);
-            const todosPerfisIpd = (perfisDeclarados.length ? perfisDeclarados : (perfisMensais.length ? perfisMensais : perfisDetectados))
-                .sort((a, b) => a.localeCompare(b, 'pt-BR'));
+    const profilesDataMesObj = processarMapeamentoPeriodo(rawMensais, 'mes');
+    const perfisDetectados = Array.from(new Set(rawDiarias.map(item => item.profile).filter(Boolean)));
+    const perfisDeclarados = ipdObj.profiles_usados || [];
+    const perfisMensais = Object.keys(profilesDataMesObj.profiles);
+    const todosPerfisIpd = (perfisDeclarados.length ? perfisDeclarados : (perfisMensais.length ? perfisMensais : perfisDetectados))
+        .sort((a, b) => a.localeCompare(b, 'pt-BR'));
 
-            stateIPDs[ipdId] = {
-                ipdObj: ipdObj,
-                dimensoesAtivas:
-    resolverDimensoesProjetoIPD(
-        ipdObj
-    ),
-                rawDiarias: rawDiarias,
-                modoTemporal: 'mes',
-                periodoPersonalizado: null,
-                janelasComparacao: [],
-                graficoJanelas: null,
-                filtrosGraficos: {
+    stateIPDs[ipdId] = {
+        ipdObj: ipdObj,
+        dimensoesAtivas: resolverDimensoesProjetoIPD(ipdObj),
+        rawDiarias: rawDiarias,
+        modoTemporal: 'mes',
+        periodoPersonalizado: null,
+        janelasComparacao: [],
+        graficoJanelas: null,
+        filtrosGraficos: {
+            ranking: { inicio: null, fim: null, comparar: true, comparacaoInicio: null, comparacaoFim: null },
+            historico: { inicio: null, fim: null, agrupamento: 'mes', inicioSemana: 1, estrutura: null },
+            radar: { inicio: null, fim: null, comparar: true, comparacaoInicio: null, comparacaoFim: null },
+            variacao: { inicio: null, fim: null, comparacaoInicio: null, comparacaoFim: null }
+        },
+        periodoHistorico: 'mes',
+        mesSelecionadoRadar: null,
+        profilesSelecionadosRanking: new Set(todosPerfisIpd),
+        profilesSelecionadosVariacao: new Set(todosPerfisIpd),
+        profilesSelecionadosHistorico: new Set(todosPerfisIpd.slice(0, 2)),
+        profilesSelecionadosRadar: new Set(todosPerfisIpd.slice(0, 2)),
+        perfilDestacadoRanking: null,
+        slidesCarrosselData: [],
+        slideIndexAtual: 0,
+        profilesDataDiario: processarMapeamentoPeriodo(rawDiarias, 'diario'),
+        profilesDataSemana: processarMapeamentoPeriodo(rawSemanais, 'semana'),
+        profilesDataMes: profilesDataMesObj,
+        lineChart: null,
+        mostrarValoresHistorico: false,
+        radarChart: null
+    };
 
-    ranking: {
-        inicio: null,
-        fim: null,
-        comparar: true,
-        comparacaoInicio: null,
-        comparacaoFim: null
-    },
+    const ref = stateIPDs[ipdId];
 
-    historico: {
-        inicio: null,
-        fim: null,
-        agrupamento: 'mes',
-        inicioSemana: 1,
-        estrutura: null
-    },
-
-    radar: {
-        inicio: null,
-        fim: null,
-        comparar: true,
-        comparacaoInicio: null,
-        comparacaoFim: null
-    },
-
-    variacao: {
-        inicio: null,
-        fim: null,
-        comparacaoInicio: null,
-        comparacaoFim: null
+    if (rawDiarias.length > 0) {
+        ref.profilesDataDiario = agregarSerieDiaria(rawDiarias, 'diario');
+        ref.profilesDataSemana = agregarSerieDiaria(rawDiarias, 'semana');
+        ref.profilesDataMes = agregarSerieDiaria(rawDiarias, 'mes');
     }
 
-},
-                periodoHistorico: 'mes',
-                mesSelecionadoRadar: null,
-                profilesSelecionadosRanking: new Set(todosPerfisIpd),
-                profilesSelecionadosVariacao: new Set(todosPerfisIpd),
-                profilesSelecionadosHistorico: new Set(todosPerfisIpd.slice(0, 2)),
-                profilesSelecionadosRadar: new Set(todosPerfisIpd.slice(0, 2)),
-                perfilDestacadoRanking: null,
-                slidesCarrosselData: [],
-                slideIndexAtual: 0,
-                profilesDataDiario: processarMapeamentoPeriodo(rawDiarias, 'diario'),
-                profilesDataSemana: processarMapeamentoPeriodo(rawSemanais, 'semana'),
-                profilesDataMes: profilesDataMesObj,
-                lineChart: null,
-                mostrarValoresHistorico: false,
-                radarChart: null
-            };
+    const selectMesRadar = document.getElementById(`select-mes-radar-${ipdId}`);
+    const inputConteudoInicio = document.getElementById(`conteudo-inicio-${ipdId}`);
+    const inputConteudoFim = document.getElementById(`conteudo-fim-${ipdId}`);
+    const inputTemasInicio = document.getElementById(`temas-inicio-${ipdId}`);
+    const inputTemasFim = document.getElementById(`temas-fim-${ipdId}`);
+    const inputContribuicaoInicio = document.getElementById(`contribuicao-inicio-${ipdId}`);
+    const inputContribuicaoFim = document.getElementById(`contribuicao-fim-${ipdId}`);
+    
+    if (selectMesRadar) selectMesRadar.innerHTML = '';
+    
+    const mesesDisponiveis = ref.profilesDataMes.datas;
+    if (mesesDisponiveis.length > 0) {
+        const mesesOrdenados = [...mesesDisponiveis].sort();
 
-            const ref = stateIPDs[ipdId];
+        mesesOrdenados.forEach(m => {
+            const textoData = formatarDataAnoCurto(m, true);
 
-            // A série diária é a fonte canônica no front-end. Quando disponível,
-            // semanal e mensal são recalculados aqui para que filtros personalizados
-            // não dependam de novos endpoints da API.
-            if (rawDiarias.length > 0) {
-                ref.profilesDataDiario = agregarSerieDiaria(rawDiarias, 'diario');
-                ref.profilesDataSemana = agregarSerieDiaria(rawDiarias, 'semana');
-                ref.profilesDataMes = agregarSerieDiaria(rawDiarias, 'mes');
+            if (selectMesRadar) {
+                const opt = document.createElement('option');
+                opt.value = m; 
+                opt.innerText = textoData;
+                selectMesRadar.appendChild(opt);
             }
-            const selectMesRadar = document.getElementById(`select-mes-radar-${ipdId}`);
-            const inputConteudoInicio = document.getElementById(`conteudo-inicio-${ipdId}`);
-            const inputConteudoFim = document.getElementById(`conteudo-fim-${ipdId}`);
-            const inputTemasInicio =
-                document.getElementById(`temas-inicio-${ipdId}`);
+        });
 
-            const inputTemasFim =
-                document.getElementById(`temas-fim-${ipdId}`);
-            
-            if (selectMesRadar) selectMesRadar.innerHTML = '';
-            
-            const mesesDisponiveis = ref.profilesDataMes.datas;
-            if (mesesDisponiveis.length > 0) {
-                const mesesOrdenados = [...mesesDisponiveis].sort();
+        const ultimoMesComDados = mesesOrdenados[mesesOrdenados.length - 1];
+        if (selectMesRadar) selectMesRadar.value = ultimoMesComDados;
 
-                mesesOrdenados.forEach(m => {
-                    const textoData = formatarDataAnoCurto(m, true);
+        const datasDiarias = (ref.profilesDataDiario?.datas || [])
+            .filter(data => typeof data === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(data))
+            .sort();
 
-                    if (selectMesRadar) {
-                        const opt = document.createElement('option');
-                        opt.value = m; 
-                        opt.innerText = textoData;
-                        selectMesRadar.appendChild(opt);
-                    }
+        if (datasDiarias.length) {
+            const ultimaData = datasDiarias[datasDiarias.length - 1];
+            const [ano, mes] = ultimaData.split('-');
+            const primeiroDiaMes = `${ano}-${mes}-01`;
 
+            if (inputConteudoInicio && inputConteudoFim) {
+                inputConteudoInicio.value = primeiroDiaMes;
+                inputConteudoFim.value = ultimaData;
+            }
+
+            if (inputTemasInicio && inputTemasFim) {
+                inputTemasInicio.value = primeiroDiaMes;
+                inputTemasFim.value = ultimaData;
+            }
+
+            // Apenas define as datas default nos campos de texto. NÃO faz chamada de API.
+            if (inputContribuicaoInicio && inputContribuicaoFim) {
+                inputContribuicaoInicio.value = primeiroDiaMes;
+                inputContribuicaoFim.value = ultimaData;
+            }
+        }
+
+        ref.mesSelecionadoRadar = ultimoMesComDados;
+    }
+
+    const ctxLine = document.getElementById(`chart-line-${ipdId}`).getContext('2d');
+    const pluginValoresHistorico = {
+        id: `valoresHistorico-${ipdId}`,
+        afterDatasetsDraw(chart) {
+            if (!stateIPDs[ipdId]?.mostrarValoresHistorico) return;
+            const { ctx } = chart;
+            ctx.save();
+            ctx.font = '700 9px Inter, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'bottom';
+            chart.data.datasets.forEach((dataset, datasetIndex) => {
+                const meta = chart.getDatasetMeta(datasetIndex);
+                if (meta.hidden) return;
+                meta.data.forEach((element, index) => {
+                    const valor = dataset.data[index];
+                    if (valor === null || valor === undefined || !Number.isFinite(Number(valor))) return;
+                    const texto = Number(valor).toFixed(2);
+                    const x = Number(element?.x);
+                    const yBase = Number(element?.y);
+                    if (!Number.isFinite(x) || !Number.isFinite(yBase)) return;
+
+                    const largura = ctx.measureText(texto).width + 8;
+                    const faixa = datasetIndex % 3;
+                    const y = Math.max(13, yBase - 8 - (faixa * 13));
+                    ctx.fillStyle = 'rgba(255,255,255,.94)';
+                    ctx.fillRect(x - largura / 2, y - 11, largura, 13);
+                    ctx.fillStyle = Array.isArray(dataset.borderColor) ? '#334155' : (dataset.borderColor || '#334155');
+                    ctx.fillText(texto, x, y);
                 });
-
-                const ultimoMesComDados = mesesOrdenados[mesesOrdenados.length - 1];
-                if (selectMesRadar) selectMesRadar.value = ultimoMesComDados;
-                // =====================================================
-                // CONTEÚDO — PERÍODO PADRÃO
-                // =====================================================
-                //
-                // Regra de UX usada em TODO o painel:
-                //
-                //   1. Descobre a última data diária realmente disponível.
-                //   2. Pré-seleciona o mês dessa última data.
-                //   3. O início é o primeiro dia daquele mês.
-                //   4. O fim é a última data que efetivamente possui dado,
-                //      evitando selecionar dias futuros/sem informação.
-                //
-                // Exemplo:
-                //
-                // última data disponível = 18/08/2026
-                //
-                // período inicial:
-                // 01/08/2026 até 18/08/2026
-                //
-                // Depois disso o usuário continua livre para alterar
-                // data_inicio e data_fim.
-                if (inputConteudoInicio && inputConteudoFim) {
-
-                    const datasDiariasConteudo =
-                        (
-                            ref.profilesDataDiario?.datas ||
-                            []
-                        )
-                        .filter(data =>
-                            typeof data === 'string' &&
-                            /^\d{4}-\d{2}-\d{2}$/.test(data)
-                        )
-                        .sort();
-
-                    if (datasDiariasConteudo.length) {
-
-                        const ultimaDataConteudo =
-                            datasDiariasConteudo[
-                                datasDiariasConteudo.length - 1
-                            ];
-
-                        const [
-                            anoConteudo,
-                            mesConteudo
-                        ] =
-                            ultimaDataConteudo.split('-');
-
-                        const primeiroDiaMesConteudo =
-                            `${anoConteudo}-${mesConteudo}-01`;
-
-                        inputConteudoInicio.value =
-                            primeiroDiaMesConteudo;
-
-                        inputConteudoFim.value =
-                            ultimaDataConteudo;
-
-                        inputConteudoInicio.min =
-                            datasDiariasConteudo[0];
-
-                        inputConteudoInicio.max =
-                            ultimaDataConteudo;
-
-                        inputConteudoFim.min =
-                            datasDiariasConteudo[0];
-
-                        inputConteudoFim.max =
-                            ultimaDataConteudo;
-                    }
-                }
-                // =====================================================
-                // TEMAS — PERÍODO PADRÃO
-                // =====================================================
-                //
-                // Assim como os demais filtros do painel, Temas abre
-                // automaticamente no último mês que possui dados diários.
-                //
-                // Se o último dado disponível for 18/08/2026:
-                //
-                //   início = 01/08/2026
-                //   fim    = 18/08/2026
-                //
-                // Depois o usuário pode escolher qualquer intervalo.
-                if (inputTemasInicio && inputTemasFim) {
-
-                    const datasDiariasTemas =
-                        (
-                            ref.profilesDataDiario?.datas ||
-                            []
-                        )
-                        .filter(data =>
-                            typeof data === 'string' &&
-                            /^\d{4}-\d{2}-\d{2}$/.test(data)
-                        )
-                        .sort();
-
-
-                    if (datasDiariasTemas.length) {
-
-                        const ultimaDataTemas =
-                            datasDiariasTemas[
-                                datasDiariasTemas.length - 1
-                            ];
-
-
-                        const [
-                            anoTemas,
-                            mesTemas
-                        ] =
-                            ultimaDataTemas.split(
-                                '-'
-                            );
-
-
-                        const primeiroDiaMesTemas =
-                            `${anoTemas}-${mesTemas}-01`;
-
-
-                        inputTemasInicio.value =
-                            primeiroDiaMesTemas;
-
-                        inputTemasFim.value =
-                            ultimaDataTemas;
-
-
-                        inputTemasInicio.min =
-                            datasDiariasTemas[0];
-
-                        inputTemasInicio.max =
-                            ultimaDataTemas;
-
-                        inputTemasFim.min =
-                            datasDiariasTemas[0];
-
-                        inputTemasFim.max =
-                            ultimaDataTemas;
-                    }
-                }
-
-                ref.mesSelecionadoRadar = ultimoMesComDados;
-            }
-
-            const ctxLine = document.getElementById(`chart-line-${ipdId}`).getContext('2d');
-            const pluginValoresHistorico = {
-                id: `valoresHistorico-${ipdId}`,
-                afterDatasetsDraw(chart) {
-                    if (!stateIPDs[ipdId]?.mostrarValoresHistorico) return;
-                    const { ctx } = chart;
-                    ctx.save();
-                    ctx.font = '700 9px Inter, sans-serif';
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'bottom';
-                    chart.data.datasets.forEach((dataset, datasetIndex) => {
-                        const meta = chart.getDatasetMeta(datasetIndex);
-                        if (meta.hidden) return;
-                        meta.data.forEach((element, index) => {
-                            const valor = dataset.data[index];
-                            if (valor === null || valor === undefined || !Number.isFinite(Number(valor))) return;
-                            const texto = Number(valor).toFixed(2);
-                            const x = Number(element?.x);
-                            const yBase = Number(element?.y);
-                            if (!Number.isFinite(x) || !Number.isFinite(yBase)) return;
-
-                            const largura = ctx.measureText(texto).width + 8;
-                            // Alterna a altura entre as séries para reduzir colisões.
-                            const faixa = datasetIndex % 3;
-                            const y = Math.max(13, yBase - 8 - (faixa * 13));
-                            ctx.fillStyle = 'rgba(255,255,255,.94)';
-                            ctx.fillRect(x - largura / 2, y - 11, largura, 13);
-                            ctx.fillStyle = Array.isArray(dataset.borderColor) ? '#334155' : (dataset.borderColor || '#334155');
-                            ctx.fillText(texto, x, y);
-                        });
-                    });
-                    ctx.restore();
-                }
-            };
-            ref.lineChart = new Chart(ctxLine, {
-                type: 'line',
-                data: { labels: [], datasets: [] },
-                plugins: [pluginValoresHistorico],
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    interaction: { mode: 'index', intersect: false },
-                    layout: { padding: { top: 18, bottom: 12, left: 6, right: 8 } },
-                    plugins: {
-                        tooltip: {
-                            callbacks: {
-                                label: (context) => `${context.dataset.label}: ${Number(context.raw).toFixed(2)} pts`
-                            }
-                        }
-                    },
-                    onClick: (e, elements, chart) => {
-                        let dataIndex = null;
-                        if (elements && elements.length > 0) {
-                            dataIndex = elements[0].index;
-                        } else {
-                            const points = chart.getElementsAtEventForMode(e, 'index', { intersect: false }, true);
-                            if (points && points.length > 0) {
-                                dataIndex = points[0].index;
-                            }
-                        }
-                        if (dataIndex !== null && dataIndex !== undefined) {
-                            pontoSelecionadoGlobal[ipdId] = dataIndex;
-                            explicarAntesDepoisPonto(ipdId, dataIndex);
-                        }
-                    },
-                    scales: {
-                        y: { min: 0.0, max: 100.0, grid: { color: '#E2E8F0' }, ticks: { color: '#64748B', font: { weight: 'bold', family: 'Inter' } } },
-                        x: { 
-                            grid: { color: '#E2E8F0' }, 
-                            ticks: { 
-                                color: '#64748B', 
-                                font: { weight: 'bold', family: 'Inter' },
-                                autoSkip: true,
-                                maxTicksLimit: 14,
-                                maxRotation: 0
-                            } 
-                        }
-                    }
-                }
             });
-
-            const ctxRadar = document.getElementById(`chart-radar-${ipdId}`).getContext('2d');
-            ref.radarChart = new Chart(ctxRadar, {
-                type: 'radar',
-                data: { labels: ref.dimensoesAtivas.map(dim => dim.label), datasets: [] },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-    r: {
-        // Escala real do IPD
-        min: 1,
-        max: 4,
-        beginAtZero: false,
-
-        // Linhas radiais, como na imagem de referência
-        angleLines: {
-            display: true,
-            color: '#CBD5E1',
-            lineWidth: 1
-        },
-
-        // Pentágonos internos
-        grid: {
-            display: true,
-            color: '#CBD5E1',
-            lineWidth: 1
-        },
-
-        // Fama, Interesse, Mobilização etc.
-        pointLabels: {
-            color: '#0F172A',
-            font: {
-                weight: 'bold',
-                size: 11,
-                family: 'Inter'
+            ctx.restore();
+        }
+    };
+    ref.lineChart = new Chart(ctxLine, {
+        type: 'line',
+        data: { labels: [], datasets: [] },
+        plugins: [pluginValoresHistorico],
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            layout: { padding: { top: 18, bottom: 12, left: 6, right: 8 } },
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: (context) => `${context.dataset.label}: ${Number(context.raw).toFixed(2)} pts`
+                    }
+                }
             },
-            padding: 8
-        },
-
-        // Não precisa mostrar os números 1, 1.75 etc.
-        // A referência também fica mais limpa assim.
-        ticks: {
-            display: false
-        },
-
-        // Exatamente 5 pentágonos
-        afterBuildTicks: function(scale) {
-    scale.ticks = [
-        { value: 1.0 },
-        { value: 1.6 },
-        { value: 2.2 },
-        { value: 2.8 },
-        { value: 3.4 },
-        { value: 4.0 }
-    ];
-}
-    }
-}
+            onClick: (e, elements, chart) => {
+                let dataIndex = null;
+                if (elements && elements.length > 0) {
+                    dataIndex = elements[0].index;
+                } else {
+                    const points = chart.getElementsAtEventForMode(e, 'index', { intersect: false }, true);
+                    if (points && points.length > 0) {
+                        dataIndex = points[0].index;
+                    }
                 }
-            });
-
-            inicializarRankingIpdModulo(ipdObj, ipdId);
-
-            montarBotoesRadar(ipdId);
-            inicializarControlesTemporais(ipdId);
-
-            // O state já contém rawDiarias normalizado neste ponto.
-            atualizarCardUltimaDataIpd(ipdId);
-
-            carregarTemasEngajamento(ipdId);
-
-            const selectProfile = document.getElementById(`select-profile-postages-${ipdId}`);
-            if (selectProfile && selectProfile.options.length > 1) {
-                selectProfile.selectedIndex = 1;
-                carregarMetricasConteudo(ipdId);
+                if (dataIndex !== null && dataIndex !== undefined) {
+                    pontoSelecionadoGlobal[ipdId] = dataIndex;
+                    explicarAntesDepoisPonto(ipdId, dataIndex);
+                }
+            },
+            scales: {
+                y: { min: 0.0, max: 100.0, grid: { color: '#E2E8F0' }, ticks: { color: '#64748B', font: { weight: 'bold', family: 'Inter' } } },
+                x: { 
+                    grid: { color: '#E2E8F0' }, 
+                    ticks: { 
+                        color: '#64748B', 
+                        font: { weight: 'bold', family: 'Inter' },
+                        autoSkip: true,
+                        maxTicksLimit: 14,
+                        maxRotation: 0
+                    } 
+                }
             }
         }
+    });
+
+    const ctxRadar = document.getElementById(`chart-radar-${ipdId}`).getContext('2d');
+    ref.radarChart = new Chart(ctxRadar, {
+        type: 'radar',
+        data: { labels: ref.dimensoesAtivas.map(dim => dim.label), datasets: [] },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                r: {
+                    min: 1,
+                    max: 4,
+                    beginAtZero: false,
+                    angleLines: { display: true, color: '#CBD5E1', lineWidth: 1 },
+                    grid: { display: true, color: '#CBD5E1', lineWidth: 1 },
+                    pointLabels: { color: '#0F172A', font: { weight: 'bold', size: 11, family: 'Inter' }, padding: 8 },
+                    ticks: { display: false },
+                    afterBuildTicks: function(scale) {
+                        scale.ticks = [
+                            { value: 1.0 },
+                            { value: 1.6 },
+                            { value: 2.2 },
+                            { value: 2.8 },
+                            { value: 3.4 },
+                            { value: 4.0 }
+                        ];
+                    }
+                }
+            }
+        }
+    });
+
+    inicializarRankingIpdModulo(ipdObj, ipdId);
+    montarBotoesRadar(ipdId);
+    inicializarControlesTemporais(ipdId);
+
+    atualizarCardUltimaDataIpd(ipdId);
+    carregarTemasEngajamento(ipdId);
+
+    const selectProfile = document.getElementById(`select-profile-postages-${ipdId}`);
+    if (selectProfile && selectProfile.options.length > 1) {
+        selectProfile.selectedIndex = 1;
+        carregarMetricasConteudo(ipdId);
+    }
+}
 
         function obterNumeroMedicao(medicao, campos, padrao = 0) {
             for (const campo of campos) {
@@ -9176,7 +9234,7 @@ function toggleComparacaoRanking(ipdId) {
         }
 
         function atualizarGraficoHistorico(ipdId) {
-            montarResumoExecutivoUX(ipdId);
+            
             const ref = stateIPDs[ipdId];
             if (!ref?.lineChart) return;
             const filtro = ref.filtrosGraficos?.historico;
@@ -10573,6 +10631,93 @@ function toggleComparacaoRanking(ipdId) {
             });
 
         }
+        function formatarExplicacaoIAParaHTML(textoRaw) {
+            if (!textoRaw) return '';
+
+            const linhas = String(textoRaw).trim().split('\n');
+            let html = '';
+            let emTabela = false;
+            let tabelaHtml = '';
+            let cabecalhoProcessado = false;
+
+            linhas.forEach((linha) => {
+                const l = linha.trim();
+
+                // 1. Processar Tabelas Markdown (| ... |)
+                if (l.startsWith('|') && l.endsWith('|')) {
+                    if (l.includes('---')) return; // Ignora separador Markdown
+                    const colunas = l.split('|').slice(1, -1).map(c => c.trim());
+
+                    if (!emTabela) {
+                        emTabela = true;
+                        cabecalhoProcessado = false;
+                        tabelaHtml = `
+                        <div class="my-3 overflow-x-auto rounded-2xl border border-purple-200/80 bg-white shadow-sm ranking-scroll">
+                            <table class="w-full text-left text-xs border-collapse">`;
+                    }
+
+                    if (!cabecalhoProcessado) {
+                        tabelaHtml += `<thead class="bg-purple-50/80 text-purple-900 font-black border-b border-purple-200 uppercase text-[10px]"><tr>`;
+                        colunas.forEach(col => { tabelaHtml += `<th class="px-3 py-2">${col}</th>`; });
+                        tabelaHtml += `</tr></thead><tbody class="divide-y divide-slate-100 text-slate-700 font-medium">`;
+                        cabecalhoProcessado = true;
+                    } else {
+                        tabelaHtml += `<tr class="hover:bg-purple-50/30 transition">`;
+                        colunas.forEach((col, idx) => {
+                            let conteudo = col;
+                            if (col.toLowerCase() === 'sim') {
+                                conteudo = `<span class="bg-amber-100 text-amber-800 text-[10px] font-black px-2 py-0.5 rounded-md border border-amber-200">Sim</span>`;
+                            } else if (idx === 0 && !isNaN(col)) {
+                                conteudo = `<span class="font-black text-purple-900">${col}º</span>`;
+                            }
+                            tabelaHtml += `<td class="px-3 py-1.5 whitespace-nowrap">${conteudo}</td>`;
+                        });
+                        tabelaHtml += `</tr>`;
+                    }
+                    return;
+                } else if (emTabela) {
+                    emTabela = false;
+                    tabelaHtml += `</tbody></table></div>`;
+                    html += tabelaHtml;
+                    tabelaHtml = '';
+                }
+
+                if (!l) return;
+
+                // 2. Processar Títulos (### Titulo)
+                if (l.startsWith('###')) {
+                    const titulo = l.replace(/^###\s*/, '');
+                    html += `
+                    <div class="flex items-center gap-2 pt-3 pb-1 border-b border-purple-200/60 mb-2">
+                        <i class="fa-solid fa-chart-line text-purple-600 text-xs"></i>
+                        <h4 class="text-xs font-black uppercase tracking-wider text-purple-900">${titulo}</h4>
+                    </div>`;
+                    return;
+                }
+
+                // 3. Processar Listas / Bullets (- **Item:**)
+                if (l.startsWith('-')) {
+                    let item = l.replace(/^-\s*/, '').replace(/\*\*(.*?)\*\*/g, '<strong class="font-extrabold text-slate-900">$1</strong>');
+                    html += `
+                    <div class="flex items-start gap-2 text-xs text-slate-700 leading-relaxed my-1 pl-1">
+                        <span class="w-1.5 h-1.5 rounded-full bg-purple-500 mt-1.5 shrink-0"></span>
+                        <p class="flex-1">${item}</p>
+                    </div>`;
+                    return;
+                }
+
+                // 4. Parágrafos comuns (substituindo negrito)
+                const textoFormatado = l.replace(/\*\*(.*?)\*\*/g, '<strong class="font-extrabold text-slate-900">$1</strong>');
+                html += `<p class="text-xs text-slate-700 leading-relaxed my-1">${textoFormatado}</p>`;
+            });
+
+            if (emTabela) {
+                tabelaHtml += `</tbody></table></div>`;
+                html += tabelaHtml;
+            }
+
+            return html;
+        }
 
         async function solicitarExplicacaoIARanking(ipdId) {
             const state = statePrevisaoPreditiva[ipdId];
@@ -10632,15 +10777,20 @@ function toggleComparacaoRanking(ipdId) {
                     return;
                 }
 
-                let htmlFinal = `<p class="font-extrabold text-slate-900 leading-relaxed">${data.resumo_executivo}</p>`;
+                // =========================================================
+                // FORMATAÇÃO DO TEXTO RETORNADO PELA IA
+                // =========================================================
+                const textoBruto = data.resposta_ia || data.explicacao || data.resumo_executivo || '';
+                let htmlFinal = formatarExplicacaoIAParaHTML(textoBruto);
 
-                if (data.pontos_chaves && data.pontos_chaves.length > 0) {
-                    htmlFinal += `<ul class="space-y-1.5 pt-1">`;
+                // Se houver pontos chaves complementares (array) e o texto bruto já não for em lista
+                if (data.pontos_chaves && data.pontos_chaves.length > 0 && !textoBruto.includes('- ')) {
+                    htmlFinal += `<ul class="space-y-1.5 pt-2">`;
                     data.pontos_chaves.forEach(ponto => {
                         htmlFinal += `
-                            <li class="flex items-start gap-2">
+                            <li class="flex items-start gap-2 text-xs text-slate-700">
                                 <span class="w-1.5 h-1.5 rounded-full bg-purple-600 mt-1.5 shrink-0"></span>
-                                <span>${ponto}</span>
+                                <span>${ponto.replace(/\*\*(.*?)\*\*/g, '<strong class="font-extrabold text-slate-900">$1</strong>')}</span>
                             </li>
                         `;
                     });
@@ -10728,6 +10878,103 @@ function toggleComparacaoRanking(ipdId) {
                 `;
             });
         }
+
+        function formatarExplicacaoIAParaHTML(textoRaw) {
+    if (!textoRaw) return '';
+
+    let linhas = textoRaw.trim().split('\n');
+    let html = '';
+    let emTabela = false;
+    let tabelaHtml = '';
+    let cabecalhoProcessado = false;
+
+    linhas.forEach((linha) => {
+        const l = linha.trim();
+
+        // 1. Processar Tabelas Markdown (| ... |)
+        if (l.startsWith('|') && l.endsWith('|')) {
+            // Ignora a linha separadora de markdown (|---|---|)
+            if (l.includes('---')) return;
+
+            const colunas = l.split('|').slice(1, -1).map(c => c.trim());
+
+            if (!emTabela) {
+                emTabela = true;
+                cabecalhoProcessado = false;
+                tabelaHtml = `
+                <div class="my-4 overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm ranking-scroll">
+                    <table class="w-full text-left text-xs border-collapse">
+                `;
+            }
+
+            if (!cabecalhoProcessado) {
+                tabelaHtml += `<thead class="bg-slate-100/80 text-slate-600 font-extrabold border-b border-slate-200 uppercase text-[10px]"><tr>`;
+                colunas.forEach(col => {
+                    tabelaHtml += `<th class="px-3.5 py-2.5">${col}</th>`;
+                });
+                tabelaHtml += `</tr></thead><tbody class="divide-y divide-slate-100 text-slate-700 font-medium">`;
+                cabecalhoProcessado = true;
+            } else {
+                tabelaHtml += `<tr class="hover:bg-purple-50/40 transition">`;
+                colunas.forEach((col, idx) => {
+                    let conteudo = col;
+                    // Estiliza Badges de Empate (Sim/Não) e destaque do 1º lugar
+                    if (col.toLowerCase() === 'sim') {
+                        conteudo = `<span class="bg-amber-100 text-amber-800 text-[10px] font-black px-2 py-0.5 rounded-md border border-amber-200">Sim</span>`;
+                    } else if (idx === 0) {
+                        conteudo = `<span class="font-black text-slate-900">${col}º</span>`;
+                    }
+                    tabelaHtml += `<td class="px-3.5 py-2 whitespace-nowrap">${conteudo}</td>`;
+                });
+                tabelaHtml += `</tr>`;
+            }
+            return;
+        } else if (emTabela) {
+            // Fecha a tabela quando saímos das linhas de barras
+            emTabela = false;
+            tabelaHtml += `</tbody></table></div>`;
+            html += tabelaHtml;
+            tabelaHtml = '';
+        }
+
+        if (!l) return;
+
+        // 2. Processar Títulos (### Titulo)
+        if (l.startsWith('###')) {
+            const titulo = l.replace(/^###\s*/, '');
+            html += `
+            <div class="flex items-center gap-2 pt-4 pb-1 border-b border-purple-200/60 mb-2">
+                <i class="fa-solid fa-chart-line text-purple-600 text-xs"></i>
+                <h4 class="text-xs font-black uppercase tracking-wider text-purple-900">${titulo}</h4>
+            </div>`;
+            return;
+        }
+
+        // 3. Processar Listas / Bullets (- **Item:**)
+        if (l.startsWith('-')) {
+            let item = l.replace(/^-\s*/, '');
+            // Converter negritos **texto**
+            item = item.replace(/\*\*(.*?)\*\*/g, '<strong class="font-extrabold text-slate-900">$1</strong>');
+            html += `
+            <div class="flex items-start gap-2 text-xs text-slate-700 leading-relaxed my-1.5 pl-1">
+                <span class="w-1.5 h-1.5 rounded-full bg-purple-500 mt-1.5 shrink-0"></span>
+                <p class="flex-1">${item}</p>
+            </div>`;
+            return;
+        }
+
+        // 4. Parágrafos comuns
+        let textoFormatado = l.replace(/\*\*(.*?)\*\*/g, '<strong class="font-extrabold text-slate-900">$1</strong>');
+        html += `<p class="text-xs text-slate-700 leading-relaxed my-1.5">${textoFormatado}</p>`;
+    });
+
+    if (emTabela) {
+        tabelaHtml += `</tbody></table></div>`;
+        html += tabelaHtml;
+    }
+
+    return html;
+}
 
         function explicarAntesDepoisPonto(ipdId, pontoIndex) {
             const ref = stateIPDs[ipdId];
@@ -10840,130 +11087,5 @@ function toggleComparacaoRanking(ipdId) {
         });
     </script>
 
-<script>
-// ============================================================
-// UX — PERÍODO SEMPRE VISÍVEL EM CADA GRÁFICO
-// ============================================================
-(function () {
-    const formatarDataBadge = (valor) => {
-        if (!valor) return '';
-        const partes = String(valor).split('-');
-        if (partes.length !== 3) return valor;
-        return `${partes[2]}/${partes[1]}/${partes[0]}`;
-    };
-
-    const configuracoes = [
-        { canvas: 'chart-ranking-', inicio: 'ranking-inicio-', fim: 'ranking-fim-' },
-        { canvas: 'chart-line-', inicio: 'historico-inicio-', fim: 'historico-fim-' },
-        { canvas: 'chart-ranking-historico-', inicio: 'ranking-historico-inicio-', fim: 'ranking-historico-fim-' }
-    ];
-
-    function localizarSecao(el) {
-        let atual = el?.parentElement;
-        while (atual && atual !== document.body) {
-            if (atual.querySelector(':scope > div h3') || atual.querySelector(':scope > h3')) return atual;
-            atual = atual.parentElement;
-        }
-        return el?.parentElement?.parentElement || null;
-    }
-
-    function atualizarBadgesPeriodo() {
-        document.querySelectorAll('canvas[id]').forEach(canvas => {
-            const cfg = configuracoes.find(c => canvas.id.startsWith(c.canvas));
-            if (!cfg) return;
-            const id = canvas.id.slice(cfg.canvas.length);
-            const inicio = document.getElementById(cfg.inicio + id)?.value;
-            const fim = document.getElementById(cfg.fim + id)?.value;
-            if (!inicio && !fim) return;
-
-            const secao = localizarSecao(canvas);
-            if (!secao) return;
-            const titulo = secao.querySelector('h3');
-            if (!titulo) return;
-
-            const badgeId = `periodo-visivel-${canvas.id}`;
-            let badge = document.getElementById(badgeId);
-            if (!badge) {
-                badge = document.createElement('span');
-                badge.id = badgeId;
-                badge.className = 'ml-2 inline-flex align-middle items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-[10px] font-black text-slate-500 shadow-sm whitespace-nowrap';
-                titulo.insertAdjacentElement('afterend', badge);
-            }
-            const texto = inicio && fim
-                ? `${formatarDataBadge(inicio)} — ${formatarDataBadge(fim)}`
-                : formatarDataBadge(inicio || fim);
-            badge.innerHTML = `<i class="fa-regular fa-calendar text-quaest-teal"></i><span>Período: ${texto}</span>`;
-        });
-    }
-
-    document.addEventListener('change', e => {
-        if (e.target?.matches?.('input[type="date"], select')) setTimeout(atualizarBadgesPeriodo, 0);
-    }, true);
-    document.addEventListener('click', () => setTimeout(atualizarBadgesPeriodo, 120), true);
-    window.addEventListener('load', () => {
-        setTimeout(atualizarBadgesPeriodo, 400);
-        setTimeout(atualizarBadgesPeriodo, 1400);
-    });
-    const obs = new MutationObserver(() => {
-        clearTimeout(window.__timerBadgesPeriodo);
-        window.__timerBadgesPeriodo = setTimeout(atualizarBadgesPeriodo, 80);
-    });
-    obs.observe(document.body, { childList: true, subtree: true });
-})();
-</script>
-
-
-<script>
-// ============================================================
-// UX — GARANTIA DOS MÓDULOS AVANÇADOS
-// Mantém Projeção do IPD e Controle Sintético sempre visíveis.
-// Eles não usam o botão "Filtros deste gráfico", porque dependem de
-// inputs próprios e não dos filtros de visualização dos demais gráficos.
-// ============================================================
-(function () {
-    function restaurarModulosAvancados() {
-        document.querySelectorAll('[id^="box-previsao-"], [id^="box-causal-"]').forEach(box => {
-            box.classList.remove('hidden');
-            box.style.display = '';
-            box.dataset.uxControles = '1';
-
-            const primeiro = box.firstElementChild;
-            if (primeiro) {
-                primeiro.classList.remove('hidden');
-                primeiro.style.display = '';
-            }
-
-            const anterior = box.previousElementSibling;
-            const ehBarraFiltro = anterior
-                && anterior.querySelector?.('button')
-                && anterior.textContent.includes('Filtros deste gráfico');
-
-            if (ehBarraFiltro) {
-                anterior.remove();
-            }
-        });
-    }
-
-    document.addEventListener('DOMContentLoaded', () => {
-        restaurarModulosAvancados();
-        setTimeout(restaurarModulosAvancados, 500);
-        setTimeout(restaurarModulosAvancados, 1500);
-    });
-
-    window.addEventListener('load', () => {
-        restaurarModulosAvancados();
-        setTimeout(restaurarModulosAvancados, 800);
-    });
-
-    const obsAvancadas = new MutationObserver(() => {
-        clearTimeout(window.__timerRestaurarAvancadas);
-        window.__timerRestaurarAvancadas = setTimeout(restaurarModulosAvancados, 80);
-    });
-
-    if (document.body) {
-        obsAvancadas.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'style'] });
-    }
-})();
-</script>
 </body>
 </html>

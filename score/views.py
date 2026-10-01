@@ -4280,7 +4280,7 @@ class ExplicacaoRankingIAView(APIView):
 
             prompt_sistema = SystemMessage(
                 content=(
-
+                    
                     "Você é um Analista Estatístico Sênior e especialista "
                     "em Inteligência Preditiva de IPD "
                     "(Índice de Popularidade Digital).\n\n"
@@ -4374,8 +4374,58 @@ class ExplicacaoRankingIAView(APIView):
 
                     "=== FORMATO DE SAÍDA ===\n"
 
-                    "Siga estritamente a estrutura solicitada e o esquema "
-                    "JSON/Pydantic configurado para a resposta."
+                   """ === FORMATO DE SAÍDA ===
+
+Retorne apenas HTML válido.
+
+Não utilize Markdown.
+
+Não utilize:
+#, ##, ###, **, __, |---|, ```html ou ```markdown.
+
+Utilize apenas as tags:
+
+<section>
+<h2>
+<h3>
+<p>
+<strong>
+<ul>
+<li>
+<table>
+<thead>
+<tbody>
+<tr>
+<th>
+<td>
+
+Estruture a resposta nesta ordem:
+
+1. <h2>Análise de Tendência</h2>
+
+2. <h3>Síntese Inteligente</h3>
+   - Texto em parágrafos.
+
+3. <h3>Tabela de Ranking</h3>
+   - Tabela HTML contendo todos os participantes.
+
+4. <h3>Análise da Liderança</h3>
+   - Lista com os principais insights.
+
+5. <h3>Análise Panorâmica</h3>
+   - Lista com os principais insights.
+
+6. <h3>Variações e Volatilidade</h3>
+   - Lista com os principais insights.
+
+A tabela deve ser HTML, utilizando:
+
+<table class="table table-striped table-hover table-bordered">
+<thead>...</thead>
+<tbody>...</tbody>
+</table>
+
+Retorne somente HTML, sem explicações extras."""
                 )
             )
 
