@@ -77,10 +77,7 @@
         .ux-periodo-selecionado { display:flex; align-items:center; gap:.45rem; width:fit-content; max-width:100%; padding:.48rem .72rem; border-radius:.75rem; border:1px solid #d1eef2; background:#f0f9fa; color:#0f766e; font-size:11px; line-height:1.35; font-weight:800; }
         .ux-periodo-selecionado::before { content:'\f073'; font-family:'Font Awesome 6 Free'; font-weight:900; flex:0 0 auto; }
 
-</style>
-
-    <style>
-        /* Cores por gráfico: painel fica fora do topo e abre como drawer/modal. */
+        /* ===== Painel de personalização de cores ===== */
         .ux-color-panel-hidden { display: none; }
         .ux-color-panel-hidden.ux-color-overlay {
             display: block !important;
@@ -137,13 +134,68 @@
             transition: .15s ease;
         }
         .ux-color-chart-btn:hover { background: #f0fdfa; transform: translateY(-1px); }
+    
+        /* ===== Acessibilidade global ===== */
+        .a11y-skip-link {
+            position: fixed;
+            top: .75rem;
+            left: .75rem;
+            z-index: 100010;
+            transform: translateY(-160%);
+            border-radius: .75rem;
+            padding: .75rem 1rem;
+            background: #0f766e;
+            color: #fff;
+            font-weight: 800;
+            box-shadow: 0 8px 24px rgba(15, 23, 42, .2);
+        }
+        .a11y-skip-link:focus {
+            transform: translateY(0);
+        }
+        :where(a, button, input, select, textarea, [tabindex]):focus-visible {
+            outline: 3px solid #0f766e !important;
+            outline-offset: 3px !important;
+        }
+        [id] {
+            scroll-margin-top: 6rem;
+        }
+        .a11y-icon-control {
+            min-width: 44px;
+            min-height: 44px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        @media (prefers-reduced-motion: reduce) {
+            html {
+                scroll-behavior: auto !important;
+            }
+            *, *::before, *::after {
+                scroll-behavior: auto !important;
+                animation-duration: .01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: .01ms !important;
+            }
+        }
+        @media (forced-colors: active) {
+            :where(a, button, input, select, textarea, [tabindex]):focus-visible {
+                outline: 2px solid CanvasText !important;
+                outline-offset: 2px !important;
+            }
+        }
+        @media (prefers-contrast: more) {
+            .text-slate-300, .text-slate-400, .text-slate-500 {
+                color: #334155 !important;
+            }
+        }
     </style>
 
 </head>
 <body class="bg-slate-50 text-quaest-textDark font-sans antialiased selection:bg-quaest-teal selection:text-white">
+    <a class="a11y-skip-link" href="#conteudo-principal">Pular para o conteúdo principal</a>
 
     <!-- BARRA FIXA DE PROGRESSO DE SCROLL -->
-    <div class="fixed top-0 left-0 w-full h-1.5 bg-slate-200 z-50">
+    <div class="fixed top-0 left-0 w-full h-1.5 bg-slate-200 z-50" aria-hidden="true">
         <div id="scroll-progress" class="h-full bg-gradient-to-r from-quaest-teal to-quaest-tealDark w-0 transition-all duration-150"></div>
     </div>
 
@@ -157,7 +209,7 @@
                     <span class="text-[11px] font-extrabold text-slate-400 uppercase tracking-widest border-l border-slate-200 pl-3 hidden xl:inline-block">Executive Digital Report</span>
                 </a>
 
-                <nav id="nav-relatorio-principal" style="display:none" class="hidden lg:flex items-center gap-1 border-l border-slate-200 pl-6 text-xs font-bold text-slate-600">
+                <nav id="nav-relatorio-principal" aria-label="Navegação principal do relatório" style="display:none" class="hidden lg:flex items-center gap-1 border-l border-slate-200 pl-6 text-xs font-bold text-slate-600">
                     <a href="#explicacao-ipd" class="px-3 py-1.5 rounded-lg hover:bg-quaest-tealLight hover:text-quaest-teal transition flex items-center gap-1.5">
                         <i class="fa-solid fa-book-bookmark text-[11px]"></i> Metodologia
                     </a>
@@ -174,16 +226,16 @@
             </div>
 
             <div class="flex items-center gap-3 sm:gap-4">
-                <button id="btn-cores-mobile" style="display:none" type="button" onclick="abrirPersonalizadorCoresAtivo()" title="Personalizar cores dos players" class="lg:hidden w-10 h-10 rounded-xl bg-white border border-slate-200 text-quaest-teal hover:bg-quaest-tealLight transition flex items-center justify-center shrink-0">
+                <button id="btn-cores-mobile" style="display:none" type="button" onclick="abrirPersonalizadorCoresAtivo()" title="Personalizar cores dos players" aria-label="Personalizar cores dos perfis" class="lg:hidden w-10 h-10 rounded-xl bg-white border border-slate-200 text-quaest-teal hover:bg-quaest-tealLight transition flex items-center justify-center shrink-0">
                     <i class="fa-solid fa-palette text-sm"></i>
                 </button>
-                <a href="/projetos/" class="text-xs font-extrabold bg-quaest-teal text-white hover:bg-quaest-tealDark px-4 py-2.5 rounded-xl transition flex items-center gap-2 shadow-md shadow-teal-500/20 shrink-0">
+                <a href="/projetos/" aria-label="Voltar aos projetos" class="text-xs font-extrabold bg-quaest-teal text-white hover:bg-quaest-tealDark px-4 py-2.5 rounded-xl transition flex items-center gap-2 shadow-md shadow-teal-500/20 shrink-0">
                     <i class="fa-solid fa-arrow-left text-[11px]"></i> <span class="hidden sm:inline">Voltar aos Projetos</span>
                 </a>
 
                 <div class="flex items-center gap-3 bg-slate-100 p-1.5 pr-3 rounded-2xl border border-slate-200">
                     <div class="w-8 h-8 rounded-xl bg-quaest-teal text-white flex items-center justify-center font-black text-xs uppercase shadow-sm shrink-0">
-                        {{ user.first_name|default:user.username|slice:":1" }}
+                    <span aria-hidden="true">{{ user.first_name|default:user.username|slice:":1" }}</span>
                     </div>
                     <div class="hidden sm:flex flex-col text-left">
                         <span class="text-xs font-black text-slate-900 leading-tight">
@@ -194,7 +246,7 @@
 
                     <form action="{% url 'logout' %}" method="POST" class="ml-1 sm:ml-2">
                         {% csrf_token %}
-                        <button type="submit" title="Sair do Sistema" class="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer">
+                        <button type="submit" title="Sair do Sistema" aria-label="Sair do sistema" class="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer">
                             <i class="fa-solid fa-power-off text-xs"></i>
                         </button>
                     </form>
@@ -203,7 +255,7 @@
         </div>
     </header>
 
-    <main class="pt-20 pb-24 space-y-16">
+    <main id="conteudo-principal" tabindex="-1" class="pt-20 pb-24 space-y-16">
         
         <!-- SEÇÃO HERO -->
         <section id="contexto-projeto" class="max-w-6xl mx-auto px-6 pt-6 pb-2 min-h-[calc(100vh-10rem)] flex items-center">
@@ -233,13 +285,13 @@
                         </p>
 
                         <div id="acoes-capa-relatorio" class="pt-2 space-y-3 flex flex-col items-center">
-                            <button id="btn-ler-relatorio" type="button" onclick="abrirRelatorio()" class="inline-flex items-center justify-center gap-2.5 bg-quaest-teal hover:bg-quaest-tealDark text-white font-black text-sm px-6 py-3.5 rounded-2xl shadow-lg shadow-teal-500/20 transition hover:-translate-y-0.5">
+                            <button id="btn-ler-relatorio" type="button" onclick="abrirRelatorio()" aria-controls="secao-abas-ipd" aria-expanded="false" class="inline-flex items-center justify-center gap-2.5 bg-quaest-teal hover:bg-quaest-tealDark text-white font-black text-sm px-6 py-3.5 rounded-2xl shadow-lg shadow-teal-500/20 transition hover:-translate-y-0.5">
                                 <i class="fa-solid fa-book-open"></i>
                                 <span>Ler relatório</span>
                                 <i class="fa-solid fa-arrow-right text-xs"></i>
                             </button>
-                            <p id="status-carregamento-capa" class="text-[11px] font-bold text-slate-400 flex items-center gap-2">
-                                <i class="fa-solid fa-circle-notch animate-spin text-quaest-teal"></i>
+                            <p id="status-carregamento-capa" role="status" aria-live="polite" aria-atomic="true" class="text-[11px] font-bold text-slate-400 flex items-center gap-2">
+                                <i class="fa-solid fa-circle-notch animate-spin text-quaest-teal" aria-hidden="true"></i>
                                 Preparando dados em segundo plano…
                             </p>
                         </div>
@@ -483,6 +535,18 @@
 
     <!-- LÓGICA JAVASCRIPT INTEGRADA -->
     <script>
+     /*
+      * MAPA DE MANUTENÇÃO DO SCRIPT
+      * 1. Configuração, estado global e cores
+      * 2. Chamadas de API, normalização e resumo executivo
+      * 3. Filtros temporais, ranking, evolução e radar
+      * 4. Temas, conteúdo e personalização visual
+      * 5. Forecasting, controle sintético e explicações
+      * 6. Carrossel, diagnósticos, UX e acessibilidade
+      *
+      * As funções permanecem no escopo global porque a marcação existente
+      * chama várias delas por onclick. Ao separar arquivos, preserve essa API.
+      */
      const CORES_BANCO = {
     {% if cores_lista %}
         {% for cor in cores_lista %}
@@ -743,12 +807,26 @@ async function carregarContribuicaoTemas(ipdId) {
         const TIPO_IPD_PROJETO = Number("{{ projeto.tipo_ipd|default:'2' }}");
         const PROJETO_ID = "{{ projeto.id|default:'1' }}";
 
-        window.onscroll = function() {
-            let winScroll = document.body.scrollTop || document.documentElement.scrollTop;
-            let height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
-            let scrolled = (winScroll / height) * 100;
-            document.getElementById("scroll-progress").style.width = scrolled + "%";
-        };
+        let atualizacaoProgressoPendente = false;
+
+        function atualizarBarraProgressoScroll() {
+            atualizacaoProgressoPendente = false;
+            const barra = document.getElementById("scroll-progress");
+            if (!barra) return;
+            const alturaRolavel = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+            const rolagemAtual = window.scrollY || document.documentElement.scrollTop || 0;
+            const percentual = alturaRolavel > 0 ? Math.min(100, Math.max(0, rolagemAtual / alturaRolavel * 100)) : 0;
+            barra.style.width = percentual + "%";
+        }
+
+        window.addEventListener("scroll", () => {
+            if (atualizacaoProgressoPendente) return;
+            atualizacaoProgressoPendente = true;
+            window.requestAnimationFrame(atualizarBarraProgressoScroll);
+        }, { passive: true });
+
+        window.addEventListener("resize", atualizarBarraProgressoScroll, { passive: true });
+        atualizarBarraProgressoScroll();
 
         function atualizarStatusCarregamentoCapa(status, mensagem) {
             const statusEl = document.getElementById('status-carregamento-capa');
@@ -801,10 +879,16 @@ async function carregarContribuicaoTemas(ipdId) {
                 btnLer.disabled = true;
                 btnLer.classList.add('opacity-80', 'cursor-default');
                 btnLer.innerHTML = '<i class="fa-solid fa-circle-check"></i><span>Relatório aberto</span>';
+                btnLer.setAttribute('aria-expanded', 'true');
             }
 
             requestAnimationFrame(() => {
                 redimensionarGraficosAposAbertura();
+                const tituloMetodologia = document.querySelector('#explicacao-ipd h2');
+                if (tituloMetodologia) {
+                    tituloMetodologia.setAttribute('tabindex', '-1');
+                    tituloMetodologia.focus({ preventScroll: true });
+                }
                 document.getElementById('explicacao-ipd')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
             });
         }
@@ -2239,13 +2323,22 @@ function desmarcarTodosRanking(ipdId) {
             const isHidden = el.classList.contains('hidden');
             if (isHidden) {
                 el.classList.remove('hidden');
-                btnObj.innerHTML = '<i class="fa-solid fa-chevron-up text-xs"></i>';
-                btnObj.title = "Minimizar Seção";
+                if (btnObj) {
+                    btnObj.innerHTML = '<i class="fa-solid fa-chevron-up text-xs" aria-hidden="true"></i>';
+                    btnObj.title = "Minimizar seção";
+                    btnObj.setAttribute('aria-label', 'Minimizar seção');
+                    btnObj.setAttribute('aria-expanded', 'true');
+                }
             } else {
                 el.classList.add('hidden');
-                btnObj.innerHTML = '<i class="fa-solid fa-chevron-down text-xs"></i>';
-                btnObj.title = "Expandir Seção";
+                if (btnObj) {
+                    btnObj.innerHTML = '<i class="fa-solid fa-chevron-down text-xs" aria-hidden="true"></i>';
+                    btnObj.title = "Expandir seção";
+                    btnObj.setAttribute('aria-label', 'Expandir seção');
+                    btnObj.setAttribute('aria-expanded', 'false');
+                }
             }
+            if (btnObj) btnObj.setAttribute('aria-controls', elementId);
         }
 
         function exportarGraficoParaPNG(canvasId, nomeArquivo) {
@@ -8030,6 +8123,181 @@ function toggleComparacaoRanking(ipdId) {
         // ============================================================
         // MELHORIAS DE UX — SOMENTE FRONT-END
         // ============================================================
+
+        // Acessibilidade: aplica rótulos aos controles gerados pelo template e pelos módulos.
+        function nomeSugeridoParaControle(elemento) {
+            const icone = elemento.querySelector('i[class*="fa-"]');
+            const classes = icone ? icone.className : '';
+            const mapa = [
+                [/fa-expand/, 'Ver gráfico em tela cheia'],
+                [/fa-xmark|fa-times|fa-close/, 'Fechar painel'],
+                [/fa-chevron-up/, 'Minimizar seção'],
+                [/fa-chevron-down/, 'Expandir seção'],
+                [/fa-chevron-left|fa-arrow-left/, 'Voltar'],
+                [/fa-chevron-right|fa-arrow-right/, 'Avançar'],
+                [/fa-download/, 'Baixar gráfico'],
+                [/fa-file-csv/, 'Exportar dados em CSV'],
+                [/fa-palette/, 'Personalizar cores'],
+                [/fa-plus/, 'Adicionar item'],
+                [/fa-trash|fa-eraser/, 'Remover itens selecionados'],
+                [/fa-magnifying-glass|fa-search/, 'Buscar'],
+                [/fa-check/, 'Confirmar']
+            ];
+            const regra = mapa.find(item => item[0].test(classes));
+            if (regra) return regra[1];
+            const contexto = elemento.closest('section, article, [role="dialog"]');
+            const titulo = contexto?.querySelector('h2, h3, h4')?.textContent?.trim();
+            return titulo ? 'Ação em ' + titulo : 'Ação do relatório';
+        }
+
+        function rotularControleAcessivel(elemento) {
+            if (!elemento || elemento.nodeType !== 1) return;
+
+            if (elemento.matches('button, a')) {
+                const texto = (elemento.innerText || elemento.textContent || '').replace(/\s+/g, ' ').trim();
+                if (!texto) {
+                    if (!elemento.hasAttribute('aria-label') && !elemento.hasAttribute('aria-labelledby')) {
+                        elemento.setAttribute('aria-label', elemento.title || nomeSugeridoParaControle(elemento));
+                    }
+                    elemento.classList.add('a11y-icon-control');
+                } else if (!elemento.hasAttribute('aria-label') && !elemento.hasAttribute('aria-labelledby') && elemento.title) {
+                    elemento.setAttribute('aria-label', elemento.title);
+                }
+                if (elemento.matches('button[onclick*="toggleMinimizarCard"]')) {
+                    const chamada = elemento.getAttribute('onclick') || '';
+                    const alvoId = chamada.match(/toggleMinimizarCard\(['"]([^'"]+)/)?.[1];
+                    const alvo = alvoId ? document.getElementById(alvoId) : null;
+                    if (alvo) {
+                        elemento.setAttribute('aria-controls', alvoId);
+                        elemento.setAttribute('aria-expanded', String(!alvo.classList.contains('hidden')));
+                    }
+                }
+                elemento.querySelectorAll('i').forEach(icone => {
+                    icone.setAttribute('aria-hidden', 'true');
+                    icone.setAttribute('focusable', 'false');
+                });
+            }
+
+            if (elemento.matches('input, select, textarea')) {
+                const temRotulo = elemento.labels && elemento.labels.length > 0;
+                if (!temRotulo && !elemento.hasAttribute('aria-label') && !elemento.hasAttribute('aria-labelledby')) {
+                    const candidato = elemento.getAttribute('placeholder') || elemento.getAttribute('name') || elemento.id;
+                    if (candidato) {
+                        const nome = candidato
+                            .replace(/[-_]+/g, ' ')
+                            .replace(/\b\w/g, letra => letra.toUpperCase());
+                        elemento.setAttribute('aria-label', nome);
+                    }
+                }
+            }
+
+            if (elemento.id && /loading|carregamento|status|streaming/i.test(elemento.id)) {
+                elemento.setAttribute('role', 'status');
+                elemento.setAttribute('aria-live', 'polite');
+                elemento.setAttribute('aria-atomic', 'true');
+            } else if (elemento.id && /erro/i.test(elemento.id) && !/msg|etapa/i.test(elemento.id)) {
+                elemento.setAttribute('role', 'alert');
+                elemento.setAttribute('aria-live', 'assertive');
+                elemento.setAttribute('aria-atomic', 'true');
+            }
+
+            if (elemento.matches('canvas')) {
+                const canvas = elemento;
+                const artigo = canvas.closest('article[id^="modulo-article-ipd-"]') || canvas.closest('main');
+                const titulos = artigo ? Array.from(artigo.querySelectorAll('h1, h2, h3, h4')) : [];
+                const tituloAnterior = titulos.filter(titulo => {
+                    return Boolean(titulo.compareDocumentPosition(canvas) & Node.DOCUMENT_POSITION_FOLLOWING);
+                }).pop();
+                const nomeGrafico = tituloAnterior?.textContent?.replace(/\s+/g, ' ').trim()
+                    || canvas.id.replace(/[-_]+/g, ' ')
+                    || 'Gráfico de dados';
+                const chart = window.Chart && typeof window.Chart.getChart === 'function'
+                    ? window.Chart.getChart(canvas)
+                    : null;
+                const tipo = chart?.config?.type;
+                const tipoTexto = tipo === 'line' ? 'Gráfico de linhas' : tipo === 'bar' ? 'Gráfico de barras' : tipo === 'radar' ? 'Gráfico radar' : 'Gráfico';
+                const series = (chart?.data?.datasets || [])
+                    .map(dataset => dataset.label)
+                    .filter(Boolean);
+                const nomeCompleto = tipoTexto + ': ' + nomeGrafico + (series.length ? '. Séries: ' + series.join(', ') : '');
+                canvas.setAttribute('role', 'img');
+                canvas.setAttribute('aria-label', nomeCompleto);
+
+                const resumoId = 'descricao-acessivel-' + (canvas.id || 'grafico').replace(/[^a-zA-Z0-9_-]/g, '-');
+                let resumo = document.getElementById(resumoId);
+                if (!resumo) {
+                    resumo = document.createElement('p');
+                    resumo.id = resumoId;
+                    resumo.className = 'sr-only';
+                    canvas.insertAdjacentElement('afterend', resumo);
+                }
+                const detalhesSeries = (chart?.data?.datasets || []).map(dataset => {
+                    const valores = (dataset.data || []).map(item => {
+                        if (item === null || item === undefined) return NaN;
+                        const bruto = typeof item === 'object'
+                            ? (item.y ?? item.r ?? item.value)
+                            : item;
+                        return bruto === null || bruto === undefined ? NaN : Number(bruto);
+                    }).filter(Number.isFinite);
+                    if (!valores.length) return dataset.label || '';
+                    const minimoNumero = valores.reduce((menor, valor) => Math.min(menor, valor), Infinity);
+                    const maximoNumero = valores.reduce((maior, valor) => Math.max(maior, valor), -Infinity);
+                    const minimo = minimoNumero.toLocaleString('pt-BR', { maximumFractionDigits: 2 });
+                    const maximo = maximoNumero.toLocaleString('pt-BR', { maximumFractionDigits: 2 });
+                    return (dataset.label || 'Série') + ': valores de ' + minimo + ' a ' + maximo + '.';
+                }).filter(Boolean);
+                resumo.textContent = 'Resumo acessível. ' + nomeCompleto + ' ' + detalhesSeries.join(' ') + ' Para consultar todos os valores, use a exportação CSV, se disponível neste módulo.';
+                canvas.setAttribute('aria-describedby', resumoId);
+            }
+
+            if (elemento.matches('table')) {
+                elemento.querySelectorAll('thead th').forEach(celula => {
+                    if (!celula.hasAttribute('scope')) celula.setAttribute('scope', 'col');
+                });
+            }
+        }
+
+        function aplicarAcessibilidadeRelatorio(raiz) {
+            if (!raiz) return;
+            const seletores = 'button, a, input, select, textarea, canvas, table, [id*="loading"], [id*="carregamento"], [id*="erro"]';
+            const elementos = [];
+            if (raiz.nodeType === 1 && raiz.matches(seletores)) elementos.push(raiz);
+            if (raiz.querySelectorAll) elementos.push(...raiz.querySelectorAll(seletores));
+            elementos.forEach(rotularControleAcessivel);
+        }
+
+        function inicializarAcessibilidadeRelatorio() {
+            aplicarAcessibilidadeRelatorio(document);
+            if (window.Chart && !window.ipdPluginAcessibilidadeRegistrado) {
+                window.Chart.register({
+                    id: 'ipdAcessibilidadeGraficos',
+                    afterUpdate(chart) {
+                        if (chart.canvas) rotularControleAcessivel(chart.canvas);
+                    }
+                });
+                window.ipdPluginAcessibilidadeRegistrado = true;
+            }
+            document.addEventListener('fullscreenchange', () => {
+                document.querySelectorAll('.ux-fullscreen-btn').forEach(botao => {
+                    const ativo = document.fullscreenElement === botao.parentElement;
+                    botao.setAttribute('aria-pressed', String(ativo));
+                    botao.setAttribute('aria-label', ativo ? 'Sair da tela cheia do gráfico' : 'Ver gráfico em tela cheia');
+                    botao.title = ativo ? 'Sair da tela cheia do gráfico' : 'Ver gráfico em tela cheia';
+                    botao.innerHTML = ativo
+                        ? '<i class="fa-solid fa-compress" aria-hidden="true"></i>'
+                        : '<i class="fa-solid fa-expand" aria-hidden="true"></i>';
+                });
+            });
+            const observador = new MutationObserver(mudancas => {
+                mudancas.forEach(mudanca => {
+                    mudanca.addedNodes.forEach(no => {
+                        if (no.nodeType === 1) aplicarAcessibilidadeRelatorio(no);
+                    });
+                });
+            });
+            observador.observe(document.body, { childList: true, subtree: true });
+        }
+
         function formatarNumeroUX(valor, casas = 2) {
             const n = Number(valor);
             return Number.isFinite(n) ? n.toLocaleString('pt-BR', { minimumFractionDigits: casas, maximumFractionDigits: casas }) : '—';
@@ -8073,10 +8341,14 @@ function toggleComparacaoRanking(ipdId) {
         }
 
         function alternarControlesUX(botao, painel) {
-            const aberto = !painel.classList.contains('hidden');
-            painel.classList.toggle('hidden', aberto);
-            botao.innerHTML = '<i class="fa-solid fa-sliders mr-1"></i>Filtros deste gráfico';
-            botao.setAttribute('aria-expanded', String(!aberto));
+            const abrir = painel.classList.contains('hidden');
+            painel.classList.toggle('hidden', !abrir);
+            botao.innerHTML = abrir
+                ? '<i class="fa-solid fa-sliders mr-1" aria-hidden="true"></i>Ocultar filtros deste gráfico'
+                : '<i class="fa-solid fa-sliders mr-1" aria-hidden="true"></i>Mostrar filtros deste gráfico';
+            botao.setAttribute('aria-expanded', String(abrir));
+            botao.setAttribute('aria-controls', painel.id);
+            botao.setAttribute('aria-label', abrir ? 'Ocultar filtros deste gráfico' : 'Mostrar filtros deste gráfico');
         }
 
         function recolherControlesUX(ipdId) {
@@ -8088,6 +8360,7 @@ function toggleComparacaoRanking(ipdId) {
                 const primeiro = box.firstElementChild;
                 if (!primeiro || !primeiro.querySelector('input, select, button')) return;
                 const painel = primeiro;
+                if (!painel.id) painel.id = 'ux-controles-' + ipdId + '-' + box.id;
                 painel.classList.add('hidden');
                 const barra = document.createElement('div');
                 barra.className = 'flex flex-col sm:flex-row sm:items-center justify-between gap-2 rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-2';
@@ -8114,8 +8387,10 @@ function toggleComparacaoRanking(ipdId) {
                 const btn = document.createElement('button');
                 btn.type='button';
                 btn.className='rounded-lg bg-white border border-slate-200 px-3 py-1.5 text-[11px] font-black text-quaest-teal hover:bg-quaest-tealLight transition shrink-0';
-                btn.innerHTML='<i class="fa-solid fa-sliders mr-1"></i>Filtros deste gráfico';
+                btn.innerHTML='<i class="fa-solid fa-sliders mr-1" aria-hidden="true"></i>Mostrar filtros deste gráfico';
                 btn.setAttribute('aria-expanded','false');
+                btn.setAttribute('aria-controls', painel.id);
+                btn.setAttribute('aria-label', 'Mostrar filtros deste gráfico');
                 btn.onclick=()=>alternarControlesUX(btn,painel);
                 barra.appendChild(btn);
                 box.insertBefore(barra,painel);
@@ -8134,8 +8409,10 @@ function toggleComparacaoRanking(ipdId) {
                 if (!host || host.dataset.uxFullscreen === '1') return;
                 host.classList.add('ux-fullscreen-host','relative');
                 const btn=document.createElement('button');
-                btn.type='button'; btn.className='ux-fullscreen-btn'; btn.title='Ver gráfico em tela cheia';
-                btn.innerHTML='<i class="fa-solid fa-expand"></i>';
+                btn.type='button'; btn.className='ux-fullscreen-btn a11y-icon-control'; btn.title='Ver gráfico em tela cheia';
+                btn.setAttribute('aria-label', 'Ver gráfico em tela cheia');
+                btn.setAttribute('aria-pressed', 'false');
+                btn.innerHTML='<i class="fa-solid fa-expand" aria-hidden="true"></i>';
                 btn.onclick=(e)=>{e.preventDefault();e.stopPropagation();alternarTelaCheiaUX(host);};
                 host.appendChild(btn);
 
@@ -10675,94 +10952,6 @@ function toggleComparacaoRanking(ipdId) {
             });
 
         }
-        function formatarExplicacaoIAParaHTML(textoRaw) {
-            if (!textoRaw) return '';
-
-            const linhas = String(textoRaw).trim().split('\n');
-            let html = '';
-            let emTabela = false;
-            let tabelaHtml = '';
-            let cabecalhoProcessado = false;
-
-            linhas.forEach((linha) => {
-                const l = linha.trim();
-
-                // 1. Processar Tabelas Markdown (| ... |)
-                if (l.startsWith('|') && l.endsWith('|')) {
-                    if (l.includes('---')) return; // Ignora separador Markdown
-                    const colunas = l.split('|').slice(1, -1).map(c => c.trim());
-
-                    if (!emTabela) {
-                        emTabela = true;
-                        cabecalhoProcessado = false;
-                        tabelaHtml = `
-                        <div class="my-3 overflow-x-auto rounded-2xl border border-purple-200/80 bg-white shadow-sm ranking-scroll">
-                            <table class="w-full text-left text-xs border-collapse">`;
-                    }
-
-                    if (!cabecalhoProcessado) {
-                        tabelaHtml += `<thead class="bg-purple-50/80 text-purple-900 font-black border-b border-purple-200 uppercase text-[10px]"><tr>`;
-                        colunas.forEach(col => { tabelaHtml += `<th class="px-3 py-2">${col}</th>`; });
-                        tabelaHtml += `</tr></thead><tbody class="divide-y divide-slate-100 text-slate-700 font-medium">`;
-                        cabecalhoProcessado = true;
-                    } else {
-                        tabelaHtml += `<tr class="hover:bg-purple-50/30 transition">`;
-                        colunas.forEach((col, idx) => {
-                            let conteudo = col;
-                            if (col.toLowerCase() === 'sim') {
-                                conteudo = `<span class="bg-amber-100 text-amber-800 text-[10px] font-black px-2 py-0.5 rounded-md border border-amber-200">Sim</span>`;
-                            } else if (idx === 0 && !isNaN(col)) {
-                                conteudo = `<span class="font-black text-purple-900">${col}º</span>`;
-                            }
-                            tabelaHtml += `<td class="px-3 py-1.5 whitespace-nowrap">${conteudo}</td>`;
-                        });
-                        tabelaHtml += `</tr>`;
-                    }
-                    return;
-                } else if (emTabela) {
-                    emTabela = false;
-                    tabelaHtml += `</tbody></table></div>`;
-                    html += tabelaHtml;
-                    tabelaHtml = '';
-                }
-
-                if (!l) return;
-
-                // 2. Processar Títulos (### Titulo)
-                if (l.startsWith('###')) {
-                    const titulo = l.replace(/^###\s*/, '');
-                    html += `
-                    <div class="flex items-center gap-2 pt-3 pb-1 border-b border-purple-200/60 mb-2">
-                        <i class="fa-solid fa-chart-line text-purple-600 text-xs"></i>
-                        <h4 class="text-xs font-black uppercase tracking-wider text-purple-900">${titulo}</h4>
-                    </div>`;
-                    return;
-                }
-
-                // 3. Processar Listas / Bullets (- **Item:**)
-                if (l.startsWith('-')) {
-                    let item = l.replace(/^-\s*/, '').replace(/\*\*(.*?)\*\*/g, '<strong class="font-extrabold text-slate-900">$1</strong>');
-                    html += `
-                    <div class="flex items-start gap-2 text-xs text-slate-700 leading-relaxed my-1 pl-1">
-                        <span class="w-1.5 h-1.5 rounded-full bg-purple-500 mt-1.5 shrink-0"></span>
-                        <p class="flex-1">${item}</p>
-                    </div>`;
-                    return;
-                }
-
-                // 4. Parágrafos comuns (substituindo negrito)
-                const textoFormatado = l.replace(/\*\*(.*?)\*\*/g, '<strong class="font-extrabold text-slate-900">$1</strong>');
-                html += `<p class="text-xs text-slate-700 leading-relaxed my-1">${textoFormatado}</p>`;
-            });
-
-            if (emTabela) {
-                tabelaHtml += `</tbody></table></div>`;
-                html += tabelaHtml;
-            }
-
-            return html;
-        }
-
         async function solicitarExplicacaoIARanking(ipdId) {
             const state = statePrevisaoPreditiva[ipdId];
             if (!state || !state.dadosMensais || state.dadosMensais.length === 0) {
@@ -11127,6 +11316,7 @@ function toggleComparacaoRanking(ipdId) {
         }
 
         document.addEventListener('DOMContentLoaded', () => {
+            inicializarAcessibilidadeRelatorio();
             carregarRelatoriosAPI();
         });
     </script>
