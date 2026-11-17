@@ -4626,89 +4626,38 @@ Retorne somente HTML, sem explicações extras."""
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
+from datetime import datetime, timedelta
 
-from datetime import datetime
-import pandas as pd
 import numpy as np
-from sklearn.linear_model import Ridge
-from sklearn.preprocessing import StandardScaler
-
+import pandas as pd
+from django.db.models import Count, Sum
 from django.shortcuts import get_object_or_404
-from django.db.models import Sum
-
-from rest_framework.views import APIView
-from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
-
-from client.models import ProjetoCliente, ProjetoIPD
-from score.models import IPD, Conteudo
-
-
-
-from datetime import datetime
-import pandas as pd
-import numpy as np
+from rest_framework.response import Response
+from rest_framework.views import APIView
 from sklearn.linear_model import Ridge
 from sklearn.preprocessing import StandardScaler
-
-from django.shortcuts import get_object_or_404
-from django.db.models import Sum, Count
-
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
-from rest_framework.permissions import IsAuthenticated
-
-from client.models import ProjetoCliente, ProjetoIPD
-from score.models import IPD, Conteudo
-
-from datetime import datetime
-import pandas as pd
-import numpy as np
-from sklearn.linear_model import Ridge
-from sklearn.preprocessing import StandardScaler
-
-from django.shortcuts import get_object_or_404
-from django.db.models import Sum
-
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
-from rest_framework.permissions import IsAuthenticated
-
-from client.models import ProjetoCliente, ProjetoIPD
-from score.models import IPD, Conteudo
 
 
 class ContribuicaoTemaIPDAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        # ============================================================
-        # 1. AUTENTICAÇÃO
-        # ============================================================
+        # Mantenha no seu views.py os imports existentes de:
+        # ProjetoCliente, ProjetoIPD, IPD, Conteudo e usuario_tem_acesso_ao_projeto.
         if not request.user.is_authenticated:
-            return Response(
-                {"error": "Não autenticado."},
-                status=status.HTTP_401_UNAUTHORIZED,
-            )
+            return Response({"error": "Não autenticado."}, status=status.HTTP_401_UNAUTHORIZED)
 
-        # ============================================================
-        # 2. PARÂMETROS
-        # ============================================================
-        projeto_id = request.query_params.get('projeto_id')
+        projeto_id = request.query_params.get("projeto_id")
         projeto_ipd_id = (
-            request.query_params.get('projeto_ipd_id')
-            or request.query_params.get('projeto_ipd')
+            request.query_params.get("projeto_ipd_id")
+            or request.query_params.get("projeto_ipd")
         )
-        data_inicio_str = request.query_params.get('data_inicio')
-        data_fim_str = request.query_params.get('data_fim')
-        profile_filtro = request.query_params.get('profile')
+        data_inicio_str = request.query_params.get("data_inicio")
+        data_fim_str = request.query_params.get("data_fim")
+        profile_filtro = request.query_params.get("profile")
 
-        # ============================================================
-        # 3. VALIDAÇÃO DE PARÂMETROS E IDs
-        # ============================================================
         if not all([projeto_id, projeto_ipd_id, data_inicio_str, data_fim_str]):
             return Response(
                 {
@@ -4723,26 +4672,11 @@ class ContribuicaoTemaIPDAPIView(APIView):
         try:
             projeto_id = int(projeto_id)
             projeto_ipd_id = int(projeto_ipd_id)
+            data_inicio = datetime.strptime(data_inicio_str, "%Y-%m-%d").date()
+            data_fim = datetime.strptime(data_fim_str, "%Y-%m-%d").date()
         except (TypeError, ValueError):
             return Response(
-                {"error": "'projeto_id' e 'projeto_ipd' devem ser numéricos."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        # ============================================================
-        # 4. VALIDAÇÃO E TRAVA DE DATAS (MÍNIMO 7 DIAS)
-        # ============================================================
-        try:
-            data_inicio = datetime.strptime(data_inicio_str, '%Y-%m-%d').date()
-            data_fim = datetime.strptime(data_fim_str, '%Y-%m-%d').date()
-        except ValueError:
-            return Response(
-                {
-                    "error": (
-                        "Formato de data inválido. Use YYYY-MM-DD "
-                        "(ex: 2026-08-01)."
-                    )
-                },
+                {"error": "IDs inválidos ou datas fora do formato YYYY-MM-DD."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -4753,23 +4687,22 @@ class ContribuicaoTemaIPDAPIView(APIView):
             )
 
         dias_periodo = (data_fim - data_inicio).days + 1
-
         if dias_periodo < 7:
             return Response(
                 {
                     "error": (
-                        f"Não é possível calcular: O intervalo selecionado é de apenas {dias_periodo} dia(s). "
-                        "Para calcular a regressão e o impacto dos temas, o período deve ser de no mínimo 7 dias (1 semana)."
+                        f"O intervalo selecionado tem apenas {dias_periodo} dia(s). "
+                        "Use pelo menos 7 dias para calcular a contribuição."
                     )
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # ============================================================
-        # 5. PROJETO CLIENTE + PERMISSÕES
-        # ============================================================
-        projeto = get_object_or_404(ProjetoCliente, pk=projeto_id)
+        # Janela anterior imediatamente anterior, com a mesma duração.
+        data_fim_anterior = data_inicio - timedelta(days=1)
+        data_inicio_anterior = data_fim_anterior - timedelta(days=dias_periodo - 1)
 
+        projeto = get_object_or_404(ProjetoCliente, pk=projeto_id)
         if not usuario_tem_acesso_ao_projeto(request.user, projeto):
             return Response(
                 {"error": "Você não tem permissão para acessar este projeto."},
@@ -4779,177 +4712,525 @@ class ContribuicaoTemaIPDAPIView(APIView):
         projeto_ipd = get_object_or_404(
             ProjetoIPD,
             pk=projeto_ipd_id,
-            projetos_cliente=projeto
+            projetos_cliente=projeto,
         )
 
-        # ============================================================
-        # 6. CONSULTAS INICIAIS AO BANCO
-        # ============================================================
-        ipd_qs = IPD.objects.filter(
+        # IPD dos dois períodos. O mesmo perfil precisa ser comparado consigo mesmo.
+        campos_ipd = ["profile", "data", "ipd"]
+        ipd_atual_qs = IPD.objects.filter(
             projeto_ipd=projeto_ipd,
-            data__range=[data_inicio, data_fim]
-        ).values('profile', 'data', 'ipd')
+            data__range=[data_inicio, data_fim],
+        ).values(*campos_ipd)
+        ipd_anterior_qs = IPD.objects.filter(
+            projeto_ipd=projeto_ipd,
+            data__range=[data_inicio_anterior, data_fim_anterior],
+        ).values(*campos_ipd)
 
-        # Removido Count('id_post'), pois a métrica 'posts' não é mais necessária
-        conteudo_qs = Conteudo.objects.filter(
-            projeto_ipd=projeto_ipd,
-            data__range=[data_inicio, data_fim]
-        ).values('profile', 'data', 'categoria_tema').annotate(
-            tot_curtidas=Sum('curtidas'),
-            tot_comentarios=Sum('comentarios')
+        if not ipd_atual_qs.exists():
+            return Response(
+                {"error": "Não há medições de IPD no período selecionado."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if not ipd_anterior_qs.exists():
+            return Response(
+                {"error": "Não há medições de IPD na janela anterior para comparação."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Busca o volume de publicações e engajamentos em AMBAS as janelas.
+        campos_conteudo = ["profile", "data", "categoria_tema"]
+
+        def consultar_conteudos(inicio, fim):
+            return list(
+                Conteudo.objects.filter(
+                    projeto_ipd=projeto_ipd,
+                    data__range=[inicio, fim],
+                )
+                .values(*campos_conteudo)
+                .annotate(
+                    tot_curtidas=Sum("curtidas"),
+                    tot_comentarios=Sum("comentarios"),
+                    n_posts=Count("id_post"),
+                )
+            )
+
+        colunas_conteudo = [
+            "profile", "data", "categoria_tema", "tot_curtidas",
+            "tot_comentarios", "n_posts",
+        ]
+        df_conteudo_atual = pd.DataFrame(
+            consultar_conteudos(data_inicio, data_fim), columns=colunas_conteudo
+        )
+        df_conteudo_anterior = pd.DataFrame(
+            consultar_conteudos(data_inicio_anterior, data_fim_anterior),
+            columns=colunas_conteudo,
         )
 
-        if not ipd_qs.exists():
+        if df_conteudo_atual.empty:
             return Response(
-                {"error": "Não é possível calcular: Nenhuma medição de IPD foi encontrada para o período selecionado."},
+                {"error": "Não há publicações no período selecionado."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        if not conteudo_qs.exists():
+        df_ipd_atual = pd.DataFrame(list(ipd_atual_qs), columns=campos_ipd)
+        df_ipd_atual["periodo"] = "atual"
+        df_ipd_anterior = pd.DataFrame(list(ipd_anterior_qs), columns=campos_ipd)
+        df_ipd_anterior["periodo"] = "anterior"
+        df_ipd = pd.concat([df_ipd_atual, df_ipd_anterior], ignore_index=True)
+
+        def normalizar_profile(valor):
+            return str(valor or "").strip().casefold()
+
+        df_ipd["profile"] = df_ipd["profile"].astype(str).str.strip()
+        df_ipd["profile_key"] = df_ipd["profile"].map(normalizar_profile)
+        df_ipd["ipd"] = pd.to_numeric(df_ipd["ipd"], errors="coerce")
+        df_ipd = df_ipd.dropna(subset=["ipd", "data"])
+
+        def preparar_conteudos(df):
+            if df.empty:
+                df["profile_key"] = pd.Series(dtype=str)
+                return df
+            df["profile"] = df["profile"].astype(str).str.strip()
+            df["profile_key"] = df["profile"].map(normalizar_profile)
+            df["categoria_tema"] = df["categoria_tema"].astype(str).str.strip()
+            df["categoria_tema"] = df["categoria_tema"].replace(
+                ["", "nan", "NaN", "NA", "N/A", "null", "None", "undefined", "NoneType"],
+                np.nan,
+            )
+            df["tot_curtidas"] = pd.to_numeric(
+                df["tot_curtidas"], errors="coerce"
+            ).fillna(0.0)
+            df["tot_comentarios"] = pd.to_numeric(
+                df["tot_comentarios"], errors="coerce"
+            ).fillna(0.0)
+            df["n_posts"] = pd.to_numeric(df["n_posts"], errors="coerce").fillna(0.0)
+            return df.dropna(subset=["categoria_tema"])
+
+        df_conteudo_atual = preparar_conteudos(df_conteudo_atual)
+        df_conteudo_anterior = preparar_conteudos(df_conteudo_anterior)
+        df_conteudo_todos = pd.concat(
+            [df_conteudo_atual, df_conteudo_anterior], ignore_index=True
+        )
+        if df_conteudo_todos.empty:
             return Response(
-                {"error": "Não é possível calcular: Nenhuma publicação foi encontrada para o período selecionado."},
+                {"error": "Não há publicações com tema válido para calcular."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        df_ipd = pd.DataFrame(list(ipd_qs))
-        df_conteudo = pd.DataFrame(list(conteudo_qs))
-
-        # ============================================================
-        # 7. TRATAMENTO INTELIGENTE DE NAs E VALORES EM BRANCO
-        # ============================================================
-        df_ipd['ipd'] = pd.to_numeric(df_ipd['ipd'], errors='coerce')
-        df_ipd = df_ipd.dropna(subset=['ipd'])
-
-        if df_ipd.empty:
+        # Cria a série diária dos temas e inclui dias sem publicação como zero.
+        # Isso evita treinar o modelo apenas nos dias em que houve postagem.
+        df_pivot = df_conteudo_todos.pivot_table(
+            index=["profile_key", "data"],
+            columns="categoria_tema",
+            values=["tot_curtidas", "tot_comentarios"],
+            aggfunc="sum",
+            fill_value=0,
+        )
+        if df_pivot.empty:
             return Response(
-                {"error": "Não é possível calcular: Todos os registros de IPD do período estão em branco ou possuem valores inválidos (NA)."},
+                {"error": "Não foi possível montar a matriz diária de temas."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        df_conteudo['tot_curtidas'] = pd.to_numeric(df_conteudo['tot_curtidas'], errors='coerce').fillna(0)
-        df_conteudo['tot_comentarios'] = pd.to_numeric(df_conteudo['tot_comentarios'], errors='coerce').fillna(0)
+        df_pivot.columns = [f"{metrica}_{tema}" for metrica, tema in df_pivot.columns]
+        df_pivot = df_pivot.reset_index()
+        colunas_features = [
+            coluna for coluna in df_pivot.columns
+            if coluna not in ("profile_key", "data")
+        ]
 
-        if 'categoria_tema' in df_conteudo.columns:
-            df_conteudo['categoria_tema'] = df_conteudo['categoria_tema'].astype(str).str.strip()
-            df_conteudo['categoria_tema'] = df_conteudo['categoria_tema'].replace(
-                ['', 'nan', 'NaN', 'NA', 'N/A', 'null', 'None', 'undefined', 'NoneType'], np.nan
-            )
-            df_conteudo = df_conteudo.dropna(subset=['categoria_tema'])
+        df_global = df_ipd.merge(
+            df_pivot,
+            on=["profile_key", "data"],
+            how="left",
+        )
+        df_global[colunas_features] = (
+            df_global[colunas_features]
+            .replace([np.inf, -np.inf], np.nan)
+            .fillna(0.0)
+        )
 
-        if df_conteudo.empty:
+        # Pareia dias equivalentes das duas janelas e modela a mudança do IPD.
+        # Y = IPD atual - IPD anterior; X = mudança das interações por tema.
+        colunas_diarias = ["ipd"] + colunas_features
+        df_dias_atuais = df_global.loc[
+            df_global["periodo"] == "atual",
+            ["profile_key", "data"] + colunas_diarias,
+        ].copy()
+        df_dias_anteriores = df_global.loc[
+            df_global["periodo"] == "anterior",
+            ["profile_key", "data"] + colunas_diarias,
+        ].copy()
+
+        df_dias_atuais["dia_relativo"] = df_dias_atuais["data"].apply(
+            lambda data: (data - data_inicio).days
+        )
+        df_dias_anteriores["dia_relativo"] = df_dias_anteriores["data"].apply(
+            lambda data: (data - data_inicio_anterior).days
+        )
+
+        # Se houver mais de uma medição para perfil/data, agrega antes do pareamento.
+        chaves_dia = ["profile_key", "dia_relativo"]
+        df_dias_atuais = df_dias_atuais.groupby(chaves_dia, as_index=False)[
+            colunas_diarias
+        ].mean()
+        df_dias_anteriores = df_dias_anteriores.groupby(chaves_dia, as_index=False)[
+            colunas_diarias
+        ].mean()
+
+        df_pares = df_dias_atuais.merge(
+            df_dias_anteriores,
+            on=chaves_dia,
+            how="inner",
+            suffixes=("_atual", "_anterior"),
+        )
+        if df_pares.empty or not colunas_features:
             return Response(
-                {"error": "Não é possível calcular: Todas as publicações do período estão sem tema definido ou possuem valores inválidos (NA)."},
+                {
+                    "error": (
+                        "Não há dias equivalentes com IPD nos dois períodos "
+                        "para calcular a variação atribuível aos temas."
+                    )
+                },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # ============================================================
-        # 8. MONTAGEM DA MATRIZ DIÁRIA EM PAINEL
-        # ============================================================
-        df_pivot = df_conteudo.pivot(
-            index=['profile', 'data'],
-            columns='categoria_tema',
-            values=['tot_curtidas', 'tot_comentarios']
-        ).fillna(0)
+        df_pares["delta_ipd"] = df_pares["ipd_atual"] - df_pares["ipd_anterior"]
+        colunas_delta_features = []
+        for coluna in colunas_features:
+            coluna_delta = f"delta_{coluna}"
+            df_pares[coluna_delta] = (
+                df_pares[f"{coluna}_atual"] - df_pares[f"{coluna}_anterior"]
+            )
+            colunas_delta_features.append(coluna_delta)
 
-        df_pivot.columns = [f"{col[0]}_{col[1]}" for col in df_pivot.columns]
-        df_pivot.reset_index(inplace=True)
-
-        df_global = pd.merge(df_ipd, df_pivot, on=['profile', 'data'], how='inner')
-
-        if df_global.empty or len(df_global) < 5:
+        if len(df_pares) < 5:
             return Response(
-                {"error": "Não é possível calcular: Não há dias com cruzamento simultâneo entre IPD e publicações válidas no período."},
+                {
+                    "error": (
+                        f"Há apenas {len(df_pares)} dias pareados com IPD nos dois períodos. "
+                        "São necessários pelo menos 5 para estimar o modelo."
+                    )
+                },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # ============================================================
-        # 9. REGRESSÃO RIDGE E PADRONIZAÇÃO
-        # ============================================================
-        X_global = df_global.drop(columns=['profile', 'data', 'ipd'], errors='ignore')
-        y_global = df_global['ipd']
-
-        X_global = X_global.replace([np.inf, -np.inf], np.nan).fillna(0)
-
-        if X_global.shape[1] == 0 or X_global.sum().sum() == 0:
+        X = df_pares[colunas_delta_features].astype(float)
+        y = df_pares["delta_ipd"].astype(float)
+        if np.abs(X.to_numpy()).sum() == 0:
             return Response(
-                {"error": "Não é possível calcular: Sem engajamento válido registrado nos temas durante o período."},
+                {"error": "Não houve mudança nas interações dos temas entre os períodos."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
         scaler = StandardScaler()
-        X_scaled = scaler.fit_transform(X_global)
+        X_scaled = scaler.fit_transform(X)
+        modelo = Ridge(alpha=1.0)
+        modelo.fit(X_scaled, y)
+        # Ridge fornece uma estimativa aditiva conjunta. A camada hierárquica
+        # empírico-Bayesiana abaixo estima uma distribuição comum dos efeitos
+        # por tema e aproxima mais a média os coeficientes menos informativos.
+        desvios = scaler.scale_.copy()
+        desvios[desvios == 0] = 1.0
+        coefs_ridge_raw = modelo.coef_ / desvios
 
-        modelo_global = Ridge(alpha=1.0)
-        modelo_global.fit(X_scaled, y_global)
+        matriz_x = np.asarray(X_scaled, dtype=float)
+        xtx = matriz_x.T @ matriz_x
+        alpha_ridge = float(modelo.alpha)
+        inversa_penalizada = np.linalg.pinv(
+            xtx + alpha_ridge * np.eye(xtx.shape[0])
+        )
+        residuo_ridge = y.to_numpy(dtype=float) - modelo.predict(X_scaled)
+        graus_liberdade_efetivos = float(np.trace(xtx @ inversa_penalizada))
+        sigma2 = float(
+            np.dot(residuo_ridge, residuo_ridge)
+            / max(len(y) - graus_liberdade_efetivos - 1.0, 1.0)
+        )
+        cov_ridge_escalada = (
+            sigma2 * inversa_penalizada @ xtx @ inversa_penalizada
+        )
+        variancias_coef_raw = np.maximum(
+            np.diag(cov_ridge_escalada) / np.square(desvios),
+            0.0,
+        )
+        variacao_features = X.var(axis=0, ddof=0).to_numpy(dtype=float)
 
-        desvios = scaler.scale_
-        desvios[desvios == 0] = 1.0  # Previne divisão por zero se a coluna for constante
-        
-        coefs_raw = modelo_global.coef_ / desvios
-        coefs_map = dict(zip(X_global.columns, coefs_raw))
-
-        # ============================================================
-        # 10. FILTRAGEM POR PROFILE (SE ENVIADO)
-        # ============================================================
-        if profile_filtro:
-            df_conteudo = df_conteudo[
-                df_conteudo['profile'].astype(str).str.strip().str.lower() == profile_filtro.strip().lower()
+        coefs_hierarquicos = coefs_ridge_raw.copy()
+        for prefixo in ("tot_curtidas_", "tot_comentarios_"):
+            indices = [
+                i for i, coluna in enumerate(colunas_features)
+                if coluna.startswith(prefixo)
+                and variacao_features[i] > 1e-12
             ]
-            if df_conteudo.empty:
-                return Response(
-                    {"error": f"Não é possível calcular: O perfil '{profile_filtro}' não possui temas válidos ou publicações no período."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
+            if not indices:
+                continue
 
-        # ============================================================
-        # 11. CÁLCULO DE CONTRIBUIÇÃO MÉDIA E PESO RELATIVO (%)
-        # ============================================================
-        df_agrupado = df_conteudo.groupby(['profile', 'categoria_tema']).agg(
-            curtidas=('tot_curtidas', 'sum'),
-            comentarios=('tot_comentarios', 'sum')
-        ).reset_index()
+            betas = coefs_ridge_raw[indices]
+            erros2 = np.maximum(variancias_coef_raw[indices], 1e-12)
+            pesos_iniciais = 1.0 / erros2
+            media_hierarquica = float(
+                np.sum(pesos_iniciais * betas) / np.sum(pesos_iniciais)
+            )
+
+            # Estima a variância entre temas descontando a incerteza de cada
+            # coeficiente; em seguida calcula a média posterior de cada tema.
+            for _ in range(20):
+                tau2 = max(
+                    float(np.mean(np.square(betas - media_hierarquica) - erros2)),
+                    0.0,
+                )
+                shrink = tau2 / (tau2 + erros2) if tau2 > 0 else np.zeros_like(erros2)
+                betas_posteriores = (
+                    media_hierarquica + shrink * (betas - media_hierarquica)
+                )
+                nova_media = float(np.mean(betas_posteriores))
+                if abs(nova_media - media_hierarquica) < 1e-8:
+                    media_hierarquica = nova_media
+                    break
+                media_hierarquica = nova_media
+
+            tau2 = max(
+                float(np.mean(np.square(betas - media_hierarquica) - erros2)),
+                0.0,
+            )
+            shrink = tau2 / (tau2 + erros2) if tau2 > 0 else np.zeros_like(erros2)
+            coefs_hierarquicos[indices] = (
+                media_hierarquica + shrink * (betas - media_hierarquica)
+            )
+
+        # Features sem variação não identificam efeito temático.
+        coefs_hierarquicos[variacao_features <= 1e-12] = 0.0
+        coefs_map = dict(zip(colunas_features, coefs_hierarquicos))
+
+        # R² é recalculado com os coeficientes hierárquicos, mantendo o
+        # intercepto do ajuste conjunto.
+        y_estimado_hier = (
+            float(modelo.intercept_)
+            + matriz_x @ (coefs_hierarquicos * desvios)
+        )
+        variacao_y = float(np.sum(np.square(y.to_numpy(dtype=float) - y.mean())))
+        r2_global = (
+            1.0 - float(np.sum(np.square(y.to_numpy(dtype=float) - y_estimado_hier))) / variacao_y
+            if variacao_y > 0 else 0.0
+        )
+
+        df_conteudo_atual["profile_key"] = df_conteudo_atual["profile_key"].astype(str)
+        df_conteudo_anterior["profile_key"] = df_conteudo_anterior["profile_key"].astype(str)
+        profile_filtro_key = normalizar_profile(profile_filtro) if profile_filtro else None
+
+        if profile_filtro_key and not (
+            df_conteudo_atual["profile_key"] == profile_filtro_key
+        ).any():
+            return Response(
+                {"error": f"O perfil '{profile_filtro}' não possui publicações válidas no período."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        perfis_foco = sorted(df_conteudo_atual["profile_key"].dropna().unique())
+        if profile_filtro_key:
+            perfis_foco = [profile_filtro_key]
 
         resultados = []
+        resumo_card_perfis = {}
+        r2_positivo = max(0.0, min(1.0, r2_global))
 
-        for profile_name, df_prof in df_agrupado.groupby('profile'):
-            impacto_total_prof = 0
-            itens_perfil = []
+        for profile_key in perfis_foco:
+            perfil_linhas = df_conteudo_atual[
+                df_conteudo_atual["profile_key"] == profile_key
+            ]
+            profile_nome = (
+                str(perfil_linhas["profile"].iloc[0])
+                if not perfil_linhas.empty else profile_key
+            )
 
-            for _, row in df_prof.iterrows():
-                tema = row['categoria_tema']
-                curtidas = row['curtidas']
-                comentarios = row['comentarios']
+            pares_perfil = df_pares[df_pares["profile_key"] == profile_key]
+            if pares_perfil.empty:
+                if profile_filtro_key:
+                    return Response(
+                        {
+                            "error": (
+                                f"O perfil '{profile_nome}' não tem dias de IPD "
+                                "pareados entre o período atual e o anterior."
+                            )
+                        },
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+                continue
 
-                beta_like = coefs_map.get(f'tot_curtidas_{tema}', 0)
-                beta_coment = coefs_map.get(f'tot_comentarios_{tema}', 0)
+            # O card mostra as médias reais de cada janela completa. O y do
+            # modelo continua sendo a variação diária pareada (atual - anterior).
+            ipd_atual_perfil = df_global[
+                (df_global["profile_key"] == profile_key)
+                & (df_global["periodo"] == "atual")
+            ]
+            ipd_anterior_perfil = df_global[
+                (df_global["profile_key"] == profile_key)
+                & (df_global["periodo"] == "anterior")
+            ]
+            ipd_medio_atual = (
+                float(ipd_atual_perfil["ipd"].mean())
+                if not ipd_atual_perfil.empty else None
+            )
+            ipd_medio_anterior = (
+                float(ipd_anterior_perfil["ipd"].mean())
+                if not ipd_anterior_perfil.empty else None
+            )
+            variacao_total_ipd = (
+                round(ipd_medio_atual - ipd_medio_anterior, 2)
+                if ipd_medio_atual is not None and ipd_medio_anterior is not None
+                else None
+            )
+            media_deltas_features = pares_perfil[colunas_delta_features].mean()
 
-                impacto_acumulado = (curtidas * beta_like) + (comentarios * beta_coment)
-                impacto_medio_diario = (impacto_acumulado / dias_periodo) if dias_periodo > 0 else 0.0
+            temas_perfil = sorted(
+                df_conteudo_todos.loc[
+                    df_conteudo_todos["profile_key"] == profile_key,
+                    "categoria_tema",
+                ].dropna().unique()
+            )
+            impactos_brutos = {}
+            for tema in temas_perfil:
+                chave_curtidas = f"tot_curtidas_{tema}"
+                chave_comentarios = f"tot_comentarios_{tema}"
+                delta_curtidas_dia = float(
+                    media_deltas_features.get(f"delta_{chave_curtidas}", 0.0)
+                )
+                delta_comentarios_dia = float(
+                    media_deltas_features.get(f"delta_{chave_comentarios}", 0.0)
+                )
+                beta_curtidas = float(coefs_map.get(chave_curtidas, 0.0))
+                beta_comentarios = float(coefs_map.get(chave_comentarios, 0.0))
+                impactos_brutos[tema] = (
+                    beta_curtidas * delta_curtidas_dia
+                    + beta_comentarios * delta_comentarios_dia
+                )
 
-                # Usa o absoluto da média diária para construir a base do peso percentual
-                impacto_total_prof += abs(impacto_medio_diario)
+            # Mantém efeitos positivos e negativos, mesmo quando o IPD tem uma
+            # variação líquida de apenas uma direção. Cada tema fica limitado,
+            # em módulo, à variação observada; o saldo líquido também fica entre
+            # -100% e +100% da variação para evitar percentuais sem limite.
+            limite_variacao = abs(variacao_total_ipd or 0.0)
+            maior_impacto_bruto = max(
+                (abs(valor) for valor in impactos_brutos.values()),
+                default=0.0,
+            )
+            fator_limite_tema = (
+                min(1.0, limite_variacao / maior_impacto_bruto)
+                if maior_impacto_bruto > 0 and limite_variacao > 0
+                else 0.0
+            )
+            impactos_atribuidos = {
+                tema: valor * fator_limite_tema
+                for tema, valor in impactos_brutos.items()
+            }
 
-                # Mantém apenas as chaves solicitadas no dicionário
-                itens_perfil.append({
-                    'profile': profile_name,
-                    'categoria_tema': tema,
-                    'impacto_medio_diario': round(float(impacto_medio_diario), 4),
-                    'impacto_estimado_ipd': round(float(impacto_acumulado), 4),
+            saldo_preliminar = sum(impactos_atribuidos.values())
+            fator_limite_saldo = (
+                min(1.0, limite_variacao / abs(saldo_preliminar))
+                if abs(saldo_preliminar) > limite_variacao > 0
+                else 1.0
+            )
+            impactos_atribuidos = {
+                tema: round(valor * fator_limite_saldo, 2)
+                for tema, valor in impactos_atribuidos.items()
+            }
+
+            # Corrige apenas arredondamento para manter o saldo líquido dentro
+            # do limite de ±100% da variação observada.
+            limite_exibido = round(limite_variacao, 2)
+            saldo_exibido = round(sum(impactos_atribuidos.values()), 2)
+            excesso_saldo = round(abs(saldo_exibido) - limite_exibido, 2)
+            if excesso_saldo > 0:
+                sinal_saldo_exibido = 1.0 if saldo_exibido > 0 else -1.0
+                for tema in sorted(
+                    impactos_atribuidos,
+                    key=lambda nome: abs(impactos_atribuidos[nome]),
+                    reverse=True,
+                ):
+                    valor = impactos_atribuidos[tema]
+                    if valor * sinal_saldo_exibido <= 0:
+                        continue
+                    reducao = min(abs(valor), excesso_saldo)
+                    impactos_atribuidos[tema] = round(
+                        valor - sinal_saldo_exibido * reducao,
+                        2,
+                    )
+                    excesso_saldo = round(excesso_saldo - reducao, 2)
+                    if excesso_saldo <= 0:
+                        break
+
+            df_posts_perfil = df_conteudo_atual[
+                df_conteudo_atual["profile_key"] == profile_key
+            ]
+            posts_por_tema = (
+                df_posts_perfil.groupby("categoria_tema")["n_posts"].sum().to_dict()
+                if not df_posts_perfil.empty else {}
+            )
+            total_posts_perfil = sum(float(v) for v in posts_por_tema.values())
+
+            for tema, impacto_bruto in impactos_brutos.items():
+                impacto = float(impactos_atribuidos.get(tema, 0.0))
+                if impacto == 0:
+                    continue
+                peso = (
+                    float(posts_por_tema.get(tema, 0.0)) / total_posts_perfil * 100
+                    if total_posts_perfil > 0 else 0.0
+                )
+                # Distribuição indicativa do R² global conforme o peso de posts;
+                # não representa um R² causal/isolado de cada tema.
+                variancia_indicativa = peso * r2_positivo
+                resultados.append({
+                    "profile": profile_nome,
+                    "categoria_tema": tema,
+                    "impacto_medio_diario": impacto,
+                    "impacto_estimado_ipd": impacto,
+                    "impacto_ipd_pts": impacto,
+                    "direcao": "positivo" if impacto >= 0 else "negativo",
+                    "peso_relativo_pct": round(peso, 2),
+                    "variancia_explicada_pct": round(variancia_indicativa, 2),
                 })
 
-            for item in itens_perfil:
-                if impacto_total_prof > 0:
-                    peso = (abs(item['impacto_medio_diario']) / impacto_total_prof) * 100
-                else:
-                    peso = 0
-                item['peso_relativo_pct'] = round(float(peso), 2)
-                resultados.append(item)
+            saldo_temas = round(sum(impactos_atribuidos.values()), 2)
+            residuo_outros = (
+                round(variacao_total_ipd - saldo_temas, 2)
+                if variacao_total_ipd is not None else None
+            )
+            # Percentual líquido atribuído: pode ser negativo quando o saldo
+            # dos temas atua contra a variação observada.
+            contribuicao_pct = None
+            if variacao_total_ipd not in (None, 0):
+                contribuicao_pct = round(
+                    (saldo_temas / variacao_total_ipd) * 100,
+                    1,
+                )
+                contribuicao_pct = max(-100.0, min(100.0, contribuicao_pct))
 
-        resultados = sorted(resultados, key=lambda x: (x['profile'], -x['peso_relativo_pct']))
+            resumo_card_perfis[profile_key] = {
+                "ipd_medio_atual": (
+                    round(ipd_medio_atual, 2) if ipd_medio_atual is not None else None
+                ),
+                "ipd_medio_anterior": (
+                    round(ipd_medio_anterior, 2)
+                    if ipd_medio_anterior is not None else None
+                ),
+                "variacao_total_ipd": variacao_total_ipd,
+                "contribuicao_temas_pts": saldo_temas,
+                "contribuicao_temas_pct": contribuicao_pct,
+                "residuo_outros_pts": residuo_outros,
+            }
 
-        # ============================================================
-        # 12. RETORNO DA API
-        # ============================================================
+        resultados.sort(
+            key=lambda item: (
+                normalizar_profile(item["profile"]),
+                -item["impacto_ipd_pts"],
+            )
+        )
+
+        perfil_foco = profile_filtro_key or (
+            perfis_foco[0] if perfis_foco else None
+        )
+        card_destaque = resumo_card_perfis.get(perfil_foco)
+
         return Response(
             {
                 "filtros": {
@@ -4959,10 +5240,15 @@ class ContribuicaoTemaIPDAPIView(APIView):
                     "data_inicio": data_inicio.isoformat(),
                     "data_fim": data_fim.isoformat(),
                     "dias_periodo": dias_periodo,
+                    "dias_pareados_modelo": int(len(df_pares)),
+                    "data_inicio_anterior": data_inicio_anterior.isoformat(),
+                    "data_fim_anterior": data_fim_anterior.isoformat(),
                 },
-                "r2_modelo_global": round(float(modelo_global.score(X_scaled, y_global)), 4),
+                "r2_modelo_global": round(r2_global, 4),
                 "total_registros": len(resultados),
                 "resultados": resultados,
+                "card_quaest": card_destaque,
+                "resumo_perfis": resumo_card_perfis,
             },
             status=status.HTTP_200_OK,
         )

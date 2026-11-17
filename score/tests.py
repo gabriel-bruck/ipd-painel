@@ -284,6 +284,7 @@ def classificar_tabela_centroids(
         ("system", 
          "Classifique os grupos de postagens abaixo escolhendo EXATAMENTE UMA categoria da lista fornecida para cada grupo, só repita se inevitavelmente\n\n"
          "LISTA DE CATEGORIAS:\n{lista_categorias}\n\n"
+         "clientes são postagens de bancos"
          "REGRAS:\n1. O campo 'nome_categoria' deve conter EXATAMENTE o nome de uma das categorias acima.\n2. Retorne APENAS o JSON no formato solicitado.\n\n{format_instructions}"),
         ("human", "Classifique estes grupos de posts (centroids):\n{dados_grupos}")
     ])
@@ -349,16 +350,16 @@ def classificar_tabela_centroids(
 # 6. EXECUÇÃO DO SCRIPT
 # -----------------------------------------------------------------------------
 if __name__ == "__main__":
-    caminho_entrada = r"C:\Users\gabri\Downloads\data.xlsx"
-    df_input = pd.read_excel(caminho_entrada)
+    caminho_entrada = r"C:\Users\gabri\Downloads\Conteudo-2026-10-13 (1).csv"
+    df_input = pd.read_csv(caminho_entrada)
 
     df_resultado = classificar_tabela_centroids(
         df_input=df_input,
         coluna_id="id_post",
         coluna_texto="texto",
         coluna_perfil="profile",
-        openrouter_api_key=""
-        n_componentes_reducao=30  # Reduz a dimensão para 15 componentes antes do K-Means
+        openrouter_api_key="",
+        n_componentes_reducao=10  # Reduz a dimensão para 10 componentes antes do K-Means
     )
 
     caminho_saida_csv = "planilha_categorizada.csv"

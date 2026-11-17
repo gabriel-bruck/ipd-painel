@@ -559,51 +559,103 @@ async function carregarContribuicaoTemas(ipdId) {
             return;
         }
 
-        // R² Global
-        const elR2 = document.getElementById(`contribuicao-r2-${ipdId}`);
-        if (elR2) {
-            elR2.innerText = `R² = ${(data.r2_modelo_global * 100).toFixed(1)}%`;
+        // Resumo executivo no topo, conforme o contrato card_quaest da API.
+        const card = data.card_quaest || {};
+        const filtros = data.filtros || {};
+        const parseNumero = (valor) => {
+            if (typeof valor === 'string') valor = valor.trim().replace(',', '.');
+            const n = Number(valor);
+            return Number.isFinite(n) ? n : 0;
+        };
+        const formatarNumero = (valor, casas = 2) => parseNumero(valor).toLocaleString('pt-BR', {
+            minimumFractionDigits: casas,
+            maximumFractionDigits: casas
+        });
+        const escaparHtml = (valor) => String(valor ?? '').replace(/[&<>"']/g, caractere => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+        })[caractere]);
+        const formatarData = (valor) => {
+            if (!valor) return '';
+            const partes = String(valor).slice(0, 10).split('-');
+            return partes.length === 3 ? `${partes[2]}/${partes[1]}/${partes[0]}` : String(valor);
+        };
+        const dataInicioFmt = formatarData(filtros.data_inicio || data.data_inicio);
+        const dataFimFmt = formatarData(filtros.data_fim || data.data_fim);
+        const periodo = dataInicioFmt && dataFimFmt ? `${dataInicioFmt} a ${dataFimFmt}` : 'Período selecionado';
+        const deltaTotal = parseNumero(card.variacao_total_ipd);
+        const contribuicaoPct = parseNumero(card.contribuicao_temas_pct);
+        const saldoTemas = parseNumero(card.contribuicao_temas_pts);
+
+        const dataInicioAnteriorFmt = formatarData(filtros.data_inicio_anterior);
+        const dataFimAnteriorFmt = formatarData(filtros.data_fim_anterior);
+        const periodoAnterior = dataInicioAnteriorFmt && dataFimAnteriorFmt
+            ? `${dataInicioAnteriorFmt} a ${dataFimAnteriorFmt}`
+            : 'período anterior';
+        const elPeriodo = document.getElementById(`contribuicao-periodo-${ipdId}`);
+        if (elPeriodo) elPeriodo.textContent = `PERÍODO ATUAL* (${periodo}) · comparação com ${periodoAnterior}`;
+
+        const sinalDelta = deltaTotal > 0 ? '+' : '';
+        const sinalSaldo = saldoTemas > 0 ? '+' : '';
+        const classeDelta = deltaTotal >= 0 ? 'text-sky-700' : 'text-rose-700';
+        const classeSaldo = saldoTemas >= 0 ? 'text-sky-700' : 'text-rose-700';
+        const elResumo = document.getElementById(`contribuicao-resumo-${ipdId}`);
+        if (elResumo) {
+            elResumo.innerHTML = `
+                <div class="rounded-2xl bg-slate-100 px-4 py-4 sm:px-6 sm:py-5">
+                    <div class="text-center text-[11px] font-black uppercase leading-tight text-slate-800">
+                        Contribuição dos temas<br>para a variação do IPD
+                    </div>
+                    <div class="mt-2 flex flex-wrap items-center justify-center gap-x-8 gap-y-1">
+                        <div class="text-center">
+                            <div class="text-[10px] font-bold uppercase text-slate-500">Variação total</div>
+                            <div class="text-sm font-black ${classeDelta}">${sinalDelta}${formatarNumero(deltaTotal)} pts</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-4xl font-black leading-none text-slate-950 sm:text-5xl">${formatarNumero(contribuicaoPct, 1)}<span class="text-2xl">%</span></div>
+                            <div class="mt-1 text-xs font-black ${classeSaldo}">(${sinalSaldo}${formatarNumero(saldoTemas)} pts)</div>
+                        </div>
+                    </div>
+                </div>`;
         }
 
-        // Renderização da Tabela
-        const tbody = document.getElementById(`tbl-contribuicao-body-${ipdId}`);
-        if (tbody) {
-            if (!data.resultados || data.resultados.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-400 italic">Nenhum resultado de contribuição encontrado para o perfil selecionado no período.</td></tr>`;
-            } else {
-                tbody.innerHTML = data.resultados.map(r => {
-                    const corTema = obterCorDoTema(r.categoria_tema);
-                    
-                    // Formatação do Impacto Médio Diário
-                    const impDiario = Number(r.impacto_medio_ipd || r.impacto_medio_diario);
-                    const impDiarioFmt = impDiario > 0 ? `+${impDiario.toFixed(2)}` : impDiario.toFixed(2);
-                    const classeImpDiario = impDiario >= 0 ? 'text-emerald-600 font-bold' : 'text-rose-600 font-bold';
+        const resultados = Array.isArray(data.resultados) ? data.resultados : [];
 
-                    // Formatação do Impacto do Período (Acumulado)
-                    const impPeriodo = Number(r.impacto_estimado_ipd);
-                    const impPeriodoFmt = impPeriodo > 0 ? `+${impPeriodo.toFixed(2)}` : impPeriodo.toFixed(2);
-                    const classeImpPeriodo = impPeriodo >= 0 ? 'text-emerald-600 font-bold' : 'text-rose-600 font-bold';
-                    
-                    return `
-                        <tr class="hover:bg-slate-50 transition">
-                            <td class="p-3.5 font-bold text-slate-900">${r.profile}</td>
-                            <td class="p-3.5 font-bold text-slate-800 flex items-center gap-2">
-                                <span class="w-2.5 h-2.5 rounded-full shrink-0" style="background-color: ${corTema}"></span>
-                                ${r.categoria_tema}
-                            </td>
-                            <td class="p-3.5 text-right ${classeImpDiario}">${impDiarioFmt} pts</td>
-                            <td class="p-3.5 text-right ${classeImpPeriodo}">${impPeriodoFmt} pts</td>
-                            <td class="p-3.5 text-right">
-                                <div class="flex items-center justify-end gap-2">
-                                    <div class="w-16 bg-slate-100 rounded-full h-2 overflow-hidden hidden sm:block">
-                                        <div class="bg-quaest-teal h-2 rounded-full" style="width: ${Math.min(100, r.peso_relativo_pct)}%"></div>
-                                    </div>
-                                    <span class="font-black text-slate-900">${Number(r.peso_relativo_pct).toFixed(1)}%</span>
+        // Barras divergentes sem peso ou variância: os rótulos mostram somente
+        // o impacto em pontos estimado para cada tema.
+        const maxImpacto = Math.max(0, ...resultados.map(r => Math.abs(parseNumero(
+            r.impacto_ipd_pts ?? r.impacto_estimado_ipd ?? r.impacto_medio_diario
+        ))));
+        const elGrafico = document.getElementById(`contribuicao-grafico-${ipdId}`);
+        if (elGrafico) {
+            if (!resultados.length) {
+                elGrafico.innerHTML = `<div class="p-6 text-center text-slate-400 italic">Nenhum resultado de contribuição encontrado para o perfil selecionado no período.</div>`;
+            } else {
+                elGrafico.innerHTML = resultados
+                    .slice()
+                    .sort((a, b) => parseNumero(b.impacto_ipd_pts ?? b.impacto_estimado_ipd ?? b.impacto_medio_diario) - parseNumero(a.impacto_ipd_pts ?? a.impacto_estimado_ipd ?? a.impacto_medio_diario))
+                    .map(r => {
+                        const tema = escaparHtml(r.categoria_tema || 'Sem categoria');
+                        const impacto = parseNumero(r.impacto_ipd_pts ?? r.impacto_estimado_ipd ?? r.impacto_medio_diario);
+                        const direcaoApi = String(r.direcao || '').toLowerCase();
+                        const positivo = direcaoApi ? direcaoApi === 'positivo' : impacto >= 0;
+                        const corClasse = positivo ? 'bg-sky-600' : 'bg-rose-500';
+                        const textoClasse = positivo ? 'text-sky-700' : 'text-rose-600';
+                        const largura = maxImpacto ? Math.min(38, Math.abs(impacto) / maxImpacto * 38) : 0;
+                        const lado = positivo ? 50 : 50 - largura;
+                        const ponta = positivo ? `calc(50% + ${largura}%)` : `calc(50% - ${largura}%)`;
+                        const sinal = impacto > 0 ? '+' : '';
+                        return `
+                            <div class="grid grid-cols-1 gap-1 border-b border-slate-100 py-2 last:border-0 sm:grid-cols-[minmax(150px,0.9fr)_minmax(220px,2fr)] sm:items-center sm:gap-4">
+                                <div class="truncate text-xs font-semibold text-slate-700" title="${tema}">${tema}</div>
+                                <div class="relative h-7">
+                                    <div class="absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 rounded-full bg-slate-100"></div>
+                                    <div class="absolute bottom-0 top-0 left-1/2 w-px bg-slate-400"></div>
+                                    <div class="absolute top-1/2 h-4 -translate-y-1/2 rounded-sm ${corClasse}" style="left:${lado}%;width:${largura}%"></div>
+                                    <span class="absolute top-1/2 -translate-y-1/2 whitespace-nowrap text-[11px] font-bold ${textoClasse}"
+                                          style="left:${ponta};transform:translate(${positivo ? '5px' : 'calc(-100% - 5px)'},-50%)">${sinal}${formatarNumero(impacto)} pts</span>
                                 </div>
-                            </td>
-                        </tr>
-                    `;
-                }).join('');
+                            </div>`;
+                    }).join('');
             }
         }
 
@@ -7445,28 +7497,20 @@ function toggleComparacaoRanking(ipdId) {
                             </div>
 
                             <div id="contribuicao-resultados-${ipdId}" class="hidden space-y-4">
-                                <div class="flex items-center justify-between bg-slate-50 p-4 rounded-2xl border border-slate-200">
-                                    <span class="text-xs font-bold text-slate-600">Qualidade de Ajuste do Modelo (R² Global):</span>
-                                    <span id="contribuicao-r2-${ipdId}" class="text-xs font-black text-quaest-teal bg-white px-3 py-1 rounded-lg border border-slate-200">--</span>
+                                <div class="rounded-[26px] border border-rose-300 bg-white p-4 shadow-sm sm:p-6">
+                                    <div id="contribuicao-periodo-${ipdId}" class="mx-auto mt-4 max-w-xl rounded-xl bg-rose-600 px-4 py-2 text-center text-xs font-bold uppercase text-white sm:text-sm">
+                                        Período atual
+                                    </div>
+                                    <div id="contribuicao-resumo-${ipdId}" class="mx-auto mt-3 max-w-xl"></div>
+                                    <div class="mt-5 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-[11px] font-bold text-slate-500">
+                                        <span class="flex items-center gap-1.5"><i class="h-3 w-3 rounded-full bg-sky-600"></i> Impacto positivo</span>
+                                        <span class="flex items-center gap-1.5"><i class="h-3 w-3 rounded-full bg-rose-500"></i> Impacto negativo</span>
+                                    </div>
+                                    <div id="contribuicao-grafico-${ipdId}" class="mt-3 space-y-0"></div>
+                                    <p class="mt-4 text-[10px] italic text-slate-500">
+                                        *Comparação com o período anterior de mesma duração. Valores em pontos de IPD.
+                                    </p>
                                 </div>
-
-                              <div class="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm">
-    <div class="overflow-x-auto">
-        <table class="w-full text-left text-xs border-collapse">
-            <thead class="bg-slate-50 border-b border-slate-200 text-slate-500 font-extrabold uppercase text-[10px]">
-                <tr>
-                    <th class="p-3.5">Perfil</th>
-                    <th class="p-3.5">Tema / Categoria</th>
-                    <th class="p-3.5 text-right">Impacto Médio Diário</th>
-                    <th class="p-3.5 text-right">Impacto no Período</th>
-                    <th class="p-3.5 text-right">Peso Relativo (%)</th>
-                </tr>
-            </thead>
-            <tbody id="tbl-contribuicao-body-${ipdId}" class="divide-y divide-slate-100 font-medium text-slate-700">
-            </tbody>
-        </table>
-    </div>
-</div>
                             </div>
                         </div>
                     </div>
